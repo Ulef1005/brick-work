@@ -42,7 +42,7 @@ PORTED |= {'web.bw_orders', 'web.bw_order', 'web.bw_orders_action', 'web.bw_orde
 # history, Instruction files, Unresolved items), API tokens and the database export.
 PORTED |= {'web.bw_tools', 'web.bw_admin', 'web.bw_admin_write', 'web.bw_tokens', 'web.bw_tokens_write', 'web.bw_export', 'web.bw_catalogue_job', 'web.bw_migration_file'}
 # M.8j: Collection sync (sources, link, pull and send plans, their writes) and Import from BrickTracker (upload, plan, apply, Undo).
-PORTED |= {'web.bw_sync', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_write', 'web.bw_import_legacy', 'web.bw_import_upload',
+PORTED |= {'web.bw_sync', 'web.bw_sync_hub', 'web.bw_sync_site', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_write', 'web.bw_import_legacy', 'web.bw_import_upload',
            'web.bw_import_plan', 'web.bw_import_apply', 'web.bw_import_undo'}
 # M.10 A: the copy page's Part list (the Switch sheet's body; its writes are `web.bw_collection_write`).
 PORTED |= {'web.bw_copy_part_list', 'web.bw_add_picture_known'}

@@ -117,4 +117,4 @@ def collection_summary():
 
 
 # The pages a step-3 choice opens: while the flow sent the user there, they offer the way back to it.
-RETURN_ENDPOINTS = {'web.bw_sync', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_import_legacy', 'web.bw_import_plan', 'web.bw_add'}
+RETURN_ENDPOINTS = {'web.bw_sync', 'web.bw_sync_hub', 'web.bw_sync_site', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_import_legacy', 'web.bw_import_plan', 'web.bw_add'}

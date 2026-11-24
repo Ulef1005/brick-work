@@ -821,6 +821,7 @@ def test_the_questions_hub_lists_every_page_passes_the_lego_rule_and_the_structu
     ld = lambda text: [json.loads(block) for block in re.findall(r'<script type="application/ld\+json">(.+?)</script>', text)]
     assert [item['@type'] for item in ld(hub)] == ['BreadcrumbList', 'ItemList']
     assert [e['url'].rsplit('/', 2)[-2] for e in ld(hub)[1]['itemListElement']] == list(QUESTION_SLUGS)
+    assert '<a href="../">Home</a> / Questions' in hub
     for slug in QUESTION_SLUGS:
         text = (site / f'questions/{slug}/index.html').read_text()
         types = [item['@type'] for item in ld(text)]

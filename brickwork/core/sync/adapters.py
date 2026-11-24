@@ -11,7 +11,7 @@ from urllib.parse import urlencode, quote
 from urllib.request import Request
 
 from .. import errors, keys, secrets
-from ..sources.base import KeyRejected, SourceError, WaitingForBudget, now, transport, USER_AGENT
+from ..sources.base import KeyRejected, RemoteBudgetExceeded, SourceError, WaitingForBudget, now, transport, USER_AGENT
 from ..sources.brickset import Brickset, BASE as BRICKSET
 from ..sources.rebrickable import Rebrickable
 
@@ -49,8 +49,16 @@ def _number(value):
     return value
 
 
+def _optional_id(value):
+    if value is None:
+        return None
+    if type(value) is str and value.isdecimal():
+        value = int(value)
+    return value if type(value) is int and value >= 1 else None
+
+
 def parse_lost_part(row):
-    """One row of `GET /users/{token}/lost_parts/` as `dict(set_no, part_no, color_id, quantity, is_spare)`, or None when it cannot be read.
+    """One row of `GET /users/{token}/lost_parts/` as `dict(set_no, part_no, color_id, quantity, is_spare, lost_part_id, inv_part_id)`, or None when it cannot be read.
 
     ASSUMED SHAPE (Rebrickable's documentation; the OpenAPI file does not describe the items and the test instance has no user token, so it
     was not checked live): `{lost_part_id, lost_quantity, inv_part: {id, inv_part_id, part: {part_num, ...}, color: {id, ...}, set_num,
@@ -72,7 +80,9 @@ def parse_lost_part(row):
             color_id = int(color_id)
         if type(quantity) is not int or quantity < 1 or type(color_id) is not int or not isinstance(spare, bool):
             return None
-        return dict(set_no=_number(found), part_no=_number(part_no), color_id=color_id, quantity=quantity, is_spare=spare)
+        return dict(set_no=_number(found), part_no=_number(part_no), color_id=color_id, quantity=quantity, is_spare=spare,
+                    lost_part_id=_optional_id(row.get('lost_part_id')),
+                    inv_part_id=_optional_id(inv.get('inv_part_id')))
     except (KeyError, TypeError, AttributeError, SourceError):
         return None
 
@@ -98,14 +108,17 @@ def parse_part_list_row(row):
 
 class RebrickableUser(Rebrickable):
     """User endpoints under /api/v3/users/ (set lists and their sets)."""
-    TEMPLATES = re.compile(r'/(?:setlists/|setlists/[0-9]+/sets/|setlists/[0-9]+/sets/[A-Za-z0-9.-]+/|sets/|lost_parts/|partlists/|partlists/[0-9]+/parts/)')
+    TEMPLATES = re.compile(r'/(?:setlists/|setlists/[0-9]+/sets/|setlists/[0-9]+/sets/[A-Za-z0-9.-]+/|sets/|lost_parts/|lost_parts/[0-9]+/|partlists/|partlists/[0-9]+/parts/)')
 
     def __init__(self, db, **kwargs):
         super().__init__(db, **kwargs)
         self.token = None
         send = self.http
         # DELETE answers 204 with an empty body; the recorded transport expects JSON.
-        self.http = lambda request: send(request) or '{}'
+        def wrapped(request):
+            reply = send(request)
+            return '{}' if reply in ('', b'', None) else reply
+        self.http = wrapped
 
     def user_token(self):
         if self.token is None:
@@ -114,7 +127,7 @@ class RebrickableUser(Rebrickable):
         return self.token
 
     def user_call(self, path, params=None, *, method='GET', data=None):
-        if not self.TEMPLATES.fullmatch(path):
+        if not self.TEMPLATES.fullmatch(path) or (method != 'DELETE' and re.fullmatch(r'/lost_parts/[0-9]+/', path)):
             raise ValueError('unsupported Rebrickable user endpoint')
         self.ready()
         token = self.user_token()
@@ -169,9 +182,45 @@ class RebrickableUser(Rebrickable):
             key = (row['set_no'], row['part_no'], row['color_id'], row['is_spare'])
             if key in merged:
                 merged[key]['quantity'] += row['quantity']
+                if row['lost_part_id'] is not None:
+                    merged[key]['ids'].append(row['lost_part_id'])
+                else:
+                    merged[key]['ids_complete'] = False
+                if merged[key]['inv_part_id'] is None and row['inv_part_id'] is not None:
+                    merged[key]['inv_part_id'] = row['inv_part_id']
             else:
+                has_id = row['lost_part_id'] is not None
+                row['ids'] = [row['lost_part_id']] if has_id else []
+                row['ids_complete'] = has_id
                 merged[key] = row
         return dict(rows=list(merged.values()), unreadable=unreadable)
+
+    def lost_part_add(self, inv_part_id, quantity):
+        """Add one Lost Parts row on Rebrickable.
+
+        ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
+        `POST /users/{token}/lost_parts/` with form fields `inv_part_id` and `lost_quantity`.
+        After a 2xx the write is done, so only an error body fails; `lost_part_id` in the reply is optional."""
+        reply = self.user_call('/lost_parts/', method='POST',
+                               data={'inv_part_id': int(inv_part_id), 'lost_quantity': int(quantity)})
+        if isinstance(reply, dict) and (
+            'detail' in reply
+            or 'non_field_errors' in reply
+            or any(k in reply and not (type(reply[k]) is int and reply[k] >= 1) for k in ('inv_part_id', 'lost_quantity'))
+        ):
+            raise SourceError('Rebrickable refused the Lost Part')
+        return reply
+
+    def lost_part_remove(self, lost_part_id):
+        """Remove one Lost Parts row on Rebrickable.
+
+        ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
+        `DELETE /users/{token}/lost_parts/{id}/`. An empty reply is treated as success because 204 has no body, so it cannot be told from
+        an empty-bodied error; live behaviour of POST and DELETE must be tried with a real user token before sending is offered."""
+        reply = self.user_call(f'/lost_parts/{int(lost_part_id)}/', method='DELETE')
+        if reply is not True:
+            raise SourceError('Rebrickable refused the Lost Part removal')
+        return True
 
     # The adapter surface used by the sync service.
     def connect(self, username, password):

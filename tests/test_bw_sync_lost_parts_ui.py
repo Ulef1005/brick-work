@@ -51,7 +51,7 @@ def pull_form(page):
 
 def test_the_switch_is_on_by_default_beside_pull_with_the_rule_in_words(client, remote, pair):
     linked(client)
-    page = soup(client.get('/manage/sync'))
+    page = soup(client.get('/workbench/sync/rebrickable'))
     form = pull_form(page)
     box = form.select_one('input[type=checkbox][name=lost_parts]')
     assert box['value'] == '1' and box.has_attr('checked') and box['role'] == 'switch'
@@ -65,7 +65,7 @@ def test_the_switch_is_on_by_default_beside_pull_with_the_rule_in_words(client, 
     assert page.select_one('[data-sync-source=brickset] input[name=lost_parts]') is None
     with closing(connect(pair)) as db:
         admin.patch_settings(db, {'rebrickable_lost_parts_rule': 'everything'})
-    assert 'Rebrickable wins everywhere' in soup(client.get('/manage/sync')).select_one('#sy-lost-note').get_text()
+    assert 'Rebrickable wins everywhere' in soup(client.get('/workbench/sync/rebrickable')).select_one('#sy-lost-note').get_text()
 
 
 def test_switching_off_is_remembered_and_makes_no_call(client, remote):
@@ -75,12 +75,12 @@ def test_switching_off_is_remembered_and_makes_no_call(client, remote):
     assert response.status_code == 302 and len(remote.lost_calls()) == made
     plan = soup(client.get(response.location))
     assert 'Lost Parts are switched off for this pull.' in plan.get_text()
-    assert not pull_form(soup(client.get('/manage/sync'))).select_one('input[type=checkbox]').has_attr('checked')
+    assert not pull_form(soup(client.get('/workbench/sync/rebrickable'))).select_one('input[type=checkbox]').has_attr('checked')
     client.post('/manage/sync/rebrickable/pull', data={'csrf_token': csrf})                      # no field: the remembered value
     assert len(remote.lost_calls()) == made
     client.post('/manage/sync/rebrickable/pull', data={'csrf_token': csrf, 'lost_parts': ['0', '1']})
     assert len(remote.lost_calls()) == made + 1
-    assert pull_form(soup(client.get('/manage/sync'))).select_one('input[type=checkbox]').has_attr('checked')
+    assert pull_form(soup(client.get('/workbench/sync/rebrickable'))).select_one('input[type=checkbox]').has_attr('checked')
 
 
 def test_the_plan_shows_the_clearing_the_chooser_and_the_result(client, remote, pair):

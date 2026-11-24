@@ -56,7 +56,7 @@ def test_agreed_routes_are_exported(site):
     assert any(k.startswith('/workbench/check-parts/') and k.endswith('?run=1') for k in pages)  # Start opens a running check
     assert any(k.startswith('/workbench/part-picker?copy=') for k in pages)  # Continue opens the picking view
     for route in ('/collection/G', '/collection/B', '/collection/C', '/workbench/match', '/workbench/orders', '/workbench/orders/1', '/planning/wishlist',
-                  '/manage/add', '/manage/tools', '/manage/statistics', '/manage/sync', '/manage/jobs'):
+                  '/manage/add', '/manage/tools', '/manage/statistics', '/workbench/sync', '/manage/jobs'):
         assert route in pages, route                                                          # every kind and every area of 0.9.0 has its pages
     assert not any(k.startswith('/manage/get-started') for k in pages)
     assert manifest['skipped'] == {} and manifest['gets']['/planning/prices/records']

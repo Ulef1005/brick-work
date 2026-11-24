@@ -25,4 +25,4 @@ def test_sold_line_reads_count_window_age(coll, client, monkeypatch):
     lines = [p.get_text(' ', strip=True) for p in soup.select('[data-bc-condition-prices] .bc-price p.secondary')]
     assert lines[0].startswith('7 sold · 6 months · ') and lines[1].startswith('1 sold · single price point · ')
     single = soup.select_one('[data-bc-price-single]')
-    assert single and 'Single price point' in single.get_text()
+    assert single and single.get_text().startswith('One price so far') and 'Single price point' not in single.get_text()   # frame 62's words

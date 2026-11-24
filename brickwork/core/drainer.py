@@ -12,10 +12,11 @@ from . import add, pictures, pipeline, source_ops, instructions, instruction_thu
 from .admin import begin_operation, end_operation
 from .connect import connect
 from .sources.base import audit_origin
+from .sync import run_job
 
 # Two runners share the `job` table and each ignores the other's kinds: `store4.jobs` runs the two fetch kinds, `core.pipeline` the
 # app's own `item` jobs (M.8c). Both are looked at here: one poll, one stop.
-PENDING_SQL = (f"SELECT state, retry_at FROM job WHERE (kind IN {jobs.OWN_KINDS} OR kind IN ('{pipeline.KIND}', '{reconcile_job.KIND}', '{instructions.DOWNLOAD_KIND}', '{instruction_thumbnails.KIND}')) "
+PENDING_SQL = (f"SELECT state, retry_at FROM job WHERE (kind IN {jobs.OWN_KINDS} OR kind IN ('{pipeline.KIND}', '{reconcile_job.KIND}', '{instructions.DOWNLOAD_KIND}', '{instruction_thumbnails.KIND}', '{run_job.KIND}')) "
                f"AND {jobs.ACTIVE}")
 
 
@@ -70,7 +71,7 @@ def drain_once(path):
         fetched = jobs.drain(db)
         # #217: a copy that switched to its BrickLink list by itself has new lines; queue the pictures they lack
         switched = [s['copy_id'] for r in fetched for s in r.get('settled') or () if s.get('outcome') == 'switched']
-        ran = fetched + pipeline.drain(db) + instructions.Downloads(db).drain() + instruction_thumbnails.Thumbnails(db).drain()
+        ran = fetched + run_job.drain(db) + pipeline.drain(db) + instructions.Downloads(db).drain() + instruction_thumbnails.Thumbnails(db).drain()
         reconcile_job.drain(db)
         add.settle_fetches(db)
         pictures.queue_for_copies(db, switched)

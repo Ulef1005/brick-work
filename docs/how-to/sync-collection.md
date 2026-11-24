@@ -74,6 +74,15 @@ A set becomes one **copy** per missing unit, with the part list the set has. Its
 
 **Where each row came from.** Every copy, loose-stock row and wish records how it arrived: **By hand**, **Rebrickable sync**, **Brickset sync**, a file or an import from another app. A row made through the API, the CLI or MCP reads **Via the API**, **Via the CLI** or **Via MCP**. That value never changes. A pull also records, on each copy, stock row and wish whose set the site holds, that it was **last synced from** that site, with the date. This holds for rows you added by hand too. Rows from before version 4.8 of the data read **Before this release**. Undo of a pull takes its "last synced from" dates back as well. The API returns both as `source` on a copy, a stock row and a wish.
 
+## Where a copy came from
+
+Open a copy and look under its tags: the **Source** row says how it got here and when a site last met it.
+
+- **Added via** is one fixed value that never changes: *By hand*, *Via the API*, *Via the CLI*, *Via MCP*, a site (*Rebrickable sync*, *Brickset sync*, *BrickLink sync*, *Brick Owl sync*), a file (*BrickLink file*, *Rebrickable file*, *Brickset file*, *Brick Owl file*, *Brick Work export*) or an import from the earlier app this one grew out of. Rows that exist from before this release read *Before this release*.
+- **Last synced from** is a separate line per site and list: "Last synced from Rebrickable: Main collection · 18 Nov, 21:40". It changes with every sync that matches the row. A set you added by hand can show it too: a later sync matched it to a set on the site, which does not change how it was added. A set in two Rebrickable lists shows one line for each.
+
+Undo of a sync run uses these records to take back exactly what the run did.
+
 ## Rebrickable list names
 
 If you keep your sets in several Rebrickable set lists, each set keeps the names of the lists it is in. They are the detail of its source: *Last synced from Rebrickable: Main collection, Bought 2026*. The names are not tags, and your own tags are never touched.

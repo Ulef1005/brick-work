@@ -468,8 +468,29 @@ Five states of a sync run, built by `sources/n/n3_frames.py` (`build`, `check`),
 - **R3-05 (`58-sync-nothing-to-sync`):** "Everything already matches", with what was compared and when.
 - **SUCCESS:** Say: each frame states what happened and that nothing was lost. Pass. Dark and 320/375 follow from the approved parts.
 
-## Commission N round 4 (draft, pending Ulf): the one-request run (#519, #685)
+## Commission N round 4 (approved by Ulf 2026-11-24, "push your designs - they are approved"): frames 66 to 77
 
 - **`66-sync-run-busy`:** the Preview step while the run is applied in one request (product, 2026-11-24): the footer button reads "Running 7 changes" with a spinner and is dimmed, Back is dimmed, and a line under it says to keep the page open and that the page above is locked. Built from frame 22 (`n4_frames.py`, imported from `n_frames.py`).
 - **Frame 23 (`23-rebrickable-run`) stays approved** as the target of the job runner and the progress view, #685. The build of #519 has five steps (Connect, Choose what, Pick sets, Preview, Result) because it has no Run step until #685; frames 18 to 22 and 24 draw six.
 - The sentence "Keep this page open until the run is done. Everything above is locked while it runs." is design's wording, for Ulf's check.
+- **Frames 67 to 69 (Brickset, #520):** pick, preview and result drawn from what Brickset's API carries (`syncable-brickset.md`): quantities per set, 100 calls a day, rating 1 to 5 (0 is none), priority default 1, no purchase date or price.
+- **Frame 70 (BrickLink result, #521):** orders pulled, lots updated, nothing sent; which store-lot fields can be written is "Unverified".
+- **Frames 71 to 73 (Brick Owl, #522):** collection lots and wishlists confirmed for sets; orders and the collection's parts and minifigures "Unverified"; a lot Brick Work cannot place is skipped.
+- **Frames 74 to 77 (Import & export, #523):** choose file with what the format carries, result with one Undo; export choose and result, no Undo. The Brickset CSV columns are "Unverified" until a real export is read.
+- **Frame 44 supersedes frame 12 for the copy page** (wiki-agent, 2026-11-24): brick-work's frame check fails on 12 because the Source row is the only difference (21 % at 1440); brick-work points its check at 44, and 12 stays as the base of the frames. No frame changed.
+
+## Commission N round 5 (draft, pending Ulf): every frame still missing (frames 78 to 93, the rail)
+
+Gap list: `~/Workspace/_exports/design-brief-n/frame-gaps-n.md`. Requested by brick-work-product for Ulf, 2026-11-24: "ask design to write all missing frames".
+
+- **G1, Workbench rail, Sync first (Ulf, 2026-11-24: "Put synch at place - (left side) on the workbench rail"):** the order is Sync, Set Inspector, Part Spotter, Lot Sorter, Part Runner, Matchmaker, Build Scout, Orders, Storage. Changed in `b_frames.GROUPS`, so every Workbench frame follows: 06, 07, 09, 10, 11, 13, 14, 16 (approved) and the Sync frames 17 to 77. A pure change of order. The phone Sync frames keep their three-entry row, now Sync first (F-04 stays Ulf's call); on the phone the row is clipped, as before, so the first items are the ones in view.
+- **`78-stock-added-via`, `79-wishes-added-via` (#551):** the Added via chips and filter on loose stock and on the wishlist, as on Sets (45).
+- **`80-bricklink-prices-preview`, `81-bricklink-prices-result` (#521):** the price guide: one price per row, typed prices kept unless ticked, the stock guide when nothing sold; read only, nothing sent.
+- **`82` to `86` (#523):** choose file for BrickLink wanted-list and inventory XML, BrickLink order XML, Rebrickable CSV, BrickTracker and Brick Work CSV. Each says what the file carries; the columns are "Unverified" until a real file is read. Every imported row says Added via File import.
+- **`87` to `92` (#523, #470):** choose what and format for the database file, insurance report, missing parts, Part Runner and order files, Brick Work CSV and the collection in another tool's format. Whether the database file holds site keys and Brickset's import columns are "Unverified".
+- **`93-re-import-result` (#524):** the result of re-importing a complete export, one Undo. The run state is frame 66's busy button.
+- **Design's wording, for Ulf's check:** every sentence in 78 to 93, the "Unverified" notes and "Before this release".
+- **SUCCESS:** Say: one job per frame. Unify: the same Result step as every sync page. Check: counts add up in each frame. Pass. Dark and 320/375 follow from the approved parts.
+- **`94-rebrickable-run-applying`, `95-sync-long-run-applying` (#685; brick-work-product, 2026-11-24):** frames 23 and 57 redrawn. The pull and the part lists apply in one transaction and cannot report "N of M", so they read "Applying the pull" with a spinner, no count and no ETA, and the pull cannot be stopped halfway. Sends and Lost Parts out keep "N of M" per call. In 95 the long run is 2,500 changes applied here plus 1,500 sends (1,120 sent, about 6 min left, budget today 1,310 / 2,000), which also makes F-01's contradiction go away. 23 and 57 stay approved until Ulf approves 94 and 95.
+- **Keys (brick-work-product, 2026-11-24):** "Keys are not included." on the database export (87) and the re-import result (93): keys, tokens and the Brickset password hash are never in an export; sync settings are. The approved complete export (35) already says "Settings · never includes keys"; the approved re-import preview (36) has no such line and is not changed.
+

@@ -308,9 +308,15 @@ class RebrickableUser(Rebrickable):
         return 'sent'
 
 
+def _flag_number(value):
+    """A Brickset flag number (1 to 8) from whatever a reply holds, else None: never an exception, however odd the value."""
+    text = str(value).strip()
+    return int(text) if text.isdecimal() and len(text) <= 2 and 1 <= int(text) <= 8 else None
+
+
 class BricksetUser(Brickset):
     """Brickset collection methods: login, checkUserHash, getSets (owned/wanted), setCollection."""
-    USER_METHODS = ('login', 'checkUserHash', 'getSets', 'setCollection')
+    USER_METHODS = ('login', 'checkUserHash', 'getSets', 'setCollection', 'getUserFlagLabels')
 
     def __init__(self, db, **kwargs):
         super().__init__(db, **kwargs)
@@ -382,16 +388,36 @@ class BricksetUser(Brickset):
                 raise SourceError('Brickset collection is too long')
 
     def fetch(self, link):
-        owned, wanted, ids = {}, {}, {}
+        """The owned and wanted sets with their counts, and `fields`: what else Brickset keeps per set (notes, the flags that are on), read from
+        the same two calls, so it costs nothing extra."""
+        owned, wanted, ids, fields = {}, {}, {}, {}
+
+        def note(number, collection):
+            # `flags` is a list of {flagNo, value} (documented, and an empty list on the live account checked 24.11.); anything else reads as no flags
+            listed = collection.get('flags')
+            on = [_flag_number(f.get('flagNo')) for f in (listed if isinstance(listed, list) else ())
+                  if isinstance(f, dict) and str(f.get('value')).lower() in ('true', '1') and _flag_number(f.get('flagNo'))]
+            fields.setdefault(number, dict(notes=str(collection.get('notes') or ''), flags=sorted(on)))
         for row in self._sets({'owned': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
-            owned[number] = int((row.get('collection') or {}).get('qtyOwned') or 1)
+            collection = row.get('collection') or {}
+            owned[number] = int(collection.get('qtyOwned') or 1)
             ids[number] = int(row['setID'])
+            note(number, collection)
         for row in self._sets({'wanted': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
-            wanted[number] = int((row.get('collection') or {}).get('qtyWanted') or 1)
+            collection = row.get('collection') or {}
+            wanted[number] = int(collection.get('qtyWanted') or 1)
             ids[number] = int(row['setID'])
-        return dict(owned=owned, wanted=wanted, ids=ids, names={})
+            note(number, collection)
+        return dict(owned=owned, wanted=wanted, ids=ids, names={}, fields=fields)
+
+    def flag_labels(self):
+        """The names the person gave the eight flags at Brickset, `{flag number: label}`; a flag without a name is missing. One charged call."""
+        reply = self.user_call('getUserFlagLabels', {}, payload={}, charged=True)
+        listed = reply.get('flags')
+        return {_flag_number(f.get('flagNo')): str(f['label']).strip() for f in (listed if isinstance(listed, list) else ())
+                if isinstance(f, dict) and f.get('label') and str(f['label']).strip() and _flag_number(f.get('flagNo'))}
 
     def set_ids(self, numbers):
         """Brickset setIDs for set numbers, one charged getSets per 500 numbers."""

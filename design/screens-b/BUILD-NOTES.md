@@ -467,3 +467,9 @@ Five states of a sync run, built by `sources/n/n3_frames.py` (`build`, `check`),
 - **R3-04 (`57-sync-long-run`):** 1,120 of 4,000 done, about 1 h 50 min left; closing the page is safe; Open Jobs.
 - **R3-05 (`58-sync-nothing-to-sync`):** "Everything already matches", with what was compared and when.
 - **SUCCESS:** Say: each frame states what happened and that nothing was lost. Pass. Dark and 320/375 follow from the approved parts.
+
+## Commission N round 4 (draft, pending Ulf): the one-request run (#519, #685)
+
+- **`66-sync-run-busy`:** the Preview step while the run is applied in one request (product, 2026-11-24): the footer button reads "Running 7 changes" with a spinner and is dimmed, Back is dimmed, and a line under it says to keep the page open and that the page above is locked. Built from frame 22 (`n4_frames.py`, imported from `n_frames.py`).
+- **Frame 23 (`23-rebrickable-run`) stays approved** as the target of the job runner and the progress view, #685. The build of #519 has five steps (Connect, Choose what, Pick sets, Preview, Result) because it has no Run step until #685; frames 18 to 22 and 24 draw six.
+- The sentence "Keep this page open until the run is done. Everything above is locked while it runs." is design's wording, for Ulf's check.

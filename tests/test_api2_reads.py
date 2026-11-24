@@ -16,7 +16,7 @@ from tests.api2 import app4, coll, pair, world  # noqa: F401
 
 READS = sorted(op for op, o in OPERATION_BY_ID.items() if o['x-piece'] == 'M.11b')
 FILES = {'get_images_by_id_content', 'get_instruction_files_by_id_content', 'get_export_missing_csv', 'get_export_missing_xml', 'get_export_picker_csv',
-         'get_export_wishlist_csv', 'get_wishlists_by_id_export_xml', 'get_wishlists_by_id_export_csv', 'get_storages_labels_pdf'}
+         'get_export_wishlist_csv', 'get_export_brickwork_zip', 'get_wishlists_by_id_export_xml', 'get_wishlists_by_id_export_csv', 'get_storages_labels_pdf'}
 
 
 def save_label_address(pair, operation):
@@ -48,7 +48,7 @@ def paths(w):
         'get_wishlists_by_id_export_csv': '/wishlists/default/export.csv', 'get_storages': '/storages', 'get_storages_by_id': f'/storages/{w.shelf}', 'get_lots': '/lots',
         'get_lots_by_id': f'/lots/{w.bag}', 'get_places': '/places', 'get_flags': '/flags', 'get_planning_ranking': '/planning/ranking', 'get_planning_set_scores': '/planning/set-scores?loose=true', 'get_planning_build_scout': '/planning/build-scout', 'get_valuation': '/valuation', 'get_export_insurance_csv': '/export/insurance.csv', 'get_lots_by_id_candidate_sets': f'/lots/{w.bag}/candidate-sets', 'get_lots_by_id_stock_by_stock_id_stickers': f'/lots/{w.bag}/stock/{w.stock_brick}/stickers', 'get_lots_by_id_pull_list_by_set_id': f'/lots/{w.bag}/pull-list/{w.keep}',
         'get_export_missing_csv': f'/export/missing.csv?copy_id={copy}', 'get_export_missing_json': f'/export/missing.json?copy_id={copy}',
-        'get_export_missing_xml': f'/export/missing.xml?ids={copy}', 'get_export_picker_csv': f'/export/picker.csv?copy_id={copy}', 'get_export_wishlist_csv': '/export/wishlist.csv',
+        'get_export_missing_xml': f'/export/missing.xml?ids={copy}', 'get_export_picker_csv': f'/export/picker.csv?copy_id={copy}', 'get_export_wishlist_csv': '/export/wishlist.csv', 'get_export_brickwork_zip': '/export/brickwork.zip',
         'get_events': '/events', 'get_events_by_id': '/events/1', 'get_statistics': '/statistics', 'get_items_by_id_detail': f'/items/{w.keep}/detail',
         'get_items_by_id_links': f'/items/{w.keep}/links', 'get_items_by_id_provider_status': f'/items/{w.keep}/provider-status', 'get_links': '/links'}
 
@@ -67,7 +67,7 @@ def full(coll, world, pair):
 
 
 def test_every_read_operation_has_a_case(world):
-    assert len(READS) == 68 and set(paths(world)) == set(READS)
+    assert len(READS) == 69 and set(paths(world)) == set(READS)
 
 
 @pytest.mark.parametrize('operation', READS)

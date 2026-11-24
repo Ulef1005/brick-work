@@ -286,6 +286,11 @@ def questions_markup(meta, body):
     (the hub also an ItemList of the seven, a question page a HowTo from its numbered steps). Returns the body and the extra head markup."""
     import json
     path = meta['path']
+
+    def swap(text, old, new):
+        if old not in text:
+            raise SystemExit(f'{path}: the breadcrumb label {old!r} is missing, so the page would ship without its links')
+        return text.replace(old, new, 1)
     if not path.startswith('questions/'):
         return body, ''
     root, name = origin() + site_base(), html.unescape(meta['title'])
@@ -296,14 +301,14 @@ def questions_markup(meta, body):
         links = re.findall(r'<a href="\{up\}(questions/[^"]+)"><span><b>(.+?)</b>', body)
         data.append({'@context': 'https://schema.org', '@type': 'ItemList', 'itemListElement': [
             {'@type': 'ListItem', 'position': n, 'name': html.unescape(label), 'url': root + href} for n, (href, label) in enumerate(links, 1)]})
-        body = body.replace('<span class="label">Home / Questions</span>', '<span class="label"><a href="{up}">Home</a> / Questions</span>', 1)
+        body = swap(body, '<span class="label">Home / Questions</span>', '<span class="label"><a href="{up}">Home</a> / Questions</span>')
     else:
-        steps = re.findall(r'<li><span class="n">\d+</span><div><b>(.+?)</b><span class="d">(.+?)</span>', body)
+        steps = re.findall(r'<li><span class="n">\d+</span><div><b>(.+?)</b><span class="d">(.+?)</span></div></li>', body, re.S)
         strip = lambda text: html.unescape(re.sub(r'<[^>]+>', '', text)).strip()
         if steps:
             data.append({'@context': 'https://schema.org', '@type': 'HowTo', 'name': name, 'step': [
                 {'@type': 'HowToStep', 'name': strip(step), 'text': strip(text)} for step, text in steps]})
-        body = body.replace('<span class="label">Home / Questions</span>', '<span class="label"><a href="{up}">Home</a> / <a href="{up}questions/">Questions</a></span>', 1)
+        body = swap(body, '<span class="label">Home / Questions</span>', '<span class="label"><a href="{up}">Home</a> / <a href="{up}questions/">Questions</a></span>')
     return body, ''.join('<script type="application/ld+json">' + json.dumps(item, ensure_ascii=False).replace('</', '<\\/') + '</script>' for item in data)
 
 

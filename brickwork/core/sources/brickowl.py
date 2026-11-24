@@ -83,10 +83,10 @@ class BrickOwl(Source):
         def consume(reply):
             if isinstance(reply, dict) and reply.get('error'):
                 text = str(reply['error'])
-                if re.search(r'access\s+denied|key|permission', text, re.IGNORECASE):
-                    raise KeyRejected('Brick Owl API unsuccessful')
-                if re.search(r'quota|limit|too\s+many\s+requests', text, re.IGNORECASE):
+                if re.search(r'quota\s+exceeded|rate\s+limit|too\s+many\s+requests', text, re.IGNORECASE):
                     raise base.RemoteBudgetExceeded()
+                if re.search(r'access\s+denied|invalid\s+(?:api\s+)?key|(?:api\s+)?key\s+(?:is\s+)?invalid', text, re.IGNORECASE):
+                    raise KeyRejected('Brick Owl API unsuccessful')
                 raise SourceError('Brick Owl API unsuccessful')
             return normalize(reply) if normalize else reply
 

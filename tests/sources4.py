@@ -26,7 +26,7 @@ def keyed(monkeypatch, *sources):
 
 
 def unkeyed(monkeypatch):
-    for name in (*BRICKLINK_KEYS, REBRICKABLE_KEY, BRICKSET_KEY, BRICKOWL_KEY, 'BW_SECRET_KEY'):
+    for name in (*BRICKLINK_KEYS, REBRICKABLE_KEY, BRICKSET_KEY, BRICKOWL_KEY, 'BW_BRICKOWL_DAILY_BUDGET', 'BW_SECRET_KEY'):
         monkeypatch.delenv(name, raising=False)
 
 

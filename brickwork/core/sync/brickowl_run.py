@@ -49,16 +49,16 @@ def _lot_set_number(lot):
     return None
 
 
-def _collect_sets(reply, ids):
+def _collect_sets(reply, ids, unreadable=None):
     counts = {}
     for lot in _require_list(reply):
         if not isinstance(lot, dict) or lot.get('type') != 'Set':
             continue
         qty = _parse_int(lot.get('qty'), minimum=1)
-        if qty is None:
-            continue
         number = _lot_set_number(lot)
-        if number is None:
+        if qty is None or number is None:
+            if unreadable is not None:
+                unreadable.append(lot.get('lot_id'))
             continue
         counts[number] = counts.get(number, 0) + qty
         boid = lot.get('boid')
@@ -90,11 +90,11 @@ class BrickOwlUser(BrickOwl):
 
     def fetch(self, link):
         """Fetch owned and wanted set counts from Brick Owl."""
-        ids = {}
-        owned = _collect_sets(self.collection_lots(), ids)
+        ids, unreadable = {}, []
+        owned = _collect_sets(self.collection_lots(), ids, unreadable)
         wid = link.get('wishlist_id') if isinstance(link, dict) else None
         if wid is not None and not isinstance(wid, bool) and str(wid).strip():
-            wanted = _collect_sets(self.wishlist_lots(wid), ids)
+            wanted = _collect_sets(self.wishlist_lots(wid), ids, unreadable)
         else:
             wanted = {}
-        return dict(owned=owned, wanted=wanted, ids=ids, names={})
+        return dict(owned=owned, wanted=wanted, ids=ids, names={}, unreadable=len(unreadable))   # set lots with no set number or quantity

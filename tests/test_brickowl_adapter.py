@@ -101,6 +101,7 @@ def test_fetch_collection_sums_normalizes_and_skips(brickowl_source, monkeypatch
         'wanted': {},
         'ids': {'70010-1': '90001', '70020-1': '90002'},
         'names': {},
+        'unreadable': 3,                                  # a lot with no set number, a quantity of 0 and one of 1.5
     }
     assert len(net.requests) == 1 and 'collection/lots' in net.urls[0]
 
@@ -122,6 +123,7 @@ def test_fetch_linked_wishlist_ignores_non_sets(brickowl_source, monkeypatch):
         'wanted': {'70030-1': 2},
         'ids': {'70010-1': '90001', '70030-1': '90010'},
         'names': {},
+        'unreadable': 0,
     }
     assert 'wishlist/lots' in net.urls[1] and 'wishlist_id=8101' in net.urls[1]
 

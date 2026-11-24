@@ -71,7 +71,7 @@ def test_403_access_denied_raises_key_rejected(brickowl_source, monkeypatch):
 
 @pytest.mark.parametrize('status, body, exc_type', [
     (200, {'error': 'Invalid API key'}, base.KeyRejected),
-    (200, {'error': 'Permission denied'}, base.KeyRejected),
+    (200, {'error': 'Access denied for this key'}, base.KeyRejected),
     (403, {'error': 'Temporary failure'}, base.SourceError),
     (403, '<html>blocked</html>', base.InvalidReply),
     (200, {'error': 'Something went wrong'}, base.SourceError),
@@ -168,3 +168,18 @@ def test_keys_and_ready_checks(brickowl_source, monkeypatch):
     brickowl_source.sql("UPDATE source SET enabled=0 WHERE id='brickowl'")
     with pytest.raises(base.SourceDisabled):
         BrickOwl(brickowl_source.db, http=Net({})).check_key()
+
+
+@pytest.mark.parametrize('message, exc_type', [
+    ('Limit exceeds maximum of 250', base.SourceError),
+    ('API key limit reached', base.SourceError),
+    ('Permission denied for this wishlist', base.SourceError),
+    ('Daily quota exceeded for this key', base.WaitingForBudget),
+    ('Invalid API key', base.KeyRejected),
+])
+def test_error_text_is_matched_by_phrase_not_by_a_word(brickowl_source, monkeypatch, message, exc_type):
+    keyed(monkeypatch, 'brickowl')
+    with pytest.raises(exc_type) as caught:
+        BrickOwl(brickowl_source.db, http=Net({'error': message})).collection_lots()
+    if exc_type is base.SourceError:
+        assert type(caught.value) is base.SourceError

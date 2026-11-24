@@ -230,15 +230,66 @@ def test_the_embedded_drainer_runs_a_queued_run_and_the_job_body_names_a_dead_ow
         assert api_jobs.job_body(db, job_id)['interrupted'] is False
 
 
-def test_the_plan_does_not_expire_while_the_job_works(three_sends):
+def test_the_plan_does_not_expire_while_the_job_works(three_sends, monkeypatch):
+    from datetime import datetime, timedelta, timezone
     pair, run_id, keys = three_sends
+    monkeypatch.setattr(sync, 'PLAN_TTL', timedelta(hours=1))
+    old = (datetime.now(timezone.utc) - timedelta(minutes=50)).isoformat()
     with db_of(pair) as db:
         run = sync_run.load(db, run_id)[0]
-        run['created_at'] = '2026-11-24T00:00:00+00:00'
+        run['created_at'] = old
         sync._store_plan(db, run)
         run_job.queue(db, run_id, form_for(db, run_id))
         run_job.drain(db)
-        assert sync_run.load(db, run_id)[0]['created_at'] > '2026-11-24T00:00:00+00:00'
+        assert sync_run.load(db, run_id)[0]['created_at'] > old
+
+
+def test_stop_on_a_waiting_job_keeps_the_rows_for_retry_and_a_failed_job_still_shows_a_result(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    real, state = adapters.RebrickableUser.send, {'sent': 0, 'mode': 'wait'}
+
+    def send(self, row, link, st):
+        if state['sent'] >= 1 and state['mode'] == 'wait':
+            raise WaitingForBudget('rebrickable', '2099-01-01T00:00:00+00:00')
+        if state['mode'] == 'crash':
+            raise RuntimeError('boom')
+        state['sent'] += 1
+        return real(self, row, link, st)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', send)
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        assert run_job.request_stop(db, run_id)
+        run_job.drain(db)
+        stage = sync_run.load(db, run_id)[0]['stages']['send']
+        assert stage['status'] == 'stopped' and len(stage['results']) == len(keys)
+        state['mode'] = 'go'
+        state['sent'] = 0
+        assert sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'done'
+
+
+def test_an_unexpected_error_fails_the_job_and_the_run_still_shows_what_happened(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    real, state = adapters.RebrickableUser.send, {'n': 0, 'crash': True}
+
+    def send(self, row, link, st):
+        state['n'] += 1
+        if state['n'] == 2 and state['crash']:
+            raise RuntimeError('boom')
+        return real(self, row, link, st)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', send)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        job = db.execute('SELECT state, error_code FROM job WHERE id=?', (job_id,)).fetchone()
+        assert tuple(job) == ('failed', 'source_error')
+        run = sync_run.load(db, run_id)[0]
+        assert run['applied'] and 'applying' not in run and run['stages']['send']['status'] == 'failed'
+        state['crash'] = False
+        assert sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'done'
+
 
 
 def test_the_job_sends_lost_parts_out_one_call_with_one_audit_entry(client, remote, pair):  # noqa: F811

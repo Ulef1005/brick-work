@@ -210,7 +210,7 @@ def _finish_stopped(db, job, run, plans, form_data, start_idx):
         if _stage_total(run, plans, form_data, name) == 0:
             run['stages'][name] = dict(status='none')
         else:
-            run['stages'][name] = dict(status='stopped')
+            run['stages'][name] = dict(existing or {}, status='stopped')       # a waiting stage keeps its rows for retry_send
             with transaction(db):
                 _set_step(db, job['id'], name, 'done', error='Stopped at your request')
     _settle_done(db, job, run, error='Stopped at your request')
@@ -357,6 +357,12 @@ def _fail_unexpected(db, job_id):
         db.rollback()
     msg = jobs._safe('Sync run failed unexpectedly')
     stamp = jobs._stamp(now())
+    try:
+        row = db.execute('SELECT payload FROM job WHERE id=?', (job_id,)).fetchone()
+        if sync.load_plan(db, json.loads(row['payload'])['run'], 'run').get('applied'):
+            msg = 'The result was recorded, but the last step of the job failed'      # the run is done; the job says so, not "failed"
+    except Exception:
+        pass
     with transaction(db):
         db.execute("UPDATE job SET state='failed', error_code='source_error', error=?, retry_at=NULL, updated_at=? WHERE id=?",
                    (msg, stamp, job_id))
@@ -366,8 +372,13 @@ def _fail_unexpected(db, job_id):
     try:
         row = db.execute('SELECT payload FROM job WHERE id=?', (job_id,)).fetchone()
         run_id = json.loads(row['payload'])['run']
-        run = sync.load_plan(db, run_id, 'run')
+        run, plans = sync_run.load(db, run_id)
         run.pop('applying', None)
+        for name, stage in run['stages'].items():
+            if stage.get('status') == 'started':
+                run['stages'][name] = _interrupted(db, plans, run['job_form'], name)
+        if not run.get('applied'):         # the stages as they stand are the result: the page shows it and retry_send reads the send rows
+            run['applied'] = dict(at=now().isoformat(), events=[s['event'] for s in run['stages'].values() if s.get('event') is not None])
         if 'job_progress' in run:
             run['job_progress']['now'] = None
         sync._store_plan(db, run)

@@ -16,12 +16,11 @@ import fcntl
 import json
 import logging
 import sqlite3
-from datetime import timedelta
 from uuid import uuid4
 
 from .. import errors, wishlists
 from ..admin import audit
-from ..sources.base import KeyRejected, RemoteBudgetExceeded, SourceError, WaitingForBudget, now
+from ..sources.base import KeyRejected, SourceError, WaitingForBudget, now
 from ..transaction import transaction
 from .. import sync
 from . import adapters, lost_parts, lost_parts_send, part_lists
@@ -633,7 +632,7 @@ def stage_send(db, run, plans, form_data, *, http=None, per_key=False, should_st
     else:
         units = [[key] for key in wanted]
     done_count = sum(1 for k in wanted if existing.get(k, {}).get('result') in went)
-    stopped, paused_retry_at, paused_exc, stopped_keys = False, None, None, {}
+    stopped, paused_retry_at, paused_exc, stopped_keys, failure = False, None, None, {}, None
     for idx, unit in enumerate(units):
         key = unit[0]
         later = [k for u in units[idx + 1:] for k in u]
@@ -664,9 +663,8 @@ def stage_send(db, run, plans, form_data, *, http=None, per_key=False, should_st
                 on_call('paused', key, done_count, retry_at=paused_retry_at)
             break
         except FAILURES as exc:
-            stages['send'] = dict(status='failed', message=_message(exc, source))
-            sync._store_plan(db, run)
-            return stages['send']
+            failure = _message(exc, source)
+            break
         row_res = next((r for r in reply['rows'] if r['key'] in unit and r['result'] in ('paused', 'key_rejected')), None)
         if row_res:
             stop_kind = row_res['result']
@@ -696,10 +694,14 @@ def stage_send(db, run, plans, form_data, *, http=None, per_key=False, should_st
             agg_rows.append(dict(key=key, **stopped_keys[key]))
         elif key in res_map:
             agg_rows.append(dict(key=key, **res_map[key]))
+        elif failure:
+            agg_rows.append(dict(key=key, result='failed', detail=failure))
     counts = {}
     for row in agg_rows:
         counts[row['result']] = counts.get(row['result'], 0) + 1
-    if counts.get('paused'):
+    if failure:
+        stages['send'] = dict(status='failed', message=failure, counts=counts, rows=len(wanted), results=agg_rows)
+    elif counts.get('paused'):
         exc = paused_exc or WaitingForBudget(None, paused_retry_at)
         stages['send'] = dict(status='waiting', counts=counts, rows=len(wanted), results=agg_rows, message=_message(exc, source))
     elif stopped:
@@ -828,20 +830,11 @@ class _Recorder:
             LOG.warning('Lost Parts progress could not be written to the run: %s', type(exc).__name__)
             self.run['progress_unsaved'] = True
 
-    @staticmethod
-    def _after(exc):
-        """The time a per-second throttle says to wait (None: until the next UTC midnight, as a budget wait)."""
-        seconds = getattr(exc, 'retry_seconds', None)
-        return (now() + timedelta(seconds=seconds)).isoformat() if seconds is not None else None
-
     def lost_part_add(self, inv_part_id, quantity):
         try:
             reply = self.client.lost_part_add(inv_part_id, quantity)
         except WaitingForBudget as exc:
             self.retry_at = exc.retry_at
-            raise
-        except RemoteBudgetExceeded as exc:
-            self.retry_at = self._after(exc)
             raise
         self._note(['add', inv_part_id, quantity])
         return reply
@@ -851,9 +844,6 @@ class _Recorder:
             reply = self.client.lost_part_remove(lost_part_id)
         except WaitingForBudget as exc:
             self.retry_at = exc.retry_at
-            raise
-        except RemoteBudgetExceeded as exc:
-            self.retry_at = self._after(exc)
             raise
         self._note(['remove', lost_part_id])
         return reply

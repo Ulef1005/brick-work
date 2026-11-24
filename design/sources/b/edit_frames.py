@@ -9,7 +9,9 @@ Drawn to the built sheets (templates/web/toni/brickwork/collection_modules.html,
   the range unverified until a live write test) are the "Editable fields" decision of 2026-11-24.
 
     BRAND_CHROMIUM=... python design/sources/b/edit_frames.py build [OUTDIR] | check
-Folders: 63-edit-set, 64-edit-wish (desktop: a drawer on the right over the dimmed page; phone: the sheet fills the screen).
+Folders: 63-edit-set, 64-edit-wish (desktop: a drawer on the right over the dimmed page; phone: the sheet fills the screen),
+65-build-scout-idle (#668, #669: Build Scout opens without a scan; a Start scan button begins it; the number fields are wide enough
+for their value and the spinners).
 """
 import sys
 from pathlib import Path
@@ -122,6 +124,30 @@ def edit_wish(phone, other_currency=False):
     return body
 
 
+def scout_idle(phone):
+    head = ('<div class="head"><div><div class="lbl">Workbench · Build Scout</div><h1>Build Scout</h1>'
+            '<p>Which sets can you build, or nearly build, from the parts you hold loose</p></div></div>')
+    if phone:
+        head = head.replace('font:600 30px', 'font:600 26px')
+    flds = [('Parts from', 'All loose stock', 200), ('Min', '60 %', 120), ('Max missing', '20', 120), ('Theme', 'All', 150),
+            ('Years', '1998 – 2024', 170), ('Size', '500 – 1500', 170), ('Sort', '% available', 150)]
+    filt = ('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
+            + ''.join(f'<label class="field" style="width:{w}px">{k}<span class="input" style="height:38px">{v}</span></label>' for k, v, w in flds)
+            + '<span class="btn sm">Start scan</span></div>')
+    idle = ('<div class="card" style="padding:28px;display:flex;flex-direction:column;gap:8px;align-items:flex-start">'
+            '<div style="font:600 18px var(--tw-font)">No scan yet</div>'
+            '<p style="font-size:14px;color:var(--tw-text-2);max-width:60ch">Set your filters, then start a scan. Build Scout counts the parts you hold loose against your sets and your wishes.</p>'
+            + ('<span class="btn" style="margin-top:6px">Start scan</span>' if phone else '') + '</div>')
+    if phone:
+        return (f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px">{head}'
+                f'<span class="btn sec sm" style="align-self:flex-start">Filters · 7</span>{idle}</div>')
+    return f'<div style="padding:22px 32px 0;display:flex;flex-direction:column;gap:14px">{head}{filt}{idle}</div>'
+
+
+def scout_framed(body, phone):
+    return (bf.phone_shell if phone else bf.desk_shell)('Workbench', 'Build Scout', body)
+
+
 def framed(sheet_body, phone):
     under = (bf.phone_shell if phone else bf.desk_shell)('Collection', 'Sets', bf.setdetail_body(phone))
     cls = 'esheet ph' if phone else 'esheet'
@@ -129,7 +155,7 @@ def framed(sheet_body, phone):
     return f'{under}<div class="scrim"></div><div class="{cls}" style="{width}z-index:5">{sheet_body}</div>'
 
 
-FRAMES = [('63-edit-set', edit_set, (1340, 1400)), ('64-edit-wish', edit_wish, (1000, 1060))]
+FRAMES = [('65-build-scout-idle', scout_idle, (700, 700)), ('63-edit-set', edit_set, (1340, 1400)), ('64-edit-wish', edit_wish, (1000, 1060))]
 
 
 def sources():
@@ -142,7 +168,7 @@ def sources():
         try:
             for folder, fn, (dh, ph) in FRAMES:
                 for phone, w, h in ((False, 1440, dh), (True, 390, ph)):
-                    html = bf.page6(framed(fn(phone), phone), w, h).replace('</style>', ECSS + '</style>', 1)
+                    html = bf.page6((scout_framed if fn is scout_idle else framed)(fn(phone), phone), w, h).replace('</style>', ECSS + '</style>', 1)
                     out[f'{folder}/{theme}-{w}.html'] = (bf.darken(html) if dark else html, w, h)
         finally:
             bf.LOCKUP = saved

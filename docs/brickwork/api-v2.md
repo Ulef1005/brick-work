@@ -544,7 +544,7 @@ The find tool follows the item convention: provider, kind and key, resolved thro
 | `GET /settings` | Allowed settings and freshness rules. | read | M.11c | same |
 | `PATCH /settings` | Update allowed settings (whitelist). | admin | M.11c | same |
 
-`part_list_grouping` is a settings key: `grouped` (default), `bricklink`, or `none`. PATCH uses the same save and undo event as the Settings page. It sets the grouping of every part list.
+`part_list_grouping` is a settings key: `grouped` (default), `bricklink`, or `none`. PATCH uses the same save and undo event as the Settings page. The rule moved to the Rebrickable sync page in the app; the setting is unchanged. `rebrickable_lost_parts_send` (true or false, off by default) switches the Lost Parts send to Rebrickable on, and `rebrickable_lost_parts_send_rule` (`add_only` by default, then `per_part`, `per_set` or `everything`) says which count wins when it sends (#469). It sets the grouping of every part list.
 
 `part_group_overrides` is a settings key too: an object `{category name: group name}` with the categories you moved out of the default group. The group is one of the twelve group names. Send `{}` to restore the default table. An entry equal to the default is dropped, and a read returns the differences only. They apply when `part_list_grouping` is `grouped`.
 

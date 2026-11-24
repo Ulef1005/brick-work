@@ -12686,6 +12686,15 @@ components:
           enum: [add_only, per_part, per_set, everything]
           default: per_part
           description: 'Which count a Rebrickable pull keeps for Lost Parts (#457). `add_only` adds marks and keeps the larger count. `per_part` lets Rebrickable''s count replace yours for a part it lists as lost. `per_set` makes a set with Lost Parts on Rebrickable exactly Rebrickable''s list. `everything` does that for every synced set.'
+        rebrickable_lost_parts_send:
+          type: boolean
+          default: false
+          description: 'Whether Brick Work may send your missing parts to Rebrickable''s Lost Parts list (#469). Off until you turn it on; a send is always shown first and Brick Work''s Undo cannot take it back.'
+        rebrickable_lost_parts_send_rule:
+          type: string
+          enum: [add_only, per_part, per_set, everything]
+          default: add_only
+          description: 'Which count wins when Brick Work sends Lost Parts (#469). `add_only` only adds parts and raises counts. `per_part` also lowers a count and offers a part for removal. `per_set` makes a set with a missing part here exactly your list. `everything` does that for every synced set.'
         part_group_overrides:
           type: object
           maxProperties: 200
@@ -12744,6 +12753,15 @@ components:
           enum: [add_only, per_part, per_set, everything]
           default: per_part
           description: 'Which count a Rebrickable pull keeps for Lost Parts (#457). `add_only` adds marks and keeps the larger count. `per_part` lets Rebrickable''s count replace yours for a part it lists as lost. `per_set` makes a set with Lost Parts on Rebrickable exactly Rebrickable''s list. `everything` does that for every synced set.'
+        rebrickable_lost_parts_send:
+          type: boolean
+          default: false
+          description: 'Whether Brick Work may send your missing parts to Rebrickable''s Lost Parts list (#469). Off until you turn it on; a send is always shown first and Brick Work''s Undo cannot take it back.'
+        rebrickable_lost_parts_send_rule:
+          type: string
+          enum: [add_only, per_part, per_set, everything]
+          default: add_only
+          description: 'Which count wins when Brick Work sends Lost Parts (#469). `add_only` only adds parts and raises counts. `per_part` also lowers a count and offers a part for removal. `per_set` makes a set with a missing part here exactly your list. `everything` does that for every synced set.'
         part_group_overrides:
           type: object
           maxProperties: 200

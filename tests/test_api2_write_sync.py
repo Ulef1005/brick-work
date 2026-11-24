@@ -229,3 +229,13 @@ def test_lost_parts_through_the_api(v2, pair, remote, monkeypatch):
     validate(patched, 'patch_settings')
     assert patched.json['data']['rebrickable_lost_parts_rule'] == 'per_set' and call(v2, '/settings').json['data']['rebrickable_lost_parts_rule'] == 'per_set'
     assert write(v2, '/settings', 'patch', {'rebrickable_lost_parts_rule': 'nope'}).status_code == 422
+    # #469, #519: the Lost Parts send switch and its rule are settings keys; off and add_only until set
+    assert call(v2, '/settings').json['data']['rebrickable_lost_parts_send'] is False and call(v2, '/settings').json['data']['rebrickable_lost_parts_send_rule'] == 'add_only'
+    patched = write(v2, '/settings', 'patch', {'rebrickable_lost_parts_send': True, 'rebrickable_lost_parts_send_rule': 'per_set'})
+    validate(patched, 'patch_settings')
+    shown = call(v2, '/settings').json['data']
+    assert patched.json['data']['rebrickable_lost_parts_send'] is True and shown['rebrickable_lost_parts_send'] is True and shown['rebrickable_lost_parts_send_rule'] == 'per_set'
+    assert write(v2, f"/events/{patched.json['event_id']}/undo").status_code == 200
+    assert call(v2, '/settings').json['data']['rebrickable_lost_parts_send'] is False
+    for bad in ({'rebrickable_lost_parts_send': 'on'}, {'rebrickable_lost_parts_send_rule': 'nope'}):
+        assert write(v2, '/settings', 'patch', bad).status_code == 422

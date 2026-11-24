@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Add reads a Brick Owl inventory backup** (#36). **Add**, **File** takes the XML backup from Brick Owl. Each lot with a set number in its name, such as "Set 75292", becomes a set with its quantity and condition; the other lots are listed as one line and left out, because the file has no BrickLink or Rebrickable numbers. Sets added this way show **Added via** Brick Owl file.
+
 - **Loose parts from Rebrickable part lists** (#471). Choose Rebrickable part lists and a pull brings them in as loose parts, each list into a lot of its own named after it. The preview lists what is new there, what differs and what is not matched, by part and colour; apply is one undoable step, and a second pull with nothing changed lists nothing. Pull only: nothing is sent to Rebrickable. The page for it comes with the new Rebrickable sync page. See [Loose parts from Rebrickable part lists](docs/how-to/sync-collection.md#loose-parts-from-rebrickable-part-lists).
 
 - **Rebrickable list names** (#531). A Rebrickable pull keeps, for each set, the names of the set lists it is in, as the detail of its source ("Last synced from Rebrickable: Main collection"). A set in two lists keeps both. A list renamed or removed at Rebrickable shows one line in the preview, and **Rename it** or **Drop the name** changes the name on every set that carries it; nothing else on a copy changes, and Undo puts the names back. On by default; the switch is remembered. The API takes `keep_list_names` on the link and `list_choices` on apply. See [Rebrickable list names](docs/how-to/sync-collection.md#rebrickable-list-names).

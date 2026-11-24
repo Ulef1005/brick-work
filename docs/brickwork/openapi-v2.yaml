@@ -4427,7 +4427,7 @@ paths:
           uniqueItems: true
       responses:
         '200':
-          description: 'CSV with Kind, Item number, Name, Colour, Colour id, Quantity, Condition, Completeness, Storage, Place, Price paid, Price paid currency, Purchase date, Owners, Tags/flags and Note.'
+          description: 'CSV with Kind, Item number, Name, Colour, Colour id, Quantity, Condition, Completeness, Storage, Place, Price paid, Price paid currency, Purchase date, Owners, Tags/flags, Note and Rating (sets only).'
           headers:
             X-Brickwork-Exported:
               description: Rows written (merged lines for the XML).

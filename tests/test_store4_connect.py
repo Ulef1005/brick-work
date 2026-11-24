@@ -44,7 +44,7 @@ def test_refuses_a_33_file_and_other_versions(tmp_path):
     with closing(connect(odd, tmp_path / 'catalogue.db')) as db:
         db.execute("UPDATE meta SET value='5.0' WHERE key='schema_version'")
         db.commit()
-    with pytest.raises(SchemaMismatch, match=r'is schema 4\.9, newer than this image .*run a newer image'):
+    with pytest.raises(SchemaMismatch, match=r'is schema 5\.0, newer than this image .*run a newer image'):
         connect(odd, tmp_path / 'catalogue.db')
     with closing(sqlite3.connect(odd)) as raw:     # an unparsable version keeps the old message
         raw.execute("UPDATE meta SET value='weird' WHERE key='schema_version'")

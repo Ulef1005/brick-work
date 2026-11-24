@@ -56,7 +56,7 @@ def get_planning_ranking(db):
                 'completeness_source': r['completeness_source'], 'storage_id': r['storage_id'], 'purchase_location_id': r['place_id'],
                 'purchase_date': r['purchase_date'], 'purchase_price': r['purchase_price'], 'purchase_currency': r['purchase_currency'], 'note': r['note'],
                 'current_value': plain(r.get('current_value')), 'current_value_currency': r['current_value_currency'], 'pinned': bool(r['pinned']),
-                'missing': missing, 'damaged': damaged, 'updated_at': r['updated_at'], 'archived_at': r['archived_at'],
+                'rating': r['rating'], 'missing': missing, 'damaged': damaged, 'updated_at': r['updated_at'], 'archived_at': r['archived_at'],
                 'value_when_complete': plain(r.get('value_when_complete')), 'valuation_basis': r.get('valuation_basis'), 'breakdown': plain(r.get('breakdown', {})),
                 'repair_cost': plain(r.get('repair_cost')), 'gross_gain': plain(r.get('gross_gain')), 'net_gain': plain(r.get('net_gain')),
                 'ratio': plain(r.get('ratio')), 'ratio_width': r.get('ratio_width', 0.0), 'ratio_overflow': bool(r.get('ratio_overflow', False))}

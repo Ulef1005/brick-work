@@ -66,10 +66,10 @@ def _find_tag(db, flag_map, n, tag_name):
     """Existing tag id for Brickset flag `n`, or None if it has not been created yet."""
     mapped = flag_map.get(str(n))
     if mapped is not None:
-        row = db.execute("SELECT id FROM main.flag WHERE id=? AND kind='tag'", (mapped,)).fetchone()
+        row = db.execute("SELECT id FROM main.flag WHERE id=? AND kind='tag' AND archived_at IS NULL", (mapped,)).fetchone()
         if row is not None:
             return row[0]
-    row = db.execute("SELECT id FROM main.flag WHERE name=? AND kind='tag'", (tag_name,)).fetchone()
+    row = db.execute("SELECT id FROM main.flag WHERE name=? AND kind='tag' AND archived_at IS NULL", (tag_name,)).fetchone()
     return row[0] if row is not None else None
 
 
@@ -80,11 +80,13 @@ def _has_flag(db, table, target_id, flag_id):
 
 def _rename_if_fallback(db, flag_id, new_name, n):
     """Rename `flag_id` once if its current name is still the fallback `Brickset flag N`."""
-    row = db.execute("SELECT name FROM main.flag WHERE id=? AND kind='tag'", (flag_id,)).fetchone()
+    row = db.execute("SELECT name FROM main.flag WHERE id=? AND kind='tag' AND archived_at IS NULL", (flag_id,)).fetchone()
     if row is None:
         return None
     fallback = FALLBACK.format(n=n)
     if row[0] == fallback and new_name != fallback:
+        if db.execute("SELECT 1 FROM main.flag WHERE kind='tag' AND archived_at IS NULL AND lower(name)=lower(?) AND id<>?", (new_name, flag_id)).fetchone():
+            return None                                    # another live tag already has that name: keep the fallback rather than make two
         db.execute('UPDATE main.flag SET name=? WHERE id=?', (new_name, flag_id))
         return dict(flag_id=flag_id, before=row[0])
     return None
@@ -95,10 +97,10 @@ def _ensure_tag(db, flag_map, n, tag_name):
     key = str(n)
     mapped = flag_map.get(key)
     if mapped is not None:
-        row = db.execute("SELECT id FROM main.flag WHERE id=? AND kind='tag'", (mapped,)).fetchone()
+        row = db.execute("SELECT id FROM main.flag WHERE id=? AND kind='tag' AND archived_at IS NULL", (mapped,)).fetchone()
         if row is not None:
             return row[0], False, _rename_if_fallback(db, row[0], tag_name, n)
-    row = db.execute("SELECT id FROM main.flag WHERE name=? AND kind='tag'", (tag_name,)).fetchone()
+    row = db.execute("SELECT id FROM main.flag WHERE name=? AND kind='tag' AND archived_at IS NULL", (tag_name,)).fetchone()
     if row is not None:
         flag_map[key] = row[0]
         return row[0], False, None
@@ -149,12 +151,16 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
                 continue
             tag_name = _tag_name(n, labels)
             existing_fid = _find_tag(db, flag_map, n, tag_name)
+            shown = tag_name
+            if existing_fid is not None:                    # apply links this tag, so the preview names it, whatever the label is now
+                got = db.execute('SELECT name FROM main.flag WHERE id=?', (existing_fid,)).fetchone()
+                shown = got[0] if got else tag_name
             for table, target_id, _ in targets:
                 if existing_fid is not None and _has_flag(db, table, target_id, existing_fid):
                     continue
                 rows.append(dict(
                     key=f'flag{n}:{table}:{target_id}', kind='flag', table=table, target_id=target_id,
-                    item_id=item_id, number=number, name=name, flag=n, remote=tag_name,
+                    item_id=item_id, number=number, name=name, flag=n, remote=shown,
                     here=None, state='add', options=[], default=None, tickable=True,
                 ))
     plan_labels = {str(n): lbl for n, lbl in (labels or {}).items() if lbl}
@@ -181,7 +187,7 @@ def _select_rows(value, ticked, choices):
         if isinstance(ticked, (str, bytes)) or not isinstance(ticked, (list, tuple, set)):
             raise errors.ValidationFailed('Send the ticked rows as a list of row keys')
         add_keys = {r['key'] for r in add_rows}
-        if any(k not in add_keys for k in ticked):
+        if any(not isinstance(k, str) for k in ticked) or any(k not in add_keys for k in ticked):
             raise errors.ValidationFailed('Unknown set-field rows')
         chosen_keys = set(ticked)
     choices = {} if choices is None else choices
@@ -209,7 +215,7 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
     if via is None:
         via, actor = origin()
     stamp = store_now()
-    receipt = dict(plan=plan_id, notes=[], links=[], tags_created=[], renamed=[], map_before=None)
+    receipt = dict(plan=plan_id, notes=[], links=[], tags_created=[], renamed=[], skipped=[], map_before=None)
     with transaction(db):
         done = plans.applied(db, 'sync', plan_id)
         if done:
@@ -223,6 +229,9 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
                 cur = db.execute(f'SELECT note FROM {tbl} WHERE id=? AND archived_at IS NULL', (r['target_id'],)).fetchone()
                 if cur is None:
                     raise errors.ValidationFailed('Target no longer exists')
+                if (cur[0] or None) != (r['here'] or None):          # changed since the plan: never overwrite what the person wrote meanwhile
+                    receipt['skipped'].append(dict(table=r['table'], id=r['target_id']))
+                    continue
                 if cur[0] != r['remote']:
                     db.execute(f'UPDATE {tbl} SET note=?, updated_at=? WHERE id=?', (r['remote'], stamp, r['target_id']))
                     receipt['notes'].append(dict(table=r['table'], id=r['target_id'], before=cur[0], after=r['remote']))
@@ -239,16 +248,17 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
                 if db.execute(f'SELECT 1 FROM {link_tbl} WHERE {col}=? AND flag_id=?', (r['target_id'], fid)).fetchone() is None:
                     db.execute(f'INSERT INTO {link_tbl}({col}, flag_id) VALUES(?, ?)', (r['target_id'], fid))
                     receipt['links'].append(dict(table=r['table'], id=r['target_id'], flag_id=fid))
-        if ticked is None:
-            for str_n, label in sorted((value.get('labels') or {}).items()):
-                if label and str_n in flag_map:
-                    renamed_entry = _rename_if_fallback(db, flag_map[str_n], label, int(str_n))
-                    if renamed_entry is not None:
-                        receipt['renamed'].append(renamed_entry)
+        for str_n, label in sorted((value.get('labels') or {}).items()):
+            if label and str_n in flag_map:
+                renamed_entry = _rename_if_fallback(db, flag_map[str_n], label, int(str_n))
+                if renamed_entry is not None and renamed_entry not in receipt['renamed']:
+                    receipt['renamed'].append(renamed_entry)
         if flag_map != map_before:
             _put_map(db, flag_map)
         counts = dict(notes=len(receipt['notes']), flags=len(receipt['links']),
                       tags_created=len(receipt['tags_created']), renamed=len(receipt['renamed']))
+        if receipt['skipped']:
+            counts['skipped'] = len(receipt['skipped'])      # rows whose note changed after the plan: left as they are
         receipt['counts'] = counts
         audit(db, 'sync:' + plan_id, FIELD, None, receipt, via=via, actor=actor)
         event = db.execute('SELECT last_insert_rowid()').fetchone()[0]

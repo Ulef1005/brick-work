@@ -387,8 +387,9 @@ class BricksetUser(Brickset):
         owned, wanted, ids, fields = {}, {}, {}, {}
 
         def note(number, collection):
-            fields.setdefault(number, dict(notes=str(collection.get('notes') or ''),
-                                           flags=sorted(int(f['flagNo']) for f in collection.get('flags') or () if f.get('value'))))
+            # `flags` is a list of {flagNo, value} (documented, and an empty list on the live account checked 24.11.); anything else reads as no flags
+            on = [int(f['flagNo']) for f in collection.get('flags') or () if isinstance(f, dict) and f.get('value') is True and str(f.get('flagNo', '')).isdigit()]
+            fields.setdefault(number, dict(notes=str(collection.get('notes') or ''), flags=sorted(on)))
         for row in self._sets({'owned': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
             collection = row.get('collection') or {}

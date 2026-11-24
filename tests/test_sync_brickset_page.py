@@ -576,3 +576,14 @@ def test_the_read_carries_the_notes_the_flags_that_are_on_and_the_flag_labels(cl
         assert fields['1000-1'] == dict(notes='bought at the fair', flags=[2, 5])
         assert fields['1000-4'] == dict(notes='', flags=[])
         assert reader.flag_labels() == {2: 'Display'}
+
+
+def test_the_read_ignores_flags_it_cannot_understand_instead_of_failing_the_run(client, remote, pair, monkeypatch):
+    connected(client, pair)
+    odd = [{'number': '1000', 'numberVariant': 1, 'setID': 1001, 'collection': {'qtyOwned': 1, 'flags': value}}
+           for value in ({'x': 1}, [{'value': True}], ['3'], [{'flagNo': 'a', 'value': True}], [{'flagNo': 3, 'value': 'false'}], [{'flagNo': 4, 'value': True}])]
+    for value, row in zip(range(6), odd):
+        monkeypatch.setattr(adapters.BricksetUser, '_sets', lambda self, filters, row=row: [row] if filters.get('owned') else [])
+        with db_of(pair) as db:
+            fields = adapters.adapter(db, 'brickset', remote).fetch({})['fields']['1000-1']
+        assert fields['flags'] == ([4] if value == 5 else [])

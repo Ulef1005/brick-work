@@ -203,3 +203,85 @@ def test_tag_reused_and_late_label_renames_fallback_once_leaving_user_renamed_al
         r6 = set_fields.apply(db, p6['id'])
         assert r6['counts']['renamed'] == 0
         assert [t[1] for t in _copy_tags(db, c3)] == ['My Shelf']
+
+
+def _live_tags(db):
+    return db.execute("SELECT id, name FROM flag WHERE kind='tag' AND archived_at IS NULL ORDER BY name").fetchall()
+
+
+def test_a_note_changed_after_the_plan_is_not_overwritten_and_is_counted(pair):
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        cid = _copies(db, '1000-1')[0][0]
+        p = set_fields.plan(db, {'1000-1': {'notes': 'from Brickset', 'flags': []}}, {})
+        db.execute('UPDATE copy SET note=? WHERE id=?', ('written meanwhile', cid))
+        db.commit()
+        res = set_fields.apply(db, p['id'])
+        assert res['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0, 'skipped': 1}
+        assert _copies(db, '1000-1')[0][1] == 'written meanwhile'
+
+
+def test_an_archived_tag_is_not_reused(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        first = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})
+        set_fields.apply(db, first['id'])
+        old = _live_tags(db)[0][0]
+        db.execute("UPDATE flag SET archived_at='2026-11-24T00:00:00Z' WHERE id=?", (old,))
+        db.commit()
+        second = set_fields.plan(db, {'2070-1': {'notes': '', 'flags': [2]}}, {})
+        res = set_fields.apply(db, second['id'])
+        assert res['counts']['tags_created'] == 1
+        live = _live_tags(db)
+        assert len(live) == 1 and live[0][0] != old and live[0][1] == 'Brickset flag 2'
+        cid = _copies(db, '2070-1')[0][0]
+        assert [t[0] for t in _copy_tags(db, cid)] == [live[0][0]]
+
+
+def test_the_preview_names_the_tag_apply_will_link_after_a_label_change(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})['id'])
+        later = set_fields.plan(db, {'2070-1': {'notes': '', 'flags': [2]}}, {2: 'Shelf'})
+        assert [r['remote'] for r in later['rows']] == ['Display']
+        set_fields.apply(db, later['id'])
+        cid = _copies(db, '2070-1')[0][0]
+        assert [t[1] for t in _copy_tags(db, cid)] == ['Display']
+
+
+def test_a_rename_that_would_make_two_live_tags_share_a_name_is_skipped(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})['id'])
+        db.execute("INSERT INTO flag(id, name, kind, shown_on_grid, created_at) VALUES('mine', 'Display', 'tag', 0, '2026-11-24T00:00:00Z')")
+        db.commit()
+        later = set_fields.plan(db, {'2070-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})
+        res = set_fields.apply(db, later['id'])
+        assert res['counts']['renamed'] == 0
+        assert [t[1] for t in _live_tags(db)] == ['Brickset flag 2', 'Display']
+
+
+def test_a_label_renames_the_fallback_tag_even_when_the_pull_ticks_nothing(pair):
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})['id'])
+        later = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})
+        res = set_fields.apply(db, later['id'], ticked=[])
+        assert res['counts']['renamed'] == 1
+        assert [t[1] for t in _live_tags(db)] == ['Display']
+
+
+def test_a_malformed_ticked_list_is_a_validation_error(pair):
+    from brickwork.core import errors
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        p = set_fields.plan(db, {'1000-1': {'notes': 'x', 'flags': []}}, {})
+        for bad in ([{'a': 1}], [['k']], 'note:copy:x', 5):
+            with pytest.raises(errors.ValidationFailed):
+                set_fields.apply(db, p['id'], ticked=bad)

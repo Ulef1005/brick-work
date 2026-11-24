@@ -855,3 +855,4 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
                 note='Remote changes are not undone by Brick Work\'s Undo.')
 
 from . import part_lists  # noqa: E402,F401 — registers the part-list pull's Undo (#471)
+from . import set_fields  # noqa: E402,F401 — registers the set-fields pull's Undo (#690)

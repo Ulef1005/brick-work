@@ -22,7 +22,7 @@ def hatched(done, total):
 
 def rate_limit(ph):
     """Rebrickable: halfway through a run the site asks us to wait; the run waits as long as asked and goes on by itself."""
-    main = (card('62 of 140 done', f'{prog(62, 140)}<p class="mono" style="{mono}">paused by Rebrickable · goes on in 38 s · budget today 262 / 2,000</p>'
+    main = (card('62 of 140 done', f'{prog(62, 140)}<p class="mono" style="{mono}">paused by Rebrickable · goes on in 38 s · budget today 262 / 1,000</p>'
                  '<div class="ninfo">Rebrickable asked for a short break. Brick Work waits as long as it asks and goes on by itself. Nothing is lost and nothing is repeated.</div>'
                  f'<div style="display:flex;gap:10px;flex-wrap:wrap">{btn("Stop after this one", "sec sm")}</div>'))
     return (head('Rebrickable', 'Running 140 changes', ph) + steps('Run', ph) + main
@@ -55,7 +55,7 @@ def conflicts(ph):
 
 def long_run(ph):
     """A run of 4,000 changes: hours, not seconds. It goes on if the page closes or the server restarts."""
-    main = card('1,120 of 4,000 done', f'{prog(1120, 4000)}<p class="mono" style="{mono}">about 48 min left · 1 request a second · budget today 1,310 / 5,000</p>'
+    main = card('3,840 of 4,000 done', f'{prog(3840, 4000)}<p class="mono" style="{mono}">about 3 min left · 1 request a second · budget today 810 / 1,000</p>'
                 '<div class="ninfo">You can close this page, the browser or the tablet. The run keeps going on the server and shows in Jobs. If the server restarts it goes on from the last saved step.</div>'
                 f'<div style="display:flex;gap:10px;flex-wrap:wrap">{btn("Stop after this one", "sec sm")}{btn("Open Jobs", "q sm")}</div>')
     return head('Rebrickable', 'Running 4,000 changes, started 19 Nov, 15:02', ph) + steps('Run', ph) + main

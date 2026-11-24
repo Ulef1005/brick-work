@@ -185,10 +185,10 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
                     here=None, state='add', options=[], default=None, tickable=True,
                 ))
         remote_rating = entry.get('rating')
-        if remote_rating:
+        if type(remote_rating) is int and 1 <= remote_rating <= 5:        # the store's own range: anything else is not a rating
             _plan_scalar(rows, not_kept, 'ratings', 'rating', 'copy', copies, item_id, number, name, remote_rating)
         remote_priority = entry.get('priority')
-        if remote_priority is not None and remote_priority > 1:
+        if type(remote_priority) is int and 1 < remote_priority <= 999:  # 1 is Brickset's default; the store's range is 1 to 999
             _plan_scalar(rows, not_kept, 'priorities', 'priority', 'wish', wishes, item_id, number, name, remote_priority)
     plan_labels = {str(n): lbl for n, lbl in (labels or {}).items() if lbl}
     renames = []                                            # a tag still named `Brickset flag N` whose flag has a label now: apply renames it, whatever is ticked
@@ -330,7 +330,9 @@ def _undo(db, event, via, actor):
         for entry in r.get(key) or ():
             tbl = fixed_tbl or ('main.copy' if entry['table'] == 'copy' else 'main.wish')
             row = db.execute(f'SELECT {col} FROM {tbl} WHERE id=? AND archived_at IS NULL', (entry['id'],)).fetchone()
-            if row is None or row[0] != entry['after']:
+            if row is None:
+                continue                                   # archived since: nothing to restore, and no reason to refuse the rest
+            if row[0] != entry['after']:
                 raise ValueError('Something from this sync has changed since · undo the later change first')
     for entry in r['renamed']:
         row = db.execute('SELECT name FROM main.flag WHERE id=?', (entry['flag_id'],)).fetchone()
@@ -341,7 +343,7 @@ def _undo(db, event, via, actor):
     for key, fixed_tbl, col in undo_fields:
         for entry in reversed(r.get(key) or ()):
             tbl = fixed_tbl or ('main.copy' if entry['table'] == 'copy' else 'main.wish')
-            db.execute(f'UPDATE {tbl} SET {col}=?, updated_at=? WHERE id=?', (entry['before'], stamp, entry['id']))
+            db.execute(f'UPDATE {tbl} SET {col}=?, updated_at=? WHERE id=? AND archived_at IS NULL', (entry['before'], stamp, entry['id']))
     for link in reversed(r['links']):
         link_tbl, col = ('main.copy_flag', 'copy_id') if link['table'] == 'copy' else ('main.wish_flag', 'wish_id')
         db.execute(f'DELETE FROM {link_tbl} WHERE {col}=? AND flag_id=?', (link['id'], link['flag_id']))

@@ -615,3 +615,31 @@ def test_older_receipt_without_ratings_and_priorities_keys_still_undoes(pair):
         db.commit()
         undo.undo_event(db, older)
         assert _copies(db, '1000-1')[0][1] is None
+
+
+def test_values_outside_the_stores_ranges_are_not_planned_and_do_not_crash(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_wish(coll.item('sets', '1000-2'), quantity=1)
+        for rating, priority in ((9, 10 ** 6), ('x', 'y'), (True, True), (0, 1), (2.5, 7.0)):
+            p = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [], 'rating': rating, 'priority': priority},
+                                     '1000-2': {'notes': '', 'flags': [], 'rating': rating, 'priority': priority}}, {})
+            assert [r for r in p['rows'] if r['kind'] in ('rating', 'priority')] == [], (rating, priority)
+            assert p['not_kept']['ratings'] == 0 and p['not_kept']['priorities'] == 0
+
+
+def test_undo_skips_a_target_archived_since_and_still_restores_the_rest(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        a, b = _copies(db, '1000-1')[0][0], _copies(db, '2070-1')[0][0]
+        res = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': 'one', 'flags': [], 'rating': 4},
+                                                         '2070-1': {'notes': 'two', 'flags': [], 'rating': 3}}, {})['id'])
+        assert res['counts']['notes'] == 2 and res['counts']['ratings'] == 2
+        db.execute("UPDATE copy SET archived_at='2026-11-24T00:00:00Z' WHERE id=?", (b,))
+        db.commit()
+        undo.undo_event(db, res['event_id'])
+        assert tuple(db.execute('SELECT note, rating FROM copy WHERE id=?', (a,)).fetchone()) == (None, None)
+        assert tuple(db.execute('SELECT note, rating FROM copy WHERE id=?', (b,)).fetchone()) == ('two', 3)      # the archived copy is left as it is

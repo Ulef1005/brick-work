@@ -217,7 +217,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-212 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
+213 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -648,6 +648,7 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `GET /api/v2/exchange-rates` | M.11d | `brickwork.api2.system.get_exchange_rates` |
 | `POST /api/v2/exchange-rates/ecb` | M.11d | `brickwork.api2.system.post_exchange_rates_ecb` |
 | `PUT /api/v2/exchange-rates/{code}` | M.11d | `brickwork.api2.system.put_exchange_rates_by_code` |
+| `GET /api/v2/export/brickwork.zip` | M.11b | `brickwork.api2.own_export.get_export_brickwork_zip` |
 | `GET /api/v2/export/collection.csv` | M.11b | `brickwork.api2.ranking.get_export_collection_csv` |
 | `GET /api/v2/export/collection.rebrickable.csv` | M.11b | `brickwork.api2.ranking.get_export_collection_rebrickable_csv` |
 | `GET /api/v2/export/collection.xml` | M.11b | `brickwork.api2.ranking.get_export_collection_xml` |

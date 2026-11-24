@@ -4364,6 +4364,38 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: get_export_missing_xml
       x-piece: M.11b
+  /export/brickwork.zip:
+    get:
+      operationId: get_export_brickwork_zip
+      summary: "Brick Work's own export (#524) as a zip: places, flags, the collection and the wishes, as JSON Lines with a manifest."
+      description: 'Live rows only. Items and colours are named by provider, namespace, key and kind, never by this install''s ids. A copy carries its part-line marks and the word for where its list came from, not the list itself. Orders, part checks, market prices, photos, secrets and history are not in version 1; the prices you paid and the values you recorded are. A stored credential in a note is written as [set].'
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: sections
+        in: query
+        description: Comma-separated sections to include (places, flags, collection, wishes). All when absent.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The zip file.
+          headers:
+            X-Brickwork-Exported:
+              description: Rows written in all.
+              schema:
+                type: integer
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
   /export/collection.csv:
     get:
       operationId: get_export_collection_csv

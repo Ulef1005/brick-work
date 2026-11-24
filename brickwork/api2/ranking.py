@@ -7,7 +7,7 @@ import json
 
 from flask import Response, request
 
-from ..core import build_scout, candidate_sets, collection, errors, list_exports, planning, set_scoring
+from ..core import build_scout, candidate_sets, collection, collection_export, errors, list_exports, planning, set_scoring
 from . import route
 from .read import (arguments, bodies, flag, page, reading, record, respond)
 
@@ -79,8 +79,8 @@ def chosen_copies():
     return ids
 
 
-def attachment(content, mimetype, name):
-    return Response(content, mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={name}'})
+def attachment(content, mimetype, name, extra=None):
+    return Response(content, mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={name}', **(extra or {})})
 
 
 @route('/export/missing.csv')
@@ -132,6 +132,36 @@ def get_export_missing_json(db):
 def get_export_missing_xml(db):
     arguments()
     return attachment(planning.export(db, chosen_copies())['xml'], 'application/xml', 'brickwork-missing.xml')
+
+
+def _collection_args(args):
+    return args.get('kind'), request.args.getlist('id') or None
+
+
+def _collection_response(result, mimetype, name):
+    extra = {'X-Brickwork-Exported': str(result['rows']), 'X-Brickwork-Skipped': str(len(result['skipped']))}
+    return attachment(result['content'], mimetype, name, extra)
+
+
+@route('/export/collection.csv')
+@reading
+def get_export_collection_csv(db):
+    kind, ids = _collection_args(arguments())
+    return _collection_response(collection_export.to_csv(db, kind, ids), 'text/csv', 'brickwork-collection.csv')
+
+
+@route('/export/collection.xml')
+@reading
+def get_export_collection_xml(db):
+    kind, ids = _collection_args(arguments())
+    return _collection_response(collection_export.to_xml(db, kind, ids), 'application/xml', 'brickwork-collection.xml')
+
+
+@route('/export/collection.rebrickable.csv')
+@reading
+def get_export_collection_rebrickable_csv(db):
+    kind, ids = _collection_args(arguments())
+    return _collection_response(collection_export.to_rebrickable_csv(db, kind, ids), 'text/csv', 'brickwork-collection.rebrickable.csv')
 
 
 # ---------- sets versus a pile of parts (#199) ----------

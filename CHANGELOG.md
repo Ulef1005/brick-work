@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Export what you own as a file** (#470). `brickwork export set|part|minifigure` and `GET /export/collection.csv`, `.xml` and `.rebrickable.csv` write your sets, loose parts or minifigures as Brick Work's own CSV, BrickLink wanted-list XML or Rebrickable CSV, for the rows you name (up to 200) or all of them. A row with no number on the other site is left out and counted. The BrickLink and Rebrickable files read back through **Add**, **File**.
 - **Check an export file before importing it** (#524, second part). `brickwork import-file FILE` reads a file made by `export-all` and counts, per table, what an import would add, what is already here, what differs and what it cannot place. It writes nothing yet; applying the import with a preview and Undo follows.
 
 - **Brick Work's own export file** (#524, first part). `brickwork export-all --output FILE` and `GET /export/brickwork.zip` write your places and storage, flags, lots, copies with their part-line marks, loose stock and wishlists as one zip of readable JSON Lines with a manifest. Items and colours are named by provider and number, so another install can find them. Orders, part checks, market prices, photos, secrets and history are not in it, though the prices you paid and the values you recorded are. The file cannot be imported yet.

@@ -33,6 +33,7 @@ SOURCES = ('rebrickable', 'brickset')
 LABELS = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset'}
 USER = {'rebrickable': 'rebrickable_user', 'brickset': 'brickset_user'}
 PLAN_TTL = timedelta(hours=24)
+KINDS = ('owned', 'wanted')      # the two kinds of row a comparison has
 COLUMNS = {'link': 'link_json', 'baseline': 'baseline_json', 'last_pull': 'last_pull_json', 'last_send': 'last_send_json'}
 SETLIKE = tuple(kind for kind in items.KINDS if kind not in ('part', 'minifigure'))   # what a site's set list can hold
 _KINDS_SQL = ','.join(repr(k) for k in SETLIKE)
@@ -334,16 +335,20 @@ def _compare(db, source, link_value, remote):
             entry[0] += quantity
         base_remote = baseline.get('remote', {}).get(kind, {})
         base_here = baseline.get('here', {}).get(kind, {})
+        base_kept = (baseline.get('kept') or {}).get(kind, {})
         for item_id in sorted(set(there) | set(here[kind])):
             r, remote_no = there.get(item_id, [0, None])
             number, name = names.get(item_id, (None, None))
             rows.append(dict(key=f'{kind}:{item_id}', kind=kind, item_id=item_id, number=number or name, name=name, remote_no=remote_no,
                              remote=r, here=here[kind].get(item_id, 0),
-                             baseline_remote=base_remote.get(str(item_id)), baseline_here=base_here.get(str(item_id))))
+                             baseline_remote=base_remote.get(str(item_id)), baseline_here=base_here.get(str(item_id)),
+                             kept=base_kept.get(str(item_id)) == [r, here[kind].get(item_id, 0)]))      # #686: a Keep counts while both counts are still the ones kept
     return rows, unmatched, mapping
 
 
 def _changed_both(row):
+    if row.get('kept'):
+        return True
     if row['baseline_remote'] is None and row['baseline_here'] is None:
         return False
     r, h = row['remote'], row['here']
@@ -522,7 +527,7 @@ def _placed_wish(db, wish_list, item_id, kind, count, via, actor):
     return scratch['wish']
 
 
-def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, via=None, actor=None):
+def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, kept=None, kept_covered=KINDS, kept_skipped=(), via=None, actor=None):
     """Place one copy per missing unit of a set (design 4.3's preselection; flagged, condition and completeness unset), loose stock of the
     other kinds, and the missing wishes, in one transaction with one receipt. Never deletes or lowers a set, stock or wish count here.
 
@@ -582,7 +587,7 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, v
         receipt['synced'] = _mark_synced(db, plan, wish_list, stamp, list_choices, left={(r['kind'], r['item_id']) for r in plan['rows'] if r['tickable']} - {(r['kind'], r['item_id']) for r in rows})
         receipt['jobs'] = queue_new_items(db, touched)
         receipt['baseline_before'] = _setting(db, source, 'baseline')
-        _put(db, source, 'baseline', _baseline(db, plan, wish_list))
+        _put(db, source, 'baseline', _baseline(db, plan, wish_list, kept, [r['key'] for r in rows], (receipt['baseline_before'] or {}).get('kept'), kept_covered, kept_skipped))
         counts = dict(copies=len(receipt['copies']), stock=sum(c['quantity'] for c in receipt['stock']),
                       wishes_added=sum(1 for w in receipt['wishes'] if w['created']),
                       wishes_changed=sum(1 for w in receipt['wishes'] if not w['created']))
@@ -665,8 +670,38 @@ def _lost_report(section, report):
                 unmatched_sets=section['unmatched_sets'])
 
 
-def _baseline(db, plan, wish_list):
-    """Remote counts as last seen and here counts now, per item id (as text: JSON keys)."""
+def kept_rows(rows, keys, resolved=(), existing=None, covered=KINDS, skipped=()):
+    """`{kind: {item id as text: [remote, here]}}`: the Keep choices still standing after a run (#686). A conflict row of `rows` is kept when it
+    is named in `keys` (the run's choice Keep) or was already kept, unless this run resolved it (`resolved`: the row keys it took or sent). The
+    run covers the kinds in `covered` and every set but `skipped` (the item ids the run could touch and the person did not pick). For a row it
+    covers, an entry whose row is no longer a conflict (the counts met, or the set is gone) is dropped. The entries of a kind or a set it does
+    not cover stay as they are, and its rows are not written. A stale pair ends itself too: it counts only while both counts still equal it."""
+    keys, resolved, skipped = set(keys or ()), set(resolved or ()), set(skipped or ())
+    out = {}
+    for kind, items in (existing or {}).items():
+        left = {item: pair for item, pair in items.items() if kind not in covered or int(item) in skipped}
+        if left:
+            out[kind] = left
+    for row in rows:
+        if row['kind'] not in covered or row['item_id'] in skipped or row['key'] in resolved:
+            continue
+        if row.get('state') == 'conflict' and (row['key'] in keys or row.get('kept')):
+            out.setdefault(row['kind'], {})[str(row['item_id'])] = [row['remote'], row['here']]
+    return out
+
+
+def remember_kept(db, source, rows, keys, covered=KINDS, skipped=()):
+    """A run's Keep choices are written before its stages run (#686), whatever the stages do: only the `kept` map of the baseline changes (no
+    receipt, nothing to undo). `rows` are the rows the person saw, `covered` the kinds the run shows."""
+    with transaction(db):
+        baseline = _setting(db, source, 'baseline', {'remote': {'owned': {}, 'wanted': {}}, 'here': {'owned': {}, 'wanted': {}}})
+        kept = kept_rows(rows, keys, existing=baseline.get('kept'), covered=covered, skipped=skipped)
+        if (baseline.get('kept') or {}) != kept:
+            _put(db, source, 'baseline', dict(baseline, kept=kept) if kept else {k: v for k, v in baseline.items() if k != 'kept'})
+
+
+def _baseline(db, plan, wish_list, kept=None, resolved=(), existing=None, covered=KINDS, skipped=()):
+    """Remote counts as last seen and here counts now, per item id (as text: JSON keys), and the Keep choices still standing (#686)."""
     mapping = translate(db, set(plan['remote']['owned']) | set(plan['remote']['wanted']))
     remote = {}
     for kind in ('owned', 'wanted'):
@@ -676,7 +711,11 @@ def _baseline(db, plan, wish_list):
                 key = str(mapping[number])
                 remote[kind][key] = remote[kind].get(key, 0) + quantity
     here = _here(db, wish_list)
-    return dict(at=now().isoformat(), remote=remote, here={k: {str(i): n for i, n in v.items()} for k, v in here.items()})
+    out = dict(at=now().isoformat(), remote=remote, here={k: {str(i): n for i, n in v.items()} for k, v in here.items()})
+    held = kept_rows(plan['rows'], kept, resolved, existing, covered, skipped)
+    if held:
+        out['kept'] = held
+    return out
 
 
 def _undo_pull(db, event, via, actor):
@@ -847,6 +886,11 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
         for row in sent:
             baseline.setdefault('remote', {}).setdefault(row['kind'], {})[str(row['item_id'])] = row['send']
             baseline.setdefault('here', {}).setdefault(row['kind'], {})[str(row['item_id'])] = row['here']
+            (baseline.get('kept') or {}).get(row['kind'], {}).pop(str(row['item_id']), None)      # sent: no longer a kept conflict (#686)
+        if 'kept' in baseline:
+            baseline['kept'] = {k: v for k, v in (baseline['kept'] or {}).items() if v}
+            if not baseline['kept']:
+                del baseline['kept']
         _put(db, source, 'baseline', baseline)
         _put(db, source, 'last_send', report)
         # A record, not an undoable receipt: remote changes cannot be taken back from here.

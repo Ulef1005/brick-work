@@ -87,7 +87,9 @@ Runs start from the web page only. The API has no start or stop endpoint. Jobs l
 
 ## State
 
-One `sync_state` row per source: `link_json` (carried by the migration), `baseline_json` (remote and here counts per item id at the last pull or send, for conflict detection), `last_pull_json` and `last_send_json`. Each row of the last send keeps its `result` and its `detail`, the reason a row failed (#514). The baseline and the last pull and send start empty. `GET /sync/{source}` returns them with the credential states (never the values) and the number of rows waiting from the last send.
+One `sync_state` row per source: `link_json` (carried by the migration), `baseline_json` (remote and here counts per item id at the last pull or send, for conflict detection, and a `kept` map, see below), `last_pull_json` and `last_send_json`. Each row of the last send keeps its `result` and its `detail`, the reason a row failed (#514). The baseline and the last pull and send start empty.
+
+A conflict the person chose to Keep is remembered in `baseline_json.kept` (#686): `{kind: {item id: [remote count, here count]}}`, the two counts at the moment of the Keep. The next run shows the conflict again, as the "Changed in both places" card with Take and Send offered, while both counts are still those two numbers. When either side changes, the pair no longer matches and the Keep is forgotten, with no clean-up job. The Keep is written when the run starts, before its stages, so a run that pulls nothing still remembers it. Taking the set or sending it ends its Keep. A run that shows only one kind of rows leaves the Keeps of the other kind as they are. A kept row has no default action, so `POST /sync/{source}/pull/apply` with no ticks never adds it. A pull's Undo restores the baseline, with its `kept` map, as it was. `GET /sync/{source}` returns them with the credential states (never the values) and the number of rows waiting from the last send.
 
 ## Open facts
 

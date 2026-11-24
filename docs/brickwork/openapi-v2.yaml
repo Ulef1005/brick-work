@@ -10863,6 +10863,12 @@ components:
           type:
           - string
           - 'null'
+        count:
+          type: integer
+          description: Work done so far in this step (calls made, or changes applied for a sync run).
+        total:
+          type: integer
+          description: Work this step has (calls for a fetch; the changes chosen for a sync run stage).
         error:
           type:
           - string

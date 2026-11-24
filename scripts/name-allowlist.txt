@@ -73,3 +73,7 @@ brickwork/store4/origins.py	\bbricktracker\b|BrickTracker	Added via value and la
 brickwork/store4/added_via.sql	\bbricktracker\b	Added via value of the retained importer (#551).
 brickwork/store4/brickwork.sql	\bbricktracker\b	Added via value of the retained importer (#551).
 docs/data-model-4.0/schema-4.0.sql	\bbricktracker\b	Added via value of the retained importer (#551).
+design/screens-b/85-import-bricktracker/*.html	BrickTracker	Import frame (#523): the retained BrickTracker importer's name, approved copy.
+design/sources/n/n7_frames.py	BrickTracker|bricktracker	Source of the frame 85 import, the retained importer's name and its file name.
+design/screens-b/BUILD-NOTES.md	BrickTracker|bricktracker	Build notes of frames 82 to 86 and the F-fixes name the retained importer.
+design/APPROVALS.md	BrickTracker|bricktracker	Approval row of frame 85, folder 85-import-bricktracker.

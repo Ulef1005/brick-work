@@ -4,6 +4,7 @@ of test_bw_sync; no network."""
 from contextlib import closing
 import json
 import re
+import sqlite3
 
 from bs4 import BeautifulSoup
 from cryptography.fernet import Fernet
@@ -342,6 +343,9 @@ def test_a_failed_send_is_listed_on_the_result_with_a_retry_and_the_daily_budget
     assert '2 waiting' in page.select_one('.sr-head p').get_text() and 'failed' not in page.select_one('.sr-head p').get_text()
     assert page.select_one('form[action$="/retry"] button').get_text(strip=True) == 'Retry'
     assert 'the daily budget' in page.select_one('[data-rb-there]').get_text()
+    site = soup(client.get(BASE))
+    retry_form = site.select_one('[data-rb-runs] form[action$="/manage/sync/brickset/send"]')
+    assert retry_form and retry_form.select_one('input[name=next]')['value'] == 'site'
     monkeypatch.setattr(adapters.BricksetUser, 'send', real)
     assert client.post(f'{BASE}/run/{run_id}/retry', data={'csrf_token': csrf}).location.endswith('/result')
     assert remote.owned['2070-1'] == (1003, 1) and remote.owned['1000-3'] == (1004, 1)
@@ -389,3 +393,66 @@ def test_the_rebrickable_choices_and_the_brickset_ones_do_not_meet(client, remot
     with db_of(pair) as db:
         assert json.loads(db.execute("SELECT value FROM setting WHERE key='brickset_sync_directions'").fetchone()[0]) == dict(owned='to', wishlist='both')
         assert sync.status(db, 'brickset')['link'] == {'wish_list': 'default'}
+
+
+def test_same_site_with_a_failing_db_returns_without_500(client, remote, pair, monkeypatch):
+    from brickwork.web import sync_site
+    csrf = connected(client, pair)
+    run_id = start(client, csrf)
+
+    def locked():
+        raise sqlite3.OperationalError('database is locked')
+
+    monkeypatch.setattr(sync_site, '_db', locked)
+    assert sync_site._same_site(run_id, 'brickset') is None
+    for path in ('pick', 'run', 'retry'):
+        response = client.post(f'{BASE}/run/{run_id}/{path}', data={'csrf_token': csrf})
+        assert response.status_code == 302, path
+    monkeypatch.setattr(sync_site, '_db', lambda: (_ for _ in ()).throw(OSError('missing')))
+    assert sync_site._same_site(run_id, 'brickset') is None
+
+
+def test_brickset_start_with_owned_off_and_wanted_to_does_not_call_set_ids_for_owned_rows(client, remote, pair, monkeypatch):
+    csrf = connected(client, pair)
+    seen = []
+    real_set_ids = adapters.BricksetUser.set_ids
+
+    def counted(self, numbers):
+        seen.append(list(numbers))
+        return real_set_ids(self, numbers)
+
+    monkeypatch.setattr(adapters.BricksetUser, 'set_ids', counted)
+    start(client, csrf, owned_dir='off', wishlist_dir='to')
+    assert seen == []
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_wish(coll.item('sets', '1000-3'), quantity=1)
+    start(client, csrf, owned_dir='off', wishlist_dir='to')
+    assert seen == [['1000-3']]
+
+
+def test_a_wish_lowered_here_and_cleared_there_is_not_a_conflict_on_brickset(client, remote, pair):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_wish(coll.item('sets', '1000-2'), quantity=2)
+    item_id = _item(pair, '1000-2')
+    run_id = start(client, csrf)
+    apply_run(client, csrf, run_id)
+    with db_of(pair) as db:
+        db.execute('UPDATE wish SET quantity=1 WHERE item_id=? AND archived_at IS NULL', (item_id,))
+        db.commit()
+    if isinstance(remote.wanted, dict):
+        remote.wanted.pop('1000-2', None)
+    else:
+        remote.wanted.discard('1000-2')
+    run_id = start(client, csrf, owned_dir='off', wishlist_dir='both')
+    with db_of(pair) as db:
+        run, plans = sync_run.load(db, run_id)
+        pull_row = next(r for r in plans['pull']['rows'] if r['key'] == f'wanted:{item_id}')
+        send_row = next(r for r in plans['send']['rows'] if r['key'] == f'wanted:{item_id}')
+        assert pull_row['baseline_here'] == 2 and pull_row['baseline_remote'] == 1
+        assert pull_row['state'] != 'conflict' and send_row['state'] != 'conflict'
+        merged = sync_run.rows(db, run, plans)
+        assert len(merged) == 1 and merged[0]['state'] != 'conflict'
+    assert not preview_of(client, run_id).select_one('[data-rb-conflicts]')

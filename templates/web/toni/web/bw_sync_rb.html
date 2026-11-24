@@ -57,7 +57,7 @@
 <section class="sr-card" data-rb-runs><h2>Last runs</h2>
 {% for r in runs %}<div class="sr-run"><div class="sr-runid"><b>{{ r.title }} · {{ stamp(r.at) }}</b><span>{{ r.what }}</span></div>
 {% if r.state == 'Done' %}{{ tag('Done') }}{% elif r.state == 'Undone' %}{{ tag('Undone', true) }}{% else %}{{ tag(r.state, true) }}{% endif %}
-{% if can_edit and (r.retry or r.undoable) %}<span class="sr-runact">{% if r.retry %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='send') }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-outline" data-busy-label="Checking {{ label }}">Retry</button></form>{% endif %}
+{% if can_edit and (r.retry or r.undoable) %}<span class="sr-runact">{% if r.retry %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='send') }}" data-sy-busy>{{ csrf() }}<input type="hidden" name="next" value="site"><button class="bk-btn bk-outline" data-busy-label="Checking {{ label }}">Retry</button></form>{% endif %}
 {% if r.undoable %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ r.event }}"><button class="bk-btn bk-quiet">Undo this run</button></form>{% endif %}</span>{% endif %}</div>
 {% else %}<p class="bk-text">Nothing has run yet.</p>{% endfor %}
 {% if waiting %}<p class="bk-text">{{ waiting }} {{ 'row' if waiting == 1 else 'rows' }} to {{ label }} still waiting.</p>{% endif %}

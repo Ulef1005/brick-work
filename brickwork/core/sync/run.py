@@ -244,10 +244,10 @@ def start(db, *, http=None, source=SOURCE):
     d = directions(db, source)
     link = link_value(db, source)
     sets_in = d['owned'] in ('into', 'both') or d['wishlist'] in ('into', 'both')
-    sets_out = d['owned'] in ('to', 'both') or d['wishlist'] in ('to', 'both')
+    send_kinds = tuple(k for k, key in (('owned', 'owned'), ('wanted', 'wishlist')) if d[key] in ('to', 'both'))
     lost_in_on = d['lost'] in ('into', 'both')
     pull = (sync.plan_pull(db, source, http=http, lost_parts_switch=lost_in_on) if source == 'rebrickable' else sync.plan_pull(db, source, http=http)) if (sets_in or lost_in_on) else None
-    send = sync.plan_send(db, source, http=http) if sets_out else None
+    send = sync.plan_send(db, source, http=http, kinds=send_kinds) if send_kinds else None
     parts = part_lists.plan(db, http=http) if d['parts'] == 'into' and link.get('part_lists') else None
     lost_send = _lost_send(db, adapters.adapter(db, SOURCE, http)) if d['lost'] in ('to', 'both') else None
     run = dict(id=uuid4().hex, created_at=now().isoformat(), direction='run', source=source, directions=d,

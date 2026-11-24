@@ -309,11 +309,11 @@ def step_pick_save(source, run_id):
 def _same_site(run_id, source):
     """A run id of the other site opens nothing here (404). An id that is not a run, or has expired, is left to the write that follows, which says so."""
     from ..core import errors, sync
-    with _db() as db:
-        try:
+    try:
+        with _db() as db:
             run = sync.load_plan(db, run_id, 'run')
-        except errors.BrickWorkError:
-            return
+    except (errors.BrickWorkError, sqlite3.Error, OSError):
+        return
     if run.get('source', SOURCE) != source:
         abort(404)
 
@@ -477,9 +477,9 @@ def _register():
             def bound(view=view, source=source, **values):
                 return view(source, **values)
             bound.__name__ = f'bw_sync_{PREFIX[source]}_{view.__name__.removeprefix("step_")}'
-            bound = login_required(bound)
             if unavailable:
                 bound = _unavailable(bound)
+            bound = login_required(bound)
             web_page.add_url_rule(f'/workbench/sync/{source}{path}', endpoint=bound.__name__, view_func=bound, methods=[method.upper()])
 
 

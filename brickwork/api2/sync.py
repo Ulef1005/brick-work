@@ -7,7 +7,7 @@ is one undoable write; a send apply makes the ticked remote calls (admin; remote
 applying it writes the ticked rows in one transaction that Undo reverses (admin)."""
 import sqlite3
 
-from flask import jsonify
+from flask import current_app, jsonify
 
 from ..core import errors, sync
 from ..core.sync import part_lists
@@ -134,4 +134,5 @@ def post_imports_brickwork_by_plan_id_apply(db, body, plan_id):
     try:
         return Done(own_import.apply(db, plan_id))
     except sqlite3.IntegrityError:
+        current_app.logger.warning('own import apply refused by the store', exc_info=True)
         raise errors.ValidationFailed('The file holds a value this install does not accept') from None

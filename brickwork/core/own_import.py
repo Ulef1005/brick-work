@@ -310,6 +310,11 @@ def _value_problem(table, row):
             return 'Missing and damaged must be whole numbers'
         if type(row.get('quantity')) is int and type(row.get('missing')) is int and row['missing'] > row['quantity']:
             return 'Missing is more than the quantity'
+    if table in ('storage', 'place', 'flag', 'lot', 'wishlist') and not (isinstance(row.get('name'), str) and row['name'].strip()):
+        return 'It has no name'
+    conditions = {'copy': ('new', 'used'), 'stock': ('new', 'used', 'damaged'), 'wish': ('new', 'used', 'any')}
+    if table in conditions and row.get('condition') not in (None, *conditions[table]):
+        return 'This condition is not one this install knows'
     if table in ('copy', 'stock') and row.get('purchase_price') is not None and not row.get('purchase_currency'):
         return 'A price needs its currency'
     return None

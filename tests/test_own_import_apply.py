@@ -232,3 +232,9 @@ def test_a_stock_row_with_a_pile_already_here_is_here_and_apply_leaves_the_pile(
     own_import.apply(coll.db, planned['id'], via='cli', actor='test')
     after = coll.db.execute('SELECT count(*), sum(quantity) FROM main.stock WHERE archived_at IS NULL AND kind!=\'minifigure\'').fetchone()
     assert tuple(after) == tuple(before)
+
+
+def test_a_nameless_row_and_an_unknown_condition_are_unresolved_not_new():
+    assert own_import._value_problem('storage', {'id': 's1'}) == 'It has no name'
+    assert own_import._value_problem('copy', {'id': 'c1', 'condition': 'sealed'}) == 'This condition is not one this install knows'
+    assert own_import._value_problem('copy', {'id': 'c1', 'condition': 'used'}) is None

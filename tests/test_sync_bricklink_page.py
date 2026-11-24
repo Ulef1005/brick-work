@@ -3,6 +3,7 @@ Invented data against the fake BrickLink client of test_sync_bricklink_run; no n
 from contextlib import closing
 import json
 import re
+import sqlite3
 
 from bs4 import BeautifulSoup
 from cryptography.fernet import Fernet
@@ -325,6 +326,7 @@ def test_undo_reverts_orders_updates_site_and_result_and_checks_event_and_csrf(c
     after_result = soup(client.get(f'{BASE}/run/{run_id}/result'))
     assert 'This run was undone.' in after_result.get_text()
     assert not after_result.select_one('form[action$="/undo"]')
+    assert client.get('/workbench/sync').status_code == 200
 
 
 def test_cross_site_run_ids_return_404_in_both_directions(client, remote, pair, monkeypatch):
@@ -365,3 +367,102 @@ def test_hub_card_shows_connected_open_and_last_run(client, remote, monkeypatch)
     client.post(f'{BASE}/run/{run_id}/run', data={'csrf_token': csrf, 'order:1001': 'pull'})
     card = soup(client.get('/workbench/sync')).select_one('[data-sync-site=bricklink]')
     assert 'Never' not in card.select_one('.sh-meta').get_text()
+
+
+def test_undo_older_run_leaves_newer_run_undoable(client, remote, pair, monkeypatch):
+    set_keys(monkeypatch)
+    remote.items_by_order['1002'] = [
+        dict(_items(qty=5)[0], item=dict(no='3002-other', type='PART', name='Other brick'), new_or_used='N'),
+    ]
+    csrf = token(client)
+    run_b = start_run(client, csrf)
+    assert client.post(f'{BASE}/run/{run_b}/run', data={'csrf_token': csrf, 'order:1001': 'pull'}).status_code == 302
+    run_a = start_run(client, csrf)
+    assert client.post(f'{BASE}/run/{run_a}/run', data={'csrf_token': csrf, 'order:1002': 'pull'}).status_code == 302
+
+    site_before = soup(client.get(BASE))
+    assert len(site_before.select('[data-rb-runs] form[action$="/undo"]')) == 2
+
+    event_b = soup(client.get(f'{BASE}/run/{run_b}/result')).select_one('form[action$="/undo"] input[name=event]')['value']
+    response = client.post(BASE + '/undo', data={'csrf_token': csrf, 'event': event_b})
+    assert response.status_code == 302 and response.location.endswith(BASE)
+    assert client.get('/workbench/sync').status_code == 200
+
+    site_after = soup(client.get(BASE))
+    undo_inputs = site_after.select('[data-rb-runs] form[action$="/undo"] input[name=event]')
+    assert len(undo_inputs) == 1 and undo_inputs[0]['value'] != event_b
+
+    result_a = soup(client.get(f'{BASE}/run/{run_a}/result'))
+    assert 'This run was undone.' not in result_a.get_text()
+    assert result_a.select_one('form[action$="/undo"]')
+
+    result_b = soup(client.get(f'{BASE}/run/{run_b}/result'))
+    assert 'This run was undone.' in result_b.get_text()
+    assert not result_b.select_one('form[action$="/undo"]')
+
+
+def test_choose_page_locked_region_and_unlock(client, remote, pair, monkeypatch):
+    set_keys(monkeypatch)
+    monkeypatch.delenv('BW_PRICE_SETTINGS_LOCK', raising=False)
+    assert price_settings.region_locked() is True
+    with db_of(pair) as db:
+        initial_region = price_settings.read(db)['bricklink_region']
+    other_region = next(r for r in price_settings.REGIONS if r != initial_region)
+
+    page = soup(client.get(BASE + '/choose'))
+    assert page.select_one('select[name=region]').has_attr('disabled')
+    assert 'The region is locked by this installation. It is set in Settings.' in page.select_one('[data-bl-price]').get_text()
+
+    csrf = token(client)
+    saved = client.post(BASE + '/choose', data={
+        'csrf_token': csrf, 'orders_dir': 'into', 'since_on': '1', 'since': '2026-10-01',
+        'status': 'all', 'start': '0',
+    })
+    assert saved.status_code == 302 and saved.location.endswith(BASE)
+    with db_of(pair) as db:
+        assert bricklink_run.choices(db) == dict(orders='into', since_on=True, since='2026-10-01', status='all')
+        assert price_settings.read(db)['bricklink_region'] == initial_region
+
+    crafted = client.post(BASE + '/choose', data={
+        'csrf_token': csrf, 'orders_dir': 'off', 'since_on': '', 'since': '',
+        'status': 'received_paid', 'region': other_region, 'start': '0',
+    })
+    assert crafted.status_code == 302 and crafted.location.endswith(BASE + '/choose')
+    banners = ' '.join(b.get_text() for b in soup(client.get(crafted.location)).select('.bk-banner'))      # the earlier 'Saved.' is still queued
+    assert 'The price region is locked on this install' in banners
+    with db_of(pair) as db:
+        assert bricklink_run.choices(db) == dict(orders='into', since_on=True, since='2026-10-01', status='all')
+        assert price_settings.read(db)['bricklink_region'] == initial_region
+
+    monkeypatch.setenv('BW_PRICE_SETTINGS_LOCK', '0')
+    assert price_settings.region_locked() is False
+    unlocked_page = soup(client.get(BASE + '/choose'))
+    assert not unlocked_page.select_one('select[name=region]').has_attr('disabled')
+    assert 'The region is locked by this installation.' not in unlocked_page.select_one('[data-bl-price]').get_text()
+    unlocked = client.post(BASE + '/choose', data={
+        'csrf_token': csrf, 'orders_dir': 'into', 'since_on': '1', 'since': '2026-10-01',
+        'status': 'all', 'region': other_region, 'start': '0',
+    })
+    assert unlocked.status_code == 302 and unlocked.location.endswith(BASE)
+    with db_of(pair) as db:
+        assert price_settings.read(db)['bricklink_region'] == other_region
+
+
+def test_apply_sqlite_error_flashes_unsaved_and_redirects_to_site(client, remote, pair, monkeypatch):
+    from brickwork.web import sync_bricklink      # imported here: the module needs the web app loaded first (the `client` fixture does that)
+    set_keys(monkeypatch)
+    csrf = token(client)
+    run_id = start_run(client, csrf)
+
+    def broken_import(*args, **kwargs):
+        raise sqlite3.OperationalError('disk I/O error')
+
+    monkeypatch.setattr(orders, 'import_document', broken_import)
+    response = client.post(f'{BASE}/run/{run_id}/run', data={'csrf_token': csrf, 'order:1001': 'pull'})
+    assert response.status_code == 302 and response.location.endswith(BASE)
+    site = soup(client.get(response.location))
+    assert sync_bricklink.UNSAVED in site.select_one('.bk-banner').get_text()
+    assert sync_bricklink._error_text(sqlite3.OperationalError('disk I/O error')) == sync_bricklink.UNSAVED
+    with db_of(pair) as db:
+        stored = bricklink_run.load(db, run_id)
+        assert '1001' not in stored['stages']

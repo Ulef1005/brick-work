@@ -7,7 +7,7 @@ from flask_login import login_required
 
 from .safe_errors import public
 from .sync_bricklink import (
-    LABEL, ROUTES, SOURCE, UNSAVED,
+    LABEL, ROUTES, UNSAVED,
     _error_text, _is_bricklink_event, _load, _order_url, _pick_lede, _render, _route, _run_audit, _steps,
 )
 from .sync_site import LOCAL, _guard
@@ -115,10 +115,9 @@ def step_result(run_id):
             return redirect(url_for('web.bw_sync_bl_site'))
         if not run.get('applied'):
             return redirect(url_for('web.bw_sync_bl_preview', run_id=run['id']))
-        audit_id, events, _ = _run_audit(db, run['id'])
-        undone = bool(audit_id is not None and events and db.execute(
-            "SELECT 1 FROM main.event WHERE entity_kind='sync' AND entity_id=? AND field='undo' AND id > ? LIMIT 1",
-            (SOURCE, audit_id),
+        _, events, _ = _run_audit(db, run['id'])
+        undone = bool(events and db.execute(
+            'SELECT 1 FROM event_undo WHERE event_id=?', (events[0],),
         ).fetchone())
     stages = run.get('stages') or {}
     results = []
@@ -148,12 +147,10 @@ def step_result(run_id):
 
 @_route('post', '/undo', False)
 def step_undo():
-    """Undo a BrickLink run through `core.sync.run.undo_run` and record a BrickLink undo audit row."""
+    """Undo a BrickLink run through `core.sync.run.undo_run`."""
     from ..core import errors
-    from ..core.admin import audit
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
-    from ..core.transaction import transaction
     _guard()
     event = _event_id(request.form.get('event'))
     if event is None:
@@ -162,9 +159,7 @@ def step_undo():
         with _db() as db, audit_origin('app'):
             if not _is_bricklink_event(db, event):
                 abort(404)
-            ids = sync_run.undo_run(db, event)
-            with transaction(db):
-                audit(db, 'sync:' + SOURCE, 'undo', None, dict(events=ids))
+            sync_run.undo_run(db, event)
         flash('Run undone.', 'success')
     except sqlite3.Error as exc:
         flash(public(exc, UNSAVED), 'warning')

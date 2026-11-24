@@ -73,6 +73,8 @@ def _error_text(exc):
         return bricklink_run._message(exc)
     if isinstance(exc, errors.BrickWorkError):
         return str(exc)
+    if isinstance(exc, (sqlite3.Error, OSError)):
+        return public(exc, UNSAVED)
     return public(exc, 'BrickLink could not be reached · nothing was changed. Try again.')
 
 
@@ -108,12 +110,12 @@ def _load(db, run_id):
 
 
 def _runs(db, limit=5):
-    """Newest BrickLink runs from `main.event`; Undo only on the newest when no later BrickLink undo row exists."""
+    """Newest BrickLink runs from `main.event`; Undo on every run whose first event is not in `event_undo`."""
     rows = []
-    for index, r in enumerate(db.execute(
+    for r in db.execute(
         "SELECT id, at, new_value FROM main.event WHERE entity_kind='sync' AND entity_id=? AND field='run' ORDER BY id DESC LIMIT ?",
         (SOURCE, limit),
-    )):
+    ):
         try:
             data = json.loads(r['new_value']) if r['new_value'] else {}
         except ValueError:
@@ -122,13 +124,10 @@ def _runs(db, limit=5):
         events = events if isinstance(events, list) else []
         n = len(events)
         event = events[0] if events else None
-        undoable = False
-        if index == 0 and event is not None:
-            later_undo = db.execute(
-                "SELECT 1 FROM main.event WHERE entity_kind='sync' AND entity_id=? AND field='undo' AND id > ? LIMIT 1",
-                (SOURCE, r['id']),
-            ).fetchone()
-            undoable = later_undo is None
+        undone = bool(event is not None and db.execute(
+            'SELECT 1 FROM event_undo WHERE event_id=?', (event,),
+        ).fetchone())
+        undoable = event is not None and not undone
         rows.append(dict(id=r['id'], at=r['at'], what=f"{n} {'order' if n == 1 else 'orders'} pulled",
                          event=event, undoable=undoable))
     return rows
@@ -251,7 +250,8 @@ def step_choose():
         choices = bricklink_run.choices(db)
         region = price_settings.read(db)['bricklink_region']
     return _render(screen='choose', title=LABEL, subtitle='Choose what to sync, and in which direction. You can change it later.',
-                   choices=choices, statuses=bricklink_run.STATUSES, region=region, regions=_region_options(), **_steps(2))
+                   choices=choices, statuses=bricklink_run.STATUSES, region=region, regions=_region_options(),
+                   region_locked=price_settings.region_locked(), **_steps(2))
 
 
 @_route('post', '/choose', False)

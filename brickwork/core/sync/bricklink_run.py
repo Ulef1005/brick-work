@@ -15,12 +15,14 @@ from ..admin import audit
 from ..sources.base import KeyRejected, SourceError, WaitingForBudget, now
 from ..sources.bricklink import BrickLink
 from ..transaction import transaction
+from . import run as sync_run
 
 SOURCE = 'bricklink'
 CHOICES_KEY = 'bricklink_sync_choices'
 STATUSES = (('received_paid', 'Received and paid', {'RECEIVED', 'PAID'}), ('all', 'All orders', None))
 ORDERS_DIRS = ('into', 'off')
 FAILURES = (errors.BrickWorkError, ValueError, SourceError, KeyRejected, WaitingForBudget, sqlite3.Error)
+REMOTE_FAILURES = tuple(e for e in FAILURES if e is not sqlite3.Error)
 _MONTHS = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
 _STATUS_SETS = {key: allowed for key, _, allowed in STATUSES}
 
@@ -93,6 +95,10 @@ def save_choices(db, form):
         region = form.get('region')
         if region not in price_settings.REGIONS:
             raise errors.ValidationFailed('Choose a BrickLink region')
+        if price_settings.region_locked():
+            if region != price_settings.read(db)['bricklink_region']:
+                raise errors.ValidationFailed('The price region is locked on this install')
+            region = None
     with transaction(db):
         before = dict(choices=_setting_row(db, CHOICES_KEY), region=price_settings.read(db)['bricklink_region'])
         if region is not None:
@@ -230,28 +236,29 @@ def _message(exc):
 
 def apply(db, run_id, form, *, client=None, via=None, actor=None):
     """Pull each ticked new order into Orders using the headers cached at `start`, recording one stage per order and one run audit row."""
-    run = load(db, run_id)
-    if run.get('applied'):
-        return run
-    wanted = [r['id'] for r in rows(db, run) if r['state'] == 'new' and form.get(r['key']) == 'pull']
-    if wanted and client is None:
-        client = BrickLink(db)
-    headers = run.get('headers')
-    events = []
-    for order_no in wanted:
-        try:
-            prepared = orders.api_data(db, order_no, client=client, headers=headers)
-            result = orders.import_document(db, 'api', number=order_no, prepared=prepared)
-        except FAILURES as exc:
-            run['stages'][order_no] = dict(status='failed', message=_message(exc))
-        else:
-            run['stages'][order_no] = dict(status='done', order_id=result['order_id'], placed=result['placed'],
-                                           unplaced=result['unplaced'], event=result['event_id'])
-            if not result['duplicate'] and result['event_id'] is not None:
-                events.append(result['event_id'])
+    with sync_run._Claim(db, run_id):
+        run = load(db, run_id)
+        if run.get('applied'):
+            return run
+        wanted = [r['id'] for r in rows(db, run) if r['state'] == 'new' and form.get(r['key']) == 'pull']
+        if wanted and client is None:
+            client = BrickLink(db)
+        headers = run.get('headers')
+        events = []
+        for order_no in wanted:
+            try:
+                prepared = orders.api_data(db, order_no, client=client, headers=headers)
+                result = orders.import_document(db, 'api', number=order_no, prepared=prepared)
+            except REMOTE_FAILURES as exc:
+                run['stages'][order_no] = dict(status='failed', message=_message(exc))
+            else:
+                run['stages'][order_no] = dict(status='done', order_id=result['order_id'], placed=result['placed'],
+                                               unplaced=result['unplaced'], event=result['event_id'])
+                if not result['duplicate'] and result['event_id'] is not None:
+                    events.append(result['event_id'])
+            sync._store_plan(db, run)
+        with transaction(db):
+            audit(db, 'sync:' + SOURCE, 'run', None, dict(run=run['id'], events=events), via=via, actor=actor)
+        run['applied'] = True
         sync._store_plan(db, run)
-    with transaction(db):
-        audit(db, 'sync:' + SOURCE, 'run', None, dict(run=run['id'], events=events), via=via, actor=actor)
-    run['applied'] = True
-    sync._store_plan(db, run)
-    return run
+        return run

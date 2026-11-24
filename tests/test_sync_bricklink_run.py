@@ -1,6 +1,7 @@
 """#521 slice A: BrickLink orders sync run (choices, filtering, picking, preview rows, apply, audit and Undo). Invented data, no network."""
 from contextlib import closing
 import json
+import sqlite3
 
 import pytest
 
@@ -201,3 +202,72 @@ def test_load_refuses_run_of_another_source(pair):
                                          candidates=[], picked=None, stages={}))
         with pytest.raises(errors.ValidationFailed):
             bricklink_run.load(db, other['id'])
+
+
+def test_save_choices_locked_region_behaviour(pair, monkeypatch):
+    monkeypatch.delenv('BW_PRICE_SETTINGS_LOCK', raising=False)
+    with db_of(pair) as db:
+        initial_region = price_settings.read(db)['bricklink_region']
+        other_region = next(r for r in price_settings.REGIONS if r != initial_region)
+        saved = bricklink_run.save_choices(db, dict(orders_dir='into', since_on='1', since='2026-10-01', status='all', region=initial_region))
+        assert saved == dict(orders='into', since_on=True, since='2026-10-01', status='all')
+        with pytest.raises(errors.ValidationFailed, match='The price region is locked on this install'):
+            bricklink_run.save_choices(db, dict(orders_dir='off', since_on='', since='', status='received_paid', region=other_region))
+        assert bricklink_run.choices(db) == saved
+        assert price_settings.read(db)['bricklink_region'] == initial_region
+
+
+def test_apply_takes_run_claim_and_second_apply_is_noop(pair, world, monkeypatch):
+    headers = [_header(1001, date_ordered='2026-11-17T10:00:00.000Z')]
+    fake = FakeBrickLink(headers, {'1001': _items(qty=3)})
+    claims = []
+    active = []
+    seen_active = []
+
+    class RecordingClaim:
+        def __init__(self, db, run_id):
+            self.run_id = run_id
+
+        def __enter__(self):
+            claims.append(('enter', self.run_id))
+            active.append(self.run_id)
+            return self
+
+        def __exit__(self, *exc):
+            active.pop()
+            claims.append(('exit', self.run_id))
+
+    real_import = orders.import_document
+
+    def wrapped_import(*args, **kwargs):
+        seen_active.append(list(active))
+        return real_import(*args, **kwargs)
+
+    monkeypatch.setattr(sync_run, '_Claim', RecordingClaim)
+    monkeypatch.setattr(orders, 'import_document', wrapped_import)
+    with db_of(pair) as db:
+        run = bricklink_run.start(db, client=fake)
+        first = bricklink_run.apply(db, run['id'], {'order:1001': 'pull'}, client=fake)
+        assert first['applied'] is True
+        assert claims == [('enter', run['id']), ('exit', run['id'])]
+        assert seen_active == [[run['id']]]
+        event_count = db.execute('SELECT count(*) FROM main.event').fetchone()[0]
+        item_calls = list(fake.item_calls)
+        second = bricklink_run.apply(db, run['id'], {'order:1001': 'pull'}, client=fake)
+        assert second == first
+        assert fake.item_calls == item_calls
+        assert db.execute('SELECT count(*) FROM main.event').fetchone()[0] == event_count
+        assert claims == [('enter', run['id']), ('exit', run['id']), ('enter', run['id']), ('exit', run['id'])]
+
+
+def test_apply_propagates_sqlite_error_without_marking_stage_failed(pair, world, monkeypatch):
+    headers = [_header(1001, date_ordered='2026-11-17T10:00:00.000Z')]
+    fake = FakeBrickLink(headers, {'1001': _items(qty=3)})
+    monkeypatch.setattr(orders, 'import_document', lambda *a, **kw: (_ for _ in ()).throw(sqlite3.OperationalError('database is locked')))
+    with db_of(pair) as db:
+        run = bricklink_run.start(db, client=fake)
+        with pytest.raises(sqlite3.OperationalError, match='database is locked'):
+            bricklink_run.apply(db, run['id'], {'order:1001': 'pull'}, client=fake)
+        stored = bricklink_run.load(db, run['id'])
+        assert '1001' not in stored['stages']
+        assert not stored.get('applied')

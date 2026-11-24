@@ -9,6 +9,7 @@ plans it read, the sets picked, and what each stage did, because `lost_parts_sen
 Choices are kept without a schema change: the link (`sync.link`), the setting the Lost Parts pull rule already uses, the two settings of the
 Lost Parts send (`lost_parts_send.KEY`, `RULE_KEY`) and `DIRECTIONS_KEY` here.
 """
+import fcntl
 import json
 import sqlite3
 from uuid import uuid4
@@ -79,19 +80,29 @@ def save_choices(db, form):
         raise errors.ValidationFailed(str(exc)) from None
     lost = form['lost_dir']
     with transaction(db):
-        before = dict(directions=_setting_row(db, DIRECTIONS_KEY), send_rule=_setting_row(db, lost_parts_send.RULE_KEY), send=_setting_row(db, lost_parts_send.KEY))
+        before = dict(directions=_setting_row(db, DIRECTIONS_KEY))
+        stored = link_value(db)
+        stored_names = _saved_names(db)
+        if form.get('keep_links'):       # the lists could not be read, so the form carried none: the links and their names stay as they were
+            form.update(owned=stored.get('owned') or [], wishlist=stored.get('wishlist'), send_to=stored.get('send_to'), part_lists=stored.get('part_lists') or [],
+                        names=stored_names)
         sync.link(db, SOURCE, dict(wish_list=form['wish_list'], owned=form['owned'], wishlist=form['wishlist'], send_to=form['send_to'],
                                    part_lists=form['part_lists'], lost_parts=lost in ('into', 'both'), keep_list_names=bool(form['keep_list_names'])))
-        if form['lost_rule'] != lost_parts.rule(db):
-            from ..admin import patch_settings
-            patch_settings(db, {'rebrickable_lost_parts_rule': form['lost_rule']})
+        from ..admin import patch_settings
+        patch_settings(db, {'rebrickable_lost_parts_rule': form['lost_rule'], 'rebrickable_lost_parts_send': lost in ('to', 'both'),
+                            'rebrickable_lost_parts_send_rule': form['send_rule']})
         names = {k: v for k, v in (form.get('names') or {}).items() if isinstance(k, str) and isinstance(v, str)}
         saved = json.dumps(dict({k: form[k + '_dir'] for k in ('owned', 'wishlist', 'parts')}, names=names), sort_keys=True)
         _put_setting(db, DIRECTIONS_KEY, saved)
-        _put_setting(db, lost_parts_send.RULE_KEY, form['send_rule'])
-        _put_setting(db, lost_parts_send.KEY, 'on' if lost in ('to', 'both') else 'off')
         audit(db, 'sync:' + SOURCE, 'choices', before, dict(directions=saved, send_rule=form['send_rule'], lost=lost))
     return directions(db)
+
+
+def _saved_names(db):
+    try:
+        return json.loads(_setting_row(db, DIRECTIONS_KEY) or '{}').get('names') or {}
+    except ValueError:
+        return {}
 
 
 def lost_labels(db):
@@ -104,28 +115,26 @@ def what_syncs(db):
     from ...store4 import origins
     link = link_value(db)
     d = directions(db)
-    names = {k: v for k, (v, _) in origins.lists_of(db, SOURCE).items()}
-    try:
-        saved = json.loads(_setting_row(db, DIRECTIONS_KEY) or '{}').get('names') or {}
-    except ValueError:
-        saved = {}
-    names = dict(names, **saved)        # the names step 2 last showed, until a pull records new ones
+    recorded = {k: v for k, (v, _) in origins.lists_of(db, SOURCE).items()}       # names a pull recorded come first, then those step 2 showed
+    saved = _saved_names(db)
+    set_name = lambda i: recorded.get(str(i)) or saved.get('set:' + str(i)) or f'List {i}'     # noqa: E731
+    part_name = lambda i: recorded.get('part:' + str(i)) or saved.get('part:' + str(i)) or f'List {i}'     # noqa: E731
     owned = link.get('owned') or []
     wish_lists = {w['id']: w['name'] for w in wishlists.listing(db)}
     into, sent = lost_labels(db)
     rows = []
     if d['owned'] != 'off':
         rows.append(dict(what='Owned sets', direction=SEGMENT_LABELS[d['owned']],
-                         linked=(f"{len(owned)} set {'list' if len(owned) == 1 else 'lists'}: " + ', '.join(names.get('set:' + str(i)) or names.get(str(i), f'List {i}') for i in owned)) if owned
+                         linked=(f"{len(owned)} set {'list' if len(owned) == 1 else 'lists'}: " + ', '.join(set_name(i) for i in owned)) if owned
                          else 'Every set list except the wishlist list'))
     if d['wishlist'] != 'off':
         rows.append(dict(what='Wishlist', direction=SEGMENT_LABELS[d['wishlist']],
-                         linked=('Rebrickable ' + (names.get('set:' + str(link['wishlist'])) or names.get(str(link['wishlist']), 'wishlist list')) + ' ↔ wishlist ' + wish_lists.get(link.get('wish_list') or 'default', 'Wanted'))
+                         linked=('Rebrickable ' + set_name(link['wishlist']) + ' ↔ wishlist ' + wish_lists.get(link.get('wish_list') or 'default', 'Wanted'))
                          if link.get('wishlist') else 'No wishlist list linked'))
     parts = link.get('part_lists') or []
     if d['parts'] != 'off' and parts:
         rows.append(dict(what='Loose stock', direction=SEGMENT_LABELS['into'],
-                         linked=f"{len(parts)} part {'list' if len(parts) == 1 else 'lists'}: " + ', '.join(names.get(f'part:{i}', f'List {i}') for i in parts)))
+                         linked=f"{len(parts)} part {'list' if len(parts) == 1 else 'lists'}: " + ', '.join(part_name(i) for i in parts)))
     if d['lost'] != 'off':
         rule = into if d['lost'] == 'into' else sent if d['lost'] == 'to' else f'{into} in, {sent} out'
         rows.append(dict(what='Lost Parts', direction=SEGMENT_LABELS[d['lost']], linked='Rule: ' + rule))
@@ -194,7 +203,7 @@ def start(db, *, http=None):
     lost_send = _lost_send(db, adapters.adapter(db, SOURCE, http)) if d['lost'] in ('to', 'both') else None
     run = dict(id=uuid4().hex, created_at=now().isoformat(), direction='run', source=SOURCE, directions=d,
                pull=pull and pull['id'], send=send and send['id'], parts=parts and parts['id'], lost_out=lost_send, picked=None, stages={})
-    run['candidates'] = candidates(db, pull, send, lost_send)
+    run['candidates'] = candidates(db, d, pull, send, lost_send)
     return sync._save_plan(db, run)
 
 
@@ -204,7 +213,7 @@ def load(db, run_id):
     return run, {name: (sync.load_plan(db, run[name]) if run.get(name) else None) for name in ('pull', 'send', 'parts')}
 
 
-def candidates(db, pull, send, lost_send):
+def candidates(db, d, pull, send, lost_send):
     """One entry per set a run could touch (a row that differs, a Lost Parts set), for the pick step: item id, number, name, theme, year, lists."""
     found = {}
 
@@ -213,11 +222,13 @@ def candidates(db, pull, send, lost_send):
             return
         entry = found.setdefault(item_id, dict(item_id=item_id, number=number, name=name, lists=[]))
         entry['lists'] = sorted(set(entry['lists']) | set(lists))
-    for plan in (pull, send):
+    for plan, ways in ((pull, ('into', 'both')), (send, ('to', 'both'))):
         for r in (plan or {}).get('rows', ()):
-            add(r['item_id'], r['number'], r['name'], r.get('lists') or ())
-    for e in ((pull or {}).get('lost') or {}).get('sets', ()):
-        add(e['item_id'], e.get('number'), e.get('name'))
+            if d['owned' if r['kind'] == 'owned' else 'wishlist'] in ways:         # a kind that is Off in this direction is not a set this run touches
+                add(r['item_id'], r['number'], r['name'], r.get('lists') or ())
+    if d['lost'] in ('into', 'both'):
+        for e in ((pull or {}).get('lost') or {}).get('sets', ()):
+            add(e['item_id'], e.get('number'), e.get('name'))
     for r in (lost_send or {}).get('rows', ()):
         add(r.get('item_id'), r.get('number'), r.get('name'))
     facts = _facts(db, list(found))
@@ -241,7 +252,7 @@ def save_pick(db, run, ids, keep_names=None, *, http=None):
     if keep_names is not None and pull and bool((pull.get('lists') or {}).get('keep')) != bool(keep_names):
         pull = sync.plan_pull(db, SOURCE, http=http, lost_parts_switch=run['directions']['lost'] in ('into', 'both'), keep_list_names=bool(keep_names))
         run['pull'] = pull['id']
-        run['candidates'] = candidates(db, pull, sync.load_plan(db, run['send']) if run.get('send') else None, run.get('lost_out'))
+        run['candidates'] = candidates(db, run['directions'], pull, sync.load_plan(db, run['send']) if run.get('send') else None, run.get('lost_out'))
     run['picked'] = sorted(ids & {c['item_id'] for c in run['candidates']})
     sync._store_plan(db, run)
     return run
@@ -261,7 +272,8 @@ def rows(db, run, plans):
 
     def row_of(r):
         return merged.setdefault(r['key'], dict(key=r['key'], item_id=r['item_id'], kind=r['kind'], number=r['number'], name=r['name'], remote=r['remote'],
-                                                here=r['here'], remote_no=r['remote_no'], options=[], default=None, state='info', reason=None))
+                                                here=r['here'], remote_no=r['remote_no'], options=[], default=None, state='info', reason=None,
+                                                kept=r.get('baseline_here') is not None and (r.get('baseline_remote') or 0) == r['remote'] and r['baseline_here'] == r['here'] and r['remote'] != r['here']))
     for r in (plans['pull'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
@@ -303,9 +315,13 @@ def rows(db, run, plans):
             row['options'].append(dict(id='send', label=(f"Add {r['send']} there" if r['state'] == 'add' else f"Quantity {r['remote']} to {r['send']}"), note=None))
             row['default'] = row['default'] or 'send'
         elif r.get('reason'):
-            row['state'], row['reason'] = 'unmatched', r['reason']
+            row['reason'] = r['reason']        # why the send side has nothing for this row; the row is not unmatched when it can still be pulled
     out = []
     for row in merged.values():
+        if row['reason'] and not row['options'] and row['state'] == 'info':
+            row['state'] = 'unmatched'
+        if row['kept']:
+            row['default'] = None
         if row['state'] == 'gone':     # gone here: nothing is sent or added unless chosen
             row['options'] = [dict(o, label=('Add back here' if o['id'] == 'pull' else o['label'])) for o in row['options']]
             row['default'] = None
@@ -323,12 +339,30 @@ def rows(db, run, plans):
 
 
 def lost_in(run, plans):
-    """The Lost Parts section of the pull, narrowed to the sets picked (None when Lost Parts do not come in)."""
+    """The Lost Parts section of the pull, narrowed to the sets picked, with its summary worked out again for them (None when Lost Parts do not
+    come in). A set that only exists through a copy this pull would make is not offered when owned sets do not come in."""
     section = (plans['pull'] or {}).get('lost') or {}
     picked = picked_ids(run)
-    if run['directions']['lost'] not in ('into', 'both') or not section:
+    d = run['directions']
+    if d['lost'] not in ('into', 'both') or not section:
         return None
-    return dict(section, sets=[e for e in section.get('sets', ()) if picked is None or e['item_id'] in picked])
+    coming = d['owned'] in ('into', 'both')
+    sets, unmatched_sets = [], list(section.get('unmatched_sets', ()))
+    for e in section.get('sets', ()):
+        if picked is not None and e['item_id'] not in picked:
+            continue
+        if e['state'] == 'new' and not coming:
+            unmatched_sets.append(dict(set_no=e['set_no'], parts=e['parts'], pieces=e['pieces'], reason='The set is not pulled in this run, so it has no copy to mark'))
+            continue
+        sets.append(e)
+    summary = dict(section['summary'], sets=len(sets), added=0, replaced=0, cleared=0, cleared_pieces=0, pick=0,
+                   unmatched=sum(u['parts'] for u in unmatched_sets))
+    for e in sets:
+        if e['state'] == 'pick':
+            summary['pick'] += 1
+        for name in ('added', 'replaced', 'cleared', 'cleared_pieces', 'unmatched'):
+            summary[name] += (e.get('preview') or {}).get(name, 0)
+    return dict(section, sets=sets, unmatched_sets=unmatched_sets, summary=summary)
 
 
 def lost_out(run):
@@ -364,18 +398,49 @@ def _message(exc):
     return str(exc) or 'This step could not be done.'
 
 
+class _Claim:
+    """An exclusive lock on one run, across processes: a file next to its plan file. A second request for the same run waits here, then re-reads
+    the run and finds the first one's marker."""
+
+    def __init__(self, db, run_id):
+        root = sync._root(db)
+        root.mkdir(parents=True, exist_ok=True)
+        self.path = root / (run_id + '.lock')
+
+    def __enter__(self):
+        self.file = open(self.path, 'a')
+        fcntl.flock(self.file, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        fcntl.flock(self.file, fcntl.LOCK_UN)
+        self.file.close()
+
+
 def apply(db, run_id, form, *, http=None, via=None, actor=None):
     """Apply the chosen rows, stage by stage. `form` is a MultiDict of the preview's fields: `choice:<row key>` (pull, take, send, remove, keep),
     `lost` and `copy:<set no>` (Lost Parts in), `list:<key>` (list names), `part` and `lot:<key>` (loose stock), `lostsend` (Lost Parts out).
-    A stage that fails says so in the run, and the next one still runs. Returns the run, saved; a run already applied is returned as it is."""
-    run, plans = load(db, run_id)
-    if run.get('applied'):
+    A stage that fails says so in the run, and the next one still runs. The run is claimed first (a lock, then `applying` written before the
+    first call to Rebrickable), so a second request for it, at once or later, changes nothing and gets the run as it is. Returns the run, saved."""
+    with _Claim(db, run_id):
+        run, plans = load(db, run_id)
+        if run.get('applied') or run.get('applying'):
+            return run
+        shown = rows(db, run, plans)
+        allowed = {r['key']: {o['id'] for o in r['options']} for r in shown}
+        chosen = {k: form.get('choice:' + k) or 'keep' for k, ids in allowed.items() if ids}
+        if any(v != 'keep' and v not in allowed[k] for k, v in chosen.items()):
+            raise errors.ValidationFailed('Choose one of the offered changes for each row')
+        run['applying'] = now().isoformat()
+        sync._store_plan(db, run)
+        _stages(db, run, plans, form, chosen, http, via, actor)
+        run['applied'] = dict(at=now().isoformat(), events=run['applied_events'])
+        run.pop('applying', None)
+        sync._store_plan(db, run)
         return run
-    shown = rows(db, run, plans)
-    allowed = {r['key']: {o['id'] for o in r['options']} for r in shown}
-    chosen = {k: form.get('choice:' + k) or 'keep' for k, ids in allowed.items() if ids}
-    if any(v != 'keep' and v not in allowed[k] for k, v in chosen.items()):
-        raise errors.ValidationFailed('Choose one of the offered changes for each row')
+
+
+def _stages(db, run, plans, form, chosen, http, via, actor):
     stages, events = run['stages'], []
     pull = plans['pull']
     if pull:
@@ -429,16 +494,39 @@ def apply(db, run_id, form, *, http=None, via=None, actor=None):
         sync._store_plan(db, run)
     with transaction(db):
         audit(db, 'sync:' + SOURCE, 'run', None, dict(run=run['id'], events=events), via=via, actor=actor)
-    run['applied'] = dict(at=now().isoformat(), events=events)
-    sync._store_plan(db, run)
-    return run
+    run['applied_events'] = events
+
+
+class _Recorder:
+    """The client of a Lost Parts send, writing each call to Rebrickable into the run as soon as it has gone through. `lost_parts_send.apply`
+    keeps no progress of its own and has no hook per row, so the run learns of a sent row from the call, not from the apply's reply."""
+
+    def __init__(self, client, db, run):
+        self.client, self.db, self.run = client, db, run
+
+    def _note(self, entry):
+        self.run.setdefault('lost_calls', []).append(entry)
+        sync._store_plan(self.db, self.run)
+
+    def lost_part_add(self, inv_part_id, quantity):
+        reply = self.client.lost_part_add(inv_part_id, quantity)
+        self._note(['add', inv_part_id, quantity])
+        return reply
+
+    def lost_part_remove(self, lost_part_id):
+        reply = self.client.lost_part_remove(lost_part_id)
+        self._note(['remove', lost_part_id])
+        return reply
+
+    def __getattr__(self, name):
+        return getattr(self.client, name)
 
 
 def _apply_lost_out(db, run, wanted, http):
     planned = run['lost_out']
     message = None
     try:
-        reply = lost_parts_send.apply(db, adapters.adapter(db, SOURCE, http), planned, wanted)
+        reply = lost_parts_send.apply(db, _Recorder(adapters.adapter(db, SOURCE, http), db, run), planned, wanted)
     except KeyRejected as exc:
         reply = getattr(exc, 'partial', dict(sent=[], failed=[], remaining=[]))
         message = _message(exc)
@@ -450,7 +538,9 @@ def _apply_lost_out(db, run, wanted, http):
                 if old['key'] == row['key']:
                     planned['rows'][i] = dict(row, outcome='sent' if part == 'sent' else 'failed' if part == 'failed' else 'waiting')
     counts = dict(sent=len(reply['sent']), failed=len(reply['failed']), waiting=len(reply['remaining']))
-    sync._store_plan(db, run)      # what Rebrickable took is written down before anything else can fail: a second post must not send it again
+    if counts['waiting'] and not message:
+        message = 'Rebrickable is paused: the daily budget is used up. ' + ('1 Lost Part waits.' if counts['waiting'] == 1 else f"{counts['waiting']} Lost Parts wait.")
+    sync._store_plan(db, run)      # what Rebrickable took is written down before anything else can fail
     with transaction(db):
         audit(db, 'sync:' + SOURCE, 'send', None, dict(plan=run['id'], kind='lost_parts', counts={k: v for k, v in dict(sent=counts['sent'], failed=counts['failed'], paused=counts['waiting']).items() if v}))
     return dict(status='done' if not (counts['failed'] or counts['waiting']) else 'partial', counts=counts, message=message,
@@ -474,16 +564,18 @@ def undo_run(db, event_id):
 
 
 def retry_send(db, run_id, *, http=None):
-    """Send again the rows of the run's send stage that did not go through (failed, paused or refused). The send plan keeps what was sent."""
-    run, plans = load(db, run_id)
-    send = plans['send']
-    stage = (run.get('stages') or {}).get('send')
-    if not send or not stage or not stage.get('results'):
-        raise errors.ValidationFailed('This run sent nothing that can be retried')
-    again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged')]
-    if not again:
-        raise errors.ValidationFailed('Everything this run sent went through')
-    result = sync.apply_send(db, send['id'], again, http=http)
-    run['stages']['send'] = dict(status='done', counts=result['counts'], rows=len(result['rows']), results=result['rows'])
-    sync._store_plan(db, run)
-    return run
+    """Send again the rows of the run's send stage that did not go through (failed, paused or refused). The send plan keeps what was sent. Under
+    the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry."""
+    with _Claim(db, run_id):
+        run, plans = load(db, run_id)
+        send = plans['send']
+        stage = (run.get('stages') or {}).get('send')
+        if not send or not stage or not stage.get('results'):
+            raise errors.ValidationFailed('This run sent nothing that can be retried')
+        again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged')]
+        if not again:
+            raise errors.ValidationFailed('Everything this run sent went through')
+        result = sync.apply_send(db, send['id'], again, http=http)
+        run['stages']['send'] = dict(status='done', counts=result['counts'], rows=len(result['rows']), results=result['rows'])
+        sync._store_plan(db, run)
+        return run

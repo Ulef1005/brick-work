@@ -11,7 +11,7 @@ import pytest
 from brickwork.core import admin, sync
 from brickwork.core.connect import connect
 from brickwork.core.sources import base
-from brickwork.core.sync import lost_parts_send
+from brickwork.core.sync import adapters, lost_parts_send
 from brickwork.core.sync import run as sync_run
 from tests.app4 import Coll, app4, client, pair  # noqa: F401
 from tests.test_bw_sync import EXTRA, TOKEN
@@ -359,6 +359,7 @@ def test_picking_sets_narrows_the_preview_and_the_run(client, remote, pair):
     assert page.select_one('.sr-steps li[aria-current=step]').get_text(strip=True) == '4 Preview'
     assert [b.get_text(strip=True) for b in page.select('.sr-foot button')] == ['Run']
     assert page.select_one('[data-sy-total]')['data-sy-of'] == '2'                  # the script says "2 of 2 chosen" and "Run 2 changes"
+    assert client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['99']}).location.endswith('/pick')     # not one of the sets
     assert apply_run(client, csrf, run_id, page).location.endswith(f'/run/{run_id}/result')
     assert copies(pair, '1000-1') == 2 and copies(pair, '1000-2') == 0 and copies(pair, '1000-3') == 0
     assert remote.lists[1]['1000-4'] == 1
@@ -370,7 +371,8 @@ def test_picking_sets_narrows_the_preview_and_the_run(client, remote, pair):
     assert [a.get_text(strip=True) for a in page.select('.sr-foot a')] == ['Open sync log', 'Done']
     with db_of(pair) as db:
         assert sync_run.picked_ids(sync_run.load(db, run_id)[0]) == {1, 4}
-    assert client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['99']}).location.endswith('/pick')
+    assert client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['99']}).location.endswith('/result')      # an applied run is not picked again
+    assert client.get(f'/workbench/sync/rebrickable/run/{run_id}/pick').location.endswith('/result')
 
 
 def test_an_unticked_row_changes_nothing_and_a_second_post_does_not_run_again(client, remote, pair):
@@ -745,3 +747,251 @@ def test_a_lost_parts_send_is_a_row_of_the_log_without_a_retry_that_would_open_t
     assert run.select_one('span').get_text().startswith('Lost Parts: ') and not run.select('button')
     with db_of(pair) as db:
         assert sync_run.load(db, run_id)[0]['lost_out']['rows'][0].get('outcome') == 'failed'
+
+
+# --- review round 1 ---------------------------------------------------------------------------------------------------
+
+def test_undo_takes_only_a_rebrickable_pull_and_reads_ids_as_ascii_digits(client, remote, pair):
+    csrf = connected(client, pair)
+    run_id = start(client, csrf)
+    apply_run(client, csrf, run_id)
+    with db_of(pair) as db:
+        other = db.execute("INSERT INTO event(at, via, entity_kind, entity_id, field, new_value) VALUES ('2026-11-20T10:00:00Z', 'app', 'sync', '1', 'receipt', ?)",
+                           (json.dumps({'source': 'brickset', 'counts': {}}),)).lastrowid
+        ordinary = db.execute("INSERT INTO event(at, via, entity_kind, entity_id, field, new_value) VALUES ('2026-11-20T10:00:00Z', 'app', 'wish', 'x', 'quantity', '2')").lastrowid
+        db.commit()
+    for event in (other, ordinary, 999999):
+        assert client.post('/workbench/sync/rebrickable/undo', data={'csrf_token': csrf, 'event': str(event)}).status_code == 404
+    for bad in ('²', '', '1' * 30, 'x'):
+        assert client.post('/workbench/sync/rebrickable/undo', data={'csrf_token': csrf, 'event': bad}).status_code == 400
+    assert copies(pair, '1000-1') == 2                              # nothing was undone
+    response = choose(client, csrf, start='0', owned=['1', '²', '2'], wishlist='²')       # ignored, never a 500
+    assert response.status_code == 302
+    with db_of(pair) as db:
+        link = sync.status(db, 'rebrickable')['link']
+        assert link['owned'] == [1, 2] and link.get('wishlist') is None
+
+
+def test_a_run_is_claimed_and_a_second_post_changes_nothing(client, remote, pair):
+    from werkzeug.datastructures import MultiDict
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-4')
+    run_id = start(client, csrf)
+    page = preview_of(client, run_id)
+    assert apply_run(client, csrf, run_id, page).location.endswith('/result')
+    sent = list(remote.calls)
+    assert apply_run(client, csrf, run_id, page).location.endswith('/result')                # the second post: the run as it is
+    assert remote.calls == sent and copies(pair, '1000-1') == 2
+    with db_of(pair) as db:
+        run = sync_run.load(db, run_id)[0]
+        assert run['applied'] and 'applying' not in run
+        assert sync_run.apply(db, run_id, MultiDict())['applied'] == run['applied']
+        assert len(db.execute("SELECT 1 FROM event WHERE entity_kind='sync' AND field='run'").fetchall()) == 1
+        assert (sync._root(db) / (run_id + '.lock')).exists()
+
+
+def test_a_run_that_is_applying_or_was_interrupted_is_not_applied_again(client, remote, pair):
+    csrf = connected(client, pair)
+    run_id = start(client, csrf)
+    page = preview_of(client, run_id)
+    with db_of(pair) as db:
+        run = sync_run.load(db, run_id)[0]
+        run['applying'] = '2026-11-24T08:00:00+00:00'
+        sync._store_plan(db, run)
+    calls = len(remote.calls)
+    response = apply_run(client, csrf, run_id, page)
+    assert response.location.endswith('/workbench/sync/rebrickable')
+    assert 'already running, or was interrupted' in soup(client.get(response.location)).select_one('.bk-banner').get_text()
+    assert copies(pair, '1000-1') == 0 and len(remote.calls) == calls
+    for url in ('/preview', '/result'):
+        assert client.get(f'/workbench/sync/rebrickable/run/{run_id}' + url).location.endswith('/workbench/sync/rebrickable')
+    assert client.get(f'/workbench/sync/rebrickable/run/{run_id}/pick').location.endswith('/result')
+    assert client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['1']}).location.endswith('/result')
+
+
+def test_a_lost_parts_send_writes_each_call_into_the_run(client, remote, pair, monkeypatch):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3), ('3023', '15', 1)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off')
+    seen = []
+    real = adapters.RebrickableUser.lost_part_add
+
+    def watch(self, inv, quantity):
+        reply = real(self, inv, quantity)
+        with db_of(pair) as db:
+            seen.append(len(sync_run.load(db, run_id)[0].get('lost_calls', ())))      # before this call is noted
+        return reply
+    monkeypatch.setattr(adapters.RebrickableUser, 'lost_part_add', watch)
+    apply_run(client, csrf, run_id, lostsend=[lost_parts_send.row_key('1000-1', '3001', 4, False)])
+    with db_of(pair) as db:
+        run = sync_run.load(db, run_id)[0]
+        assert seen == [0] and run['lost_calls'] == [['add', 1, 2]]
+
+
+def test_saving_step_2_after_a_failed_read_of_the_lists_keeps_the_links(client, remote, pair):
+    csrf = connected(client, pair)
+    choose(client, csrf, start='0', parts_dir='into', part_list=['31'])
+    with db_of(pair) as db:
+        link = sync.status(db, 'rebrickable')['link']
+        assert link['owned'] == [1, 2] and link['part_lists'] == [31]
+        names = sync_run._saved_names(db)
+    kept_transport = adapters.transport
+    adapters.transport = lambda r: (_ for _ in ()).throw(OSError('offline'))
+    try:
+        page = soup(client.get('/workbench/sync/rebrickable/choose'))
+    finally:
+        adapters.transport = kept_transport
+    assert page.select_one('input[name=lists_read]')['value'] == '0'
+    data = {'csrf_token': csrf, 'lists_read': '0', 'owned_dir': 'into', 'wishlist_dir': 'off', 'parts_dir': 'into', 'lost_dir': 'off', 'wish_list': 'default',
+            'lost_rule': 'everything', 'send_rule': 'per_set', 'start': '0'}               # the form carried no list, no name
+    assert client.post('/workbench/sync/rebrickable/choose', data=data).location.endswith('/workbench/sync/rebrickable')
+    with db_of(pair) as db:
+        kept = sync.status(db, 'rebrickable')['link']
+        assert (kept['owned'], kept['wishlist'], kept['send_to'], kept['part_lists']) == ([1, 2], 9, 1, [31])
+        assert sync_run.directions(db) == dict(owned='into', wishlist='off', parts='into', lost='off')
+        assert sync_run._saved_names(db) == names and admin.settings(db)['rebrickable_lost_parts_rule'] == 'everything'
+    data['lists_read'] = '1'                                                             # a form that did read them and ticked none clears them
+    client.post('/workbench/sync/rebrickable/choose', data=data)
+    with db_of(pair) as db:
+        assert sync.status(db, 'rebrickable')['link']['owned'] == []
+
+
+def test_the_lost_parts_send_switch_and_rule_are_saved_through_the_settings(client, remote, pair):
+    csrf = connected(client, pair)
+    choose(client, csrf, start='0', lost_dir='to', send_rule='per_part')
+    with db_of(pair) as db:
+        shown = admin.settings(db)
+        assert shown['rebrickable_lost_parts_send'] is True and shown['rebrickable_lost_parts_send_rule'] == 'per_part'
+        assert db.execute("SELECT count(*) FROM event WHERE entity_kind='settings' AND field='save'").fetchone()[0] >= 1       # the settings' own, undoable save
+    choose(client, csrf, start='0', lost_dir='into')
+    with db_of(pair) as db:
+        assert admin.settings(db)['rebrickable_lost_parts_send'] is False
+
+
+def test_a_kind_that_is_off_is_not_a_candidate_and_a_send_reason_does_not_hide_a_pullable_row(client, remote, pair):
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, wishlist_dir='off', send_to='')           # two owned lists and none to send to
+    with db_of(pair) as db:
+        assert 3 not in {c['item_id'] for c in sync_run.load(db, run_id)[0]['candidates']}        # 1000-3 is only on the wishlist
+    page = preview_of(client, run_id)
+    row = rows_of(page)['1000-1']
+    assert row.select_one('input[name="choice:owned:1"]')['value'] == 'pull' and row['data-state'] == 'into'
+    assert 'Not sent: Link one owned Rebrickable list to send to' in row.get_text()
+    assert rows_of(page).get('1000-3') is None
+
+
+def test_partial_picks_count_only_their_own_lost_parts(client, remote, pair):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        one = copy_of(db, '1000-1')
+        two = copy_of(db, '1000-2')
+    remote.lists[1] = {'1000-1': 1, '1000-2': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1), raw('1000-2', '3001', 4, 1, number=2)]
+    run_id = start(client, csrf, lost_dir='into', owned_dir='into', wishlist_dir='off')
+    client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['1']})
+    page = preview_of(client, run_id)
+    card = page.select_one('[data-rb-lost-in]')
+    assert [i['value'] for i in card.select('input[name=lost]')] == ['1000-1']
+    assert card.h2.get_text(' ', strip=True) == 'Lost Parts 1' and card.select_one('.sy-lost-summary').get_text().startswith('1 added')
+    apply_run(client, csrf, run_id, page)
+    with db_of(pair) as db:
+        assert marks(db, one) and not marks(db, two)
+
+
+def test_lost_parts_of_a_set_that_is_not_pulled_are_not_offered_ticked(client, remote, pair):
+    csrf = connected(client, pair)
+    remote.lost = [raw('1000-2', '3001', 4, 1, number=1)]                  # 1000-2 is on Rebrickable once and has no copy here
+    page = preview_of(client, start(client, csrf, lost_dir='into', owned_dir='off', wishlist_dir='off'))
+    card = page.select_one('[data-rb-lost-in]')
+    assert not card.select('input[name=lost]') and 'not pulled in this run' in card.get_text()
+    page = preview_of(client, start(client, csrf, lost_dir='into', owned_dir='into', wishlist_dir='off'))
+    assert page.select_one('[data-rb-lost-in] input[name=lost]')['value'] == '1000-2'       # it comes in with its copy, as before
+
+
+def test_the_result_counts_cleared_marks_and_renames_and_lists_skipped_lost_parts(client, remote, pair):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_id = copy_of(db, '1000-1', marks=[('3023', '15', 2)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    run_id = start(client, csrf, lost_dir='into', owned_dir='into', wishlist_dir='off', lost_rule='per_set')
+    page = preview_of(client, run_id)
+    with db_of(pair) as db:                                              # the copy changes between the preview and the run
+        db.execute("UPDATE copy_part SET missing=1 WHERE copy_id=? AND missing>0", (copy_id,))
+        db.commit()
+    apply_run(client, csrf, run_id, page)
+    text = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result')).select_one('[data-rb-here]').get_text(' ', strip=True)
+    assert 'left out' in text                                           # skipped Lost Parts are listed, with their reason
+    run_id = start(client, csrf, lost_dir='into', owned_dir='into', wishlist_dir='off', lost_rule='per_set')
+    apply_run(client, csrf, run_id)
+    text = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result')).select_one('[data-rb-here]').get_text(' ', strip=True)
+    assert '1 mark cleared' in text
+    remote.names = {1: 'Home collection'}
+    run_id = start(client, csrf)
+    apply_run(client, csrf, run_id)
+    assert 'list name' in soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result')).select_one('[data-rb-here]').get_text()
+
+
+def test_a_budget_pause_shows_as_waiting_not_failed(client, remote, pair, monkeypatch):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off')
+
+    def pause(self, inv, quantity):
+        raise base.WaitingForBudget(None, '2026-11-25T00:00:00+00:00')
+    monkeypatch.setattr(adapters.RebrickableUser, 'lost_part_add', pause)
+    apply_run(client, csrf, run_id, lostsend=[lost_parts_send.row_key('1000-1', '3001', 4, False)])
+    page = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result'))
+    there = page.select_one('[data-rb-there]')
+    assert [t.get_text(strip=True) for t in there.select('.sr-tag')] == ['1 waiting'] and 'the daily budget is used up' in there.get_text()
+    assert 'failed' not in page.select_one('.sr-head p').get_text() and '1 waiting' in page.select_one('.sr-head p').get_text()
+    with db_of(pair) as db:
+        assert sync_run.load(db, run_id)[0]['stages']['lost_out']['counts'] == dict(sent=0, failed=0, waiting=1)
+
+
+def test_the_preview_shows_part_rows_that_could_not_be_matched_and_a_renamed_list_counts_as_chosen(client, remote, pair):
+    csrf = connected(client, pair)
+    page = preview_of(client, start(client, csrf, parts_dir='into', part_list=['31'], owned_dir='off', wishlist_dir='off'))
+    assert 'No part with this number here' in page.select_one('[data-rb-parts]').get_text()
+    apply_run(client, csrf, start(client, csrf))                                  # records the list names
+    remote.names = {1: 'Home collection'}
+    page = preview_of(client, start(client, csrf, owned_dir='off', wishlist_dir='off', lost_dir='into'))
+    select = page.select_one('[data-rb-lists] select[data-sy-listpick]')
+    assert select['name'] == 'list:1' and page.select_one('[data-sy-total]')['data-sy-of'] == '1'      # the rename is one of the choices to make
+
+
+def test_the_page_prefers_the_names_a_pull_recorded(client, remote, pair):
+    csrf = connected(client, pair)
+    choose(client, csrf, start='0')
+    page = soup(client.get('/workbench/sync/rebrickable'))
+    assert page.select_one('[data-rb-what] td:nth-child(3)').get_text() == '2 set lists: Main collection, Bought 2026'      # what step 2 showed
+    apply_run(client, csrf, start(client, csrf))
+    page = soup(client.get('/workbench/sync/rebrickable'))
+    assert page.select_one('[data-rb-what] td:nth-child(3)').get_text() == '2 set lists: List 1, List 2'                  # what the pull recorded
+
+
+def test_a_conflict_that_was_kept_comes_back_unticked(client, remote, pair):
+    csrf = connected(client, pair)
+    apply_run(client, csrf, start(client, csrf))                          # baseline: 1000-1 twice
+    remote.lists[1]['1000-1'] = 5                                         # Rebrickable raised it, one copy went here: changed in both places
+    with db_of(pair) as db:
+        db.execute("UPDATE copy SET archived_at='2026-11-20T10:00:00.000Z' WHERE id=(SELECT c.id FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key='1000-1' AND c.archived_at IS NULL LIMIT 1)")
+        db.commit()
+    remote.lists[2]['1000-4'] = 1                                         # something else comes in, so the pull is applied and resets the baseline
+    run_id = start(client, csrf)
+    page = preview_of(client, run_id)
+    assert page.select_one('[data-rb-conflicts] input[checked]')['value'] == 'keep'
+    apply_run(client, csrf, run_id, page)
+    assert copies(pair, '1000-4') == 1 and copies(pair, '1000-1') == 1
+    page = preview_of(client, start(client, csrf))
+    row = rows_of(page)['1000-1']
+    assert not page.select('[data-rb-conflicts]')                         # the pull reset the baseline: it is a plain row again
+    assert not row.select_one('input[name="choice:owned:1"]').has_attr('checked') and 'left as it was at the last run' in row.get_text()
+    assert 'choice:owned:1' not in run_data(page)                         # Apply all cannot overwrite it

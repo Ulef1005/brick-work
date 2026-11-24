@@ -182,3 +182,5 @@
 .sr-search svg { display: none; }
 .sr-search input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 14px; border: 1.5px solid var(--tw-text); border-radius: 3px; background: var(--tw-field); color: var(--tw-text); font: 400 15px var(--tw-font); }
 #content.bw-admin-page.bw-sync-rb-page .sr-table, #content.bw-admin-page.bw-sync-rb-page .sr-table :is(thead, tbody, tr, th, td) { background: transparent; }
+
+.sr-reason { display: block; color: var(--tw-text-2); font-size: 13px; }

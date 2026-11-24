@@ -2,13 +2,15 @@
 
 The views only read and write through `core.sync` and `core.sync.run`; the plans, the applies and the choices are theirs. The run record is a plan
 file (24 hours), so the pick, preview, run and result pages take its id in the path."""
+import json
+import re
 import sqlite3
 
 from flask import abort, flash, redirect, request, url_for
 from flask_login import login_required
 
 from .views import web_page, bw_add_csrf, bw_collection_editable
-from .sync_views import _db, _log, _message, _page, _receipt_source, _unavailable, lost_result
+from .sync_views import _db, _event_id, _log, _message, _page, _receipt_source, _unavailable, lost_result
 
 SOURCE = 'rebrickable'
 STEPS = ('Connect', 'Choose what', 'Pick sets', 'Preview', 'Run', 'Result')
@@ -146,7 +148,8 @@ def bw_sync_rb_choose():
 
 
 def _ids(values):
-    return [int(v) for v in values if v.isdigit()]
+    """Ids from form values: ASCII digits only, so '²' or a 30-digit number is left out, never a 500."""
+    return [int(v) for v in values if re.fullmatch(r'[0-9]{1,18}', v)]
 
 
 @web_page.post('/workbench/sync/rebrickable/choose')
@@ -157,13 +160,14 @@ def bw_sync_rb_choose_save():
     from ..core.sync import run as sync_run
     _guard()
     form = request.form
-    one = lambda name: int(form[name]) if form.get(name, '').isdigit() else None   # noqa: E731
+    one = lambda name: _event_id(form.get(name))   # noqa: E731  (the same ASCII-digit rule)
     names = {k.removeprefix('list_name:'): v[:80] for k, v in form.items() if k.startswith('list_name:')}
     owned = _ids(form.getlist('owned'))
     values = dict(owned_dir=form.get('owned_dir'), wishlist_dir=form.get('wishlist_dir'), parts_dir=form.get('parts_dir'), lost_dir=form.get('lost_dir'),
                   owned=owned, wishlist=one('wishlist'), send_to=one('send_to') or (owned[0] if len(owned) == 1 else None),
                   wish_list=form.get('wish_list') or 'default', part_lists=_ids(form.getlist('part_list')), lost_rule=form.get('lost_rule', ''),
-                  send_rule=form.get('send_rule', ''), keep_list_names=form.get('keep_list_names') != '0', names=names)
+                  send_rule=form.get('send_rule', ''), keep_list_names=form.get('keep_list_names') != '0', names=names,
+                  keep_links=form.get('lists_read') == '0')
     try:
         with _db() as db, audit_origin('app'):
             sync_run.save_choices(db, values)
@@ -219,6 +223,8 @@ def bw_sync_rb_pick(run_id):
         run, plans = _load(db, run_id)
         if run is None:
             return _gone()
+    if run.get('applied') or run.get('applying'):
+        return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))
     picked = sync_run.picked_ids(run)
     candidates = run['candidates']
     keys = {'list': lambda c: c['lists'], 'theme': lambda c: [c['theme']] if c['theme'] else [], 'year': lambda c: [str(c['year'])] if c['year'] else []}
@@ -252,6 +258,8 @@ def bw_sync_rb_pick_save(run_id):
     try:
         with _db() as db, audit_origin('app'):
             run, _ = sync_run.load(db, run_id)
+            if run.get('applied') or run.get('applying'):
+                return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))
             sync_run.save_pick(db, run, ids, keep)
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, SOURCE), 'warning')
@@ -276,6 +284,9 @@ def bw_sync_rb_preview(run_id):
             return _gone()
         if run.get('applied'):
             return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))
+        if run.get('applying'):
+            flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
+            return redirect(url_for('web.bw_sync_site', source=SOURCE))
         rows = sync_run.rows(db, run, plans)
         budget = sync_run.budget(db)
         lots = _lots(db)
@@ -292,11 +303,11 @@ def bw_sync_rb_preview(run_id):
     counts = dict(all=len(rows) + lost_rows + len(lost_send_rows) + len(parts), into=sum(1 for r in rows if r['group'] == 'into'), to=sum(1 for r in rows if r['group'] == 'to') + len(lost_send_rows),
                   both=len(conflicts), lost=lost_rows + len(lost_send_rows), parts=len(parts))
     choosable = sum(1 for r in rows if r['options']) + sum(1 for e in (lost_in or {}).get('sets', ()) if e['state'] == 'pick' or e['preview']['added'] or e['preview']['replaced'] or e['preview']['cleared']) \
-        + sum(1 for r in lost_send_rows if r.get('tickable')) + len(parts)
+        + sum(1 for r in lost_send_rows if r.get('tickable')) + len(parts) + sum(1 for line in changed_lines if set(line['choices']) - {'keep', 'skip'})
     send_requests = sum(1 for r in rows for o in r['options'] if o['id'] in ('send', 'remove') and o['id'] == r['default']) + sum(1 for r in lost_send_rows if r.get('ticked'))
     last = ((status.get('last_pull') or {}).get('at') or (status.get('last_send') or {}).get('at'))
     return _page('web/toni/web/bw_sync_rb.html', screen='preview', title='Rebrickable', source=SOURCE, run=run, rows=main, conflicts=conflicts, counts=counts,
-                 lost_in=lost_in, lost_out=lost_out, parts=parts, parts_lists=(plans['parts'] or {}).get('lists', ()), lots=lots, lines=changed_lines,
+                 lost_in=lost_in, lost_out=lost_out, parts=parts, parts_unmatched=(plans['parts'] or {}).get('unmatched', ()), parts_lists=(plans['parts'] or {}).get('lists', ()), lots=lots, lines=changed_lines,
                  list_words=sync_run.LIST_WORDS, budget=budget, choosable=choosable, requests=send_requests, rule_labels=lost_parts.RULE_LABELS,
                  send_rule_labels={v: l for v, l, _ in lost_parts_send.RULES}, last_run=last, compared=len(run['candidates']),
                  checked=(plans['pull'] or plans['send'] or plans['parts'] or {}).get('created_at'), picked_count=len(run['picked'] if run['picked'] is not None else run['candidates']),
@@ -317,10 +328,13 @@ def bw_sync_rb_apply(run_id):
             form['lot:' + key] = form['lot_all']
     try:
         with _db() as db, audit_origin('app'):
-            sync_run.apply(db, run_id, form)
+            run = sync_run.apply(db, run_id, form)
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, SOURCE), 'warning')
         return redirect(url_for('web.bw_sync_rb_preview', run_id=run_id))
+    if not run.get('applied'):         # claimed by another request that has not finished, or one that was interrupted
+        flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
+        return redirect(url_for('web.bw_sync_site', source=SOURCE))
     return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))
 
 
@@ -335,6 +349,9 @@ def bw_sync_rb_result(run_id):
         if run is None:
             return _gone()
         if not run.get('applied'):
+            if run.get('applying'):
+                flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
+                return redirect(url_for('web.bw_sync_site', source=SOURCE))
             return redirect(url_for('web.bw_sync_rb_preview', run_id=run_id))
         budget = sync_run.budget(db)
         rows = {r['key']: r for r in sync_run.rows(db, run, plans)}
@@ -342,44 +359,50 @@ def bw_sync_rb_result(run_id):
         events = run['applied']['events']
         if events:
             undone = bool(db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (events[0],)).fetchone())
+        pull = (run['stages'].get('pull') or {})
+        lost_in, list_changes = None, 0
+        if pull.get('event'):
+            lost_in = lost_result(db, pull['event'])
+            row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (pull['event'],)).fetchone()
+            named = (json.loads(row['new_value']) if row and row['new_value'] else {}).get('lists') or {}
+            list_changes = len(named.get('renamed', ())) + len(named.get('dropped', ()))
     stages = run['stages']
     send = stages.get('send') or {}
     failed_rows = [dict(rows.get(r['key'], {}), result=r) for r in send.get('results', ()) if r['result'] not in ('sent', 'unchanged')]
-    sent = send.get('counts', {}).get('sent', 0) + send.get('counts', {}).get('unchanged', 0)
+    counts = send.get('counts') or {}
     lost = stages.get('lost_out') or {}
-    sent_total = sent + (lost.get('counts') or {}).get('sent', 0)
-    failed_total = sum(v for k, v in (send.get('counts') or {}).items() if k not in ('sent', 'unchanged')) + (lost.get('counts') or {}).get('failed', 0) + (lost.get('counts') or {}).get('waiting', 0)
-    pull = stages.get('pull') or {}
+    lost_counts = lost.get('counts') or {}
+    sent_total = counts.get('sent', 0) + counts.get('unchanged', 0) + lost_counts.get('sent', 0)
+    waiting_total = counts.get('paused', 0) + lost_counts.get('waiting', 0)               # a budget pause: the rest waits, it did not fail
+    failed_total = sum(v for k, v in counts.items() if k not in ('sent', 'unchanged', 'paused')) + lost_counts.get('failed', 0)
     parts = stages.get('parts') or {}
-    changed = (pull.get('counts') or {})
-    here = changed.get('copies', 0) + changed.get('stock', 0) + changed.get('wishes_added', 0) + changed.get('wishes_changed', 0) + changed.get('lost_added', 0) + changed.get('lost_replaced', 0) \
-        + (parts.get('counts') or {}).get('rows', 0)
-    lost_in = None
-    if pull.get('event'):
-        with _db() as db:
-            lost_in = lost_result(db, pull['event'])
+    changed = pull.get('counts') or {}
+    here = (changed.get('copies', 0) + changed.get('stock', 0) + changed.get('wishes_added', 0) + changed.get('wishes_changed', 0) + changed.get('lost_added', 0)
+            + changed.get('lost_replaced', 0) + changed.get('lost_cleared', 0) + (parts.get('counts') or {}).get('rows', 0) + list_changes)
     return _page('web/toni/web/bw_sync_rb.html', screen='result', title='Rebrickable', source=SOURCE, run=run, stages=stages, undone=undone, failed_rows=failed_rows,
-                 here=here, sent_total=sent_total, failed_total=failed_total, lost_in=lost_in, rule_labels=lost_parts.RULE_LABELS,
-                 budget=budget, finished=run['applied']['at'], total=sent_total + failed_total + (1 if pull.get('status') == 'done' else 0), **_steps(6))
+                 here=here, sent_total=sent_total, failed_total=failed_total, waiting_total=waiting_total, list_changes=list_changes, lost_in=lost_in,
+                 rule_labels=lost_parts.RULE_LABELS, budget=budget, finished=run['applied']['at'], **_steps(6))
 
 
 @web_page.post('/workbench/sync/rebrickable/undo')
 @login_required
 def bw_sync_rb_undo():
-    """Undo this run: the pull and the part-list pull of one run in one step."""
+    """Undo this run: the pull and the part-list pull of one run in one step. Only a Rebrickable pull can be undone here."""
     from ..core import errors
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
     _guard()
-    event = request.form.get('event', '')
-    if not event.isdigit():
+    event = _event_id(request.form.get('event'))
+    if event is None:
         abort(400)
     try:
         with _db() as db, audit_origin('app'):
-            sync_run.undo_run(db, int(event))
+            if _receipt_source(db, event) != SOURCE:
+                abort(404)
+            sync_run.undo_run(db, event)
         flash('Run undone.', 'success')
     except (errors.BrickWorkError, ValueError, sqlite3.Error) as exc:
-        flash(str(exc), 'warning')
+        flash(str(exc) if isinstance(exc, ValueError) else _message(exc, SOURCE), 'warning')
     return redirect(url_for('web.bw_sync_site', source=SOURCE))
 
 

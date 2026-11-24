@@ -10,6 +10,7 @@ from flask import jsonify
 from ..core import errors, sync
 from ..core.sync import part_lists
 from ..core.importer import bricktracker
+from ..core import own_import
 from . import database, route
 from .read import respond
 from .writes import Done, write
@@ -112,3 +113,20 @@ def post_imports_by_id_apply(db, body, id):
         return Done(bricktracker.apply(db, id, body.get('decisions', {})))
     except ValueError as error:
         raise errors.ValidationFailed(str(error)) from None
+
+
+# ---------- the Brick Work own-file import (#524) ----------
+
+@route('/imports/brickwork/plan', 'POST')
+@write(detached=True)
+def post_imports_brickwork_plan(db, body, content):
+    """Plan an import from an uploaded Brick Work export zip; nothing is written to the collection."""
+    plan = own_import.plan(db, content, sections=body.get('sections') or None)
+    return Done({k: v for k, v in plan.items() if k != 'tables'}, status=201)
+
+
+@route('/imports/brickwork/<plan_id>/apply', 'POST')
+@write
+def post_imports_brickwork_by_plan_id_apply(db, body, plan_id):
+    """Write the rows the plan marks new, in one transaction; rows that differ are left alone. Undo with POST /events/{id}/undo (admin)."""
+    return Done(own_import.apply(db, plan_id))

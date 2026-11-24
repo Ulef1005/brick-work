@@ -146,6 +146,50 @@ def test_a_bricktracker_database_is_planned_applied_and_undone(v2, pair, tmp_pat
     assert write(v2, f"/imports/{plan['id']}/apply", body={'decisions': {'x': 'maybe'}}).status_code == 422
 
 
+# ---------- the Brick Work own-file import (#524) ----------
+
+def _own_file(pair, new_id):
+    """The install's own export with its first copy under another id, so the file holds one new copy."""
+    from brickwork.core import own_export
+    from tests.test_own_import import _repack
+    with closing(connect(pair, read_only=True)) as db:
+        db.execute('BEGIN')
+        content = own_export.build(db)['content']
+
+    def mutate(name, data):
+        if name != 'data/copy.jsonl':
+            return data
+        lines = data.splitlines()
+        first = json.loads(lines[0])
+        lines[0] = json.dumps(dict(first, id=new_id)).encode()
+        return b'\n'.join(lines) + b'\n'
+    return _repack(content, mutate=mutate)
+
+
+def test_a_brick_work_file_is_planned_applied_and_undone(v2, pair):
+    data = _own_file(pair, 'ffffffff-0000-4000-8000-000000000001')
+    reader = stored_token(pair, ['read', 'write'], 'writer')
+    assert upload(v2, '/imports/brickwork/plan', data, 'x.zip', 'application/zip', token=reader).status_code == 403
+    assert upload(v2, '/imports/brickwork/plan', b'not a zip', 'x.zip', 'application/zip').status_code == 422
+    planned = upload(v2, '/imports/brickwork/plan', data, 'x.zip', 'application/zip', key='own-plan')
+    assert planned.status_code == 201, planned.json
+    validate(planned, 'post_imports_brickwork_plan', '201')
+    plan = planned.json['data']
+    assert plan['counts']['copy']['new'] == 1 and 'tables' not in plan
+    before = len(rows(pair, 'SELECT id FROM copy WHERE archived_at IS NULL'))
+    applied = write(v2, f"/imports/brickwork/{plan['id']}/apply", key='own-apply')
+    assert applied.status_code == 200, applied.json
+    validate(applied, 'post_imports_brickwork_by_plan_id_apply')
+    assert applied.json['data']['counts']['copies'] == 1 and applied.json['data']['already_applied'] is False
+    assert len(rows(pair, 'SELECT id FROM copy WHERE archived_at IS NULL')) == before + 1
+    again = write(v2, f"/imports/brickwork/{plan['id']}/apply", key='own-apply-2')
+    assert again.json['data']['already_applied'] is True and len(rows(pair, 'SELECT id FROM copy WHERE archived_at IS NULL')) == before + 1
+    assert write(v2, f"/events/{applied.json['event_id']}/undo", token=reader).status_code == 403
+    assert write(v2, f"/events/{applied.json['event_id']}/undo").status_code == 200
+    assert len(rows(pair, 'SELECT id FROM copy WHERE archived_at IS NULL')) == before
+    assert write(v2, '/imports/brickwork/nope/apply').status_code in (404, 422)
+
+
 # ---------- photo identification ----------
 
 BRICKOGNIZE = json.dumps({'items': [{'id': '3001', 'name': 'Brick 2 x 4', 'type': 'part', 'score': 0.93, 'img_url': 'https://x/y.jpg'},

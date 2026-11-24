@@ -160,18 +160,21 @@ The file holds places and storage, flags, lots, copies with their part-line mark
 
 ## import-file
 
-Shows what importing a Brick Work export file would do. It writes nothing yet. Run `brickwork setup` first.
+Shows what importing a Brick Work export file would do, and with `--apply` adds what is new. Run `brickwork setup` first.
 
 ```text
-brickwork import-file FILE [--sections places,flags,collection,wishes]
+brickwork import-file FILE [--sections places,flags,collection,wishes] [--apply]
 ```
 
 | Argument | Meaning |
 |---|---|
 | `FILE` | A file made by `brickwork export-all`. |
 | `--sections` | Only these sections of the file. |
+| `--apply` | Add the rows that are new, as one event. Without it nothing is written. |
 
 For each table the command counts the rows that are new, already here, different here, or that it cannot place because an item, a colour or a parent is missing. A row that differs is listed with the fields that differ and is never overwritten. The command refuses a file that is not an export, is too large or comes from a newer Brick Work.
+
+With `--apply` the new rows are added in one step, each marked as added from a file. A row already here or different here is left alone. Importing the same file twice adds nothing the second time. Undo the event with `POST /events/ID/undo` or on the Events page; it is refused if a row the import made was changed since.
 
 ## migrate4
 

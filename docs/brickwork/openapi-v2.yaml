@@ -6407,6 +6407,78 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: post_imports_by_id_apply
       x-piece: M.11d
+  /imports/brickwork/plan:
+    post:
+      operationId: post_imports_brickwork_plan
+      summary: Upload a Brick Work export zip (#524, up to 50 MB) and get an import plan. Each row is new, here, a difference or unresolved; nothing is written to the collection.
+      description: 'Version 1 adds only. A row whose id is already here is left alone; a row that differs from the one here is listed, never changed.'
+      tags:
+      - Admin
+      security:
+      - bearerAuth:
+        - admin
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                file:
+                  type: string
+                  format: binary
+                sections:
+                  type: string
+                  description: Comma-separated sections to import (places, flags, collection, wishes). All the file holds when absent.
+              required:
+              - file
+      responses:
+        '201':
+          description: Plan created (expires after 24 hours).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenOwnImportPlan'
+        '413':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11d
+  /imports/brickwork/{plan_id}/apply:
+    post:
+      operationId: post_imports_brickwork_by_plan_id_apply
+      summary: 'Apply a Brick Work import plan: rows marked new are written in one transaction, with their lists, places and flags. Undo with POST /events/{id}/undo (admin).'
+      tags:
+      - Admin
+      security:
+      - bearerAuth:
+        - admin
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Applied; the event id undoes the whole import. Answers already_applied when the plan was applied before.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenImportApplied'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11d
   /identifications:
     post:
       operationId: post_identifications
@@ -12542,6 +12614,49 @@ components:
           - 'null'
         idempotent_replay:
           type: boolean
+    WrittenOwnImportPlan:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - event_id
+      - undo_url
+      - idempotent_replay
+      properties:
+        data:
+          $ref: '#/components/schemas/OwnImportPlan'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
+    OwnImportPlan:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        direction:
+          type: string
+        created_at:
+          type: string
+        source:
+          type: string
+        sections:
+          type: array
+          items:
+            type: string
+        manifest:
+          type: object
+        counts:
+          type: object
+        rows:
+          type: object
     WrittenImportApplied:
       type: object
       additionalProperties: false

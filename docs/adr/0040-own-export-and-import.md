@@ -30,7 +30,7 @@ Recommendation: option 1; the CSV files of #470 are the readable form and may be
 - **Left out of every file:** catalogue and projected item data, fetched inventories, pictures, `source_key`, `api_token`, settings that name a secret, jobs, sync receipts, events, `wishlist.bricklink_id`, `storage.short_id` labels' print state and other install-specific or personal fields.
 - **Undo.** The import writes through the row log under one `import` plan receipt with the origin `brickwork_export` (schema 4.8, #595). Undo takes back exactly the rows that run made, and refuses by name when one of them changed after the import, as the other imports do.
 - **Order of writes:** storage and places (parents first), flags, lots, wishlists, copies with their lines, stock, wishes, then the flag links. A row whose parent is unresolved is unresolved too.
-- **Surfaces:** `GET /export/brickwork.zip?sections=…` (read); `POST /imports/brickwork/plan` and `/apply` (write, as the sync routes); `brickwork export-all` and `brickwork import-file`; the same two tools in MCP. The page belongs to #523.
+- **Surfaces:** `GET /export/brickwork.zip?sections=…` (read); `POST /imports/brickwork/plan` and `/apply` (write, as the sync routes); `brickwork export-all` and `brickwork import-file`; `brickwork import-file --apply`. Applying is admin work, so there is no MCP tool (admin work is never a tool). The page belongs to #523.
 
 ## Consequences
 

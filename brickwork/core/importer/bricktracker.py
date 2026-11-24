@@ -559,6 +559,9 @@ def _undo_import(db, event, via, actor):
     """Reverse one import exactly: archive the copies, stock, wishes, lots, places and flags it made (taking quantities back off merged
     stock). Refused whole when anything it made changed since (undo the later change first)."""
     r = json.loads(event['new_value'])
+    if r.get('source') == 'brickwork_export':
+        from .. import own_import
+        return own_import._undo(db, event, via, actor)
     stamp = store_now()
     changed = 'Something from this import has changed since · undo the later change first'
     for entry in r['wishes']:

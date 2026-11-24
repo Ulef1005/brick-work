@@ -8,6 +8,7 @@ reply that proves an `inferred` link right upgrades it to `matched/bricklink_api
 The part lists (`/subsets`) are `store4.jobs`' (`bricklink_subsets`); BrickLink's colour table comes with the catalogue builds; this client
 keeps the price guide, the key check and the order endpoints (`list_orders`, `order_items`)."""
 import html
+import hashlib
 import json
 import os
 import re
@@ -28,6 +29,132 @@ NUMBER = re.compile('[A-Za-z0-9-]{1,32}')
 SLOTS = {'new': 'bricklink_new', 'used': 'bricklink_used'}
 CONDITION_LETTER = {'new': 'N', 'used': 'U'}
 NO_COLOUR = 1                                   # "[No Color/Any Color]": a part held in it is asked without a colour filter
+INVENTORY_ITEM_TYPES = frozenset((*TYPE_NAMES.values(), 'UNSORTED_LOT'))
+CREATE_REQUIRED_FIELDS = frozenset({'item', 'color_id', 'quantity', 'unit_price', 'new_or_used'})
+UPDATE_LOT_FIELDS = frozenset({'color_id', 'quantity', 'unit_price', 'new_or_used', 'completeness',
+                               'description', 'remarks', 'bulk', 'is_retain', 'is_stock_room', 'stock_room_id'})
+CREATE_LOT_FIELDS = CREATE_REQUIRED_FIELDS | UPDATE_LOT_FIELDS
+
+
+def validate_digits(value, label):
+    if not isinstance(value, (int, str)) or isinstance(value, bool) or not re.fullmatch(r'[0-9]+', str(value)):
+        raise ValueError(f'invalid {label}')
+
+
+def validate_int(value, label, *, minimum=0):
+    if type(value) is not int or value < minimum:
+        raise ValueError(f'{label} must be an integer >= {minimum}')
+
+
+def validate_bool(value, label):
+    if type(value) is not bool:
+        raise ValueError(f'{label} must be boolean')
+
+
+def validate_text(value, label, *, required=False):
+    if not isinstance(value, str) or (required and not value.strip()):
+        raise ValueError(f'invalid {label}')
+
+
+def validate_unit_price(value):
+    if not isinstance(value, str) or not re.fullmatch(r'[0-9]+(?:\.[0-9]{1,4})?', value) or Decimal(value) <= 0:
+        raise ValueError('unit_price must be a positive decimal string with at most 4 decimals')
+
+
+def validate_item_spec(item):
+    if not isinstance(item, dict) or set(item) != {'no', 'type'}:
+        raise ValueError('item must be a dict with no and type')
+    validate_text(item['no'], 'item.no', required=True)
+    if not isinstance(item['type'], str) or item['type'] not in INVENTORY_ITEM_TYPES:
+        raise ValueError('invalid item.type')
+
+
+def validate_lot_fields(data, *, allowed, required=()):
+    if not isinstance(data, dict):
+        raise ValueError('lot payload must be a dict')
+    if set(data) - allowed:
+        raise ValueError('unexpected lot field')
+    if set(required) - set(data):
+        raise ValueError('missing required lot field')
+
+
+def validate_common_lot_fields(data, *, item_type=None):
+    if 'color_id' in data:
+        validate_int(data['color_id'], 'color_id', minimum=0)
+    if 'new_or_used' in data and (not isinstance(data['new_or_used'], str) or data['new_or_used'] not in ('N', 'U')):
+        raise ValueError('new_or_used must be N or U')
+    if 'completeness' in data:
+        if item_type is not None and item_type != 'SET':
+            raise ValueError('completeness is only valid for SET items')
+        if not isinstance(data['completeness'], str) or data['completeness'] not in ('C', 'B', 'S'):
+            raise ValueError('completeness must be C, B or S')
+    if 'unit_price' in data:
+        validate_unit_price(data['unit_price'])
+    if 'bulk' in data:
+        validate_int(data['bulk'], 'bulk', minimum=1)
+    if 'is_retain' in data:
+        validate_bool(data['is_retain'], 'is_retain')
+    if 'is_stock_room' in data:
+        validate_bool(data['is_stock_room'], 'is_stock_room')
+    if 'stock_room_id' in data:
+        if data.get('is_stock_room') is not True:
+            raise ValueError('stock_room_id requires is_stock_room to be true')
+        if not isinstance(data['stock_room_id'], str) or data['stock_room_id'] not in ('A', 'B', 'C'):
+            raise ValueError('stock_room_id must be A, B or C')
+    for key in ('description', 'remarks'):
+        if key in data:
+            validate_text(data[key], key)
+
+
+def validate_create_lot(lot):
+    validate_lot_fields(lot, allowed=CREATE_LOT_FIELDS, required=CREATE_REQUIRED_FIELDS)
+    validate_item_spec(lot['item'])
+    validate_int(lot['quantity'], 'quantity', minimum=1)
+    validate_common_lot_fields(lot, item_type=lot['item']['type'])
+
+
+def validate_update_lot(changes):
+    validate_lot_fields(changes, allowed=UPDATE_LOT_FIELDS)
+    if not changes:
+        raise ValueError('changes must not be empty')
+    if 'quantity' in changes:
+        value = changes['quantity']
+        if not isinstance(value, str) or not re.fullmatch(r'[+-][0-9]+', value):
+            raise ValueError('quantity must be a change with a + or - sign')
+    validate_common_lot_fields(changes)
+
+
+def split_tokens(value, label):
+    if isinstance(value, str):
+        tokens = value.split(',')
+    elif isinstance(value, (list, tuple)):
+        tokens = list(value)
+    else:
+        raise ValueError(f'invalid {label}')
+    if not tokens or any(not isinstance(token, str) or not token for token in tokens):
+        raise ValueError(f'invalid {label}')
+    return tokens
+
+
+def validate_inventory_query(item_type, status, color_id, category_id):
+    params = {}
+    if item_type is not None:
+        tokens = split_tokens(item_type, 'item_type')
+        if any(token not in INVENTORY_ITEM_TYPES for token in tokens):
+            raise ValueError('invalid item_type')
+        params['item_type'] = ','.join(tokens)
+    if status is not None:
+        tokens = split_tokens(status, 'status')
+        if any(not re.fullmatch(r'-?[YSBCNR]', token) for token in tokens):
+            raise ValueError('invalid status')
+        params['status'] = ','.join(tokens)
+    if color_id is not None:
+        validate_int(color_id, 'color_id', minimum=0)
+        params['color_id'] = color_id
+    if category_id is not None:
+        validate_digits(category_id, 'category_id')
+        params['category_id'] = int(category_id)
+    return params
 
 
 def provider_key(letter, number, colour_key=None):
@@ -55,15 +182,22 @@ class BrickLink(Source):
         return (isinstance(meta, dict) and meta.get('code') in (401, 403)
                 and not re.search(r'IP_MISMATCH|BAD_OAUTH|TIMESTAMP|NONCE', str(meta), re.IGNORECASE))
 
-    def call(self, path, params=None, *, normalize=None, job_id=None):
+    def call(self, path, params=None, *, method='GET', body=None, normalize=None, job_id=None):
         types = '|'.join(TYPE_IDS)
-        if not re.fullmatch(r'(?:/items/(' + types + r')/[A-Za-z0-9-]{1,32}(/price)?|/colors/[0-9]+|/orders|/orders/[0-9]+/items)', path):
+        allowed = {
+            'GET': r'(?:/items/(' + types + r')/[A-Za-z0-9-]{1,32}(/price)?|/colors/[0-9]+|/orders|/orders/[0-9]+/items|/inventories(?:/[0-9]+)?)',
+            'POST': r'/inventories',
+            'PUT': r'/inventories/[0-9]+',
+            'DELETE': r'/inventories/[0-9]+',
+        }
+        pattern = allowed.get(method)
+        if not pattern or not re.fullmatch(pattern, path) or (body is not None) != (method in ('POST', 'PUT')):
             raise ValueError('unsupported BrickLink endpoint')
         self.ready()
 
         def consume(reply):
             meta = reply['meta']
-            if meta['code'] != 200:
+            if meta['code'] not in ((200, 201) if method == 'POST' else (200,)):
                 if meta['code'] == 404:
                     raise NotFoundAtSource('BrickLink has no such item')
                 if meta['code'] == 401 and 'TOKEN_IP_MISMATCHED' in str(meta):
@@ -71,10 +205,14 @@ class BrickLink(Source):
                 if self.key_refused(reply):
                     raise KeyRejected('BrickLink API unsuccessful')
                 raise SourceError('BrickLink API unsuccessful')
-            data = reply['data']
+            data = None if method == 'DELETE' else reply['data']
             return normalize(data) if normalize else data
-        return self.request(path, json.dumps(params or {}, sort_keys=True), signed_request(path, params or {}, self.credential_values()),
-                            consume, job_id=job_id)
+        query = params or {}
+        key = json.dumps(query, sort_keys=True)                      # a read keeps its key as before
+        if method != 'GET':
+            key = ' '.join([method, path, key] + ([hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()] if body is not None else []))
+        request = signed_request(path, query, self.credential_values(), method=method, body=body)
+        return self.request(path, key, request, consume, job_id=job_id)
 
     def check_key(self):
         """Cheapest authenticated read; proves the four values without changing data."""
@@ -187,6 +325,28 @@ class BrickLink(Source):
         if isinstance(order_id, bool) or not re.fullmatch('[0-9]+', str(order_id)):
             raise ValueError('invalid order id')
         return self.call(f'/orders/{order_id}/items')
+
+    def store_lots(self, item_type=None, status=None, color_id=None, category_id=None):
+        return self.call('/inventories', validate_inventory_query(item_type, status, color_id, category_id))
+
+    def store_lot(self, inventory_id):
+        validate_digits(inventory_id, 'inventory id')
+        return self.call(f'/inventories/{inventory_id}')
+
+    def create_store_lot(self, lot):
+        """Create one lot. Not idempotent: after a `SourceError` the reply may have been lost, so read the lots back before any retry."""
+        validate_create_lot(lot)
+        return self.call('/inventories', method='POST', body=lot)
+
+    def update_store_lot(self, inventory_id, changes):
+        """Change one lot. A quantity is a signed change (`+2`), never a total, so a repeat after a lost reply applies it twice: read back first."""
+        validate_digits(inventory_id, 'inventory id')
+        validate_update_lot(changes)
+        return self.call(f'/inventories/{inventory_id}', method='PUT', body=changes)
+
+    def delete_store_lot(self, inventory_id):
+        validate_digits(inventory_id, 'inventory id')
+        return self.call(f'/inventories/{inventory_id}', method='DELETE')
 
 
 # ---------- the pipeline step ----------

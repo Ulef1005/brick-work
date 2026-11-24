@@ -172,5 +172,6 @@ def test_the_key_day_is_the_last_good_call_and_a_replaced_key_does_not_inherit_i
     from brickwork.web.sync_site import _key_checked_day
     assert _key_checked_day({'saved_at': '2026-11-10T09:00:00.000Z'}, '2026-11-18T12:00:00+00:00') == '18 Nov'
     assert _key_checked_day({'saved_at': '2026-11-20T09:00:00+00:00'}, '2026-11-18T12:00:00.000Z') is None      # the key was replaced after the last call
-    assert _key_checked_day({'saved_at': None}, '2026-11-18T12:00:00Z') == '18 Nov'                         # an environment key has no save time
+    assert _key_checked_day({'saved_at': None}, '2026-11-18T12:00:00Z') == '18 Nov'                         # no save time known: the call counts
+    assert _key_checked_day({'saved_at': 'not a time'}, '2026-11-18T12:00:00Z') is None                      # a save time that cannot be read hides it
     assert _key_checked_day({'saved_at': '2026-11-10T09:00:00Z'}, None) is None and _key_checked_day(None, 'x') is None

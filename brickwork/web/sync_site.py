@@ -81,8 +81,9 @@ def _key_checked_day(key, last_success):
         except ValueError:
             return None
         return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
-    seen, saved = moment(last_success), moment((key or {}).get('saved_at'))
-    if seen is None or (saved is not None and seen < saved):
+    seen, saved_at = moment(last_success), (key or {}).get('saved_at')
+    saved = moment(saved_at) if saved_at else None
+    if seen is None or (saved_at and (saved is None or seen < saved)):        # a save time that cannot be read hides the day, never shows an old key's
         return None
     return _day(last_success)
 

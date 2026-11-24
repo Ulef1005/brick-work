@@ -10,7 +10,7 @@ from flask import abort, current_app, flash, redirect, request, url_for
 from flask_login import login_required
 
 from .safe_errors import public
-from .sync_site import LOCAL, _day, _guard
+from .sync_site import LOCAL, _day, _guard, _key_checked_day
 from .sync_views import _db, _event_id, _page, _unavailable, stamp
 from .views import web_page
 
@@ -198,7 +198,7 @@ def step_site():
     subtitle = 'Last run ' + stamp(runs[0]['at']) if runs else 'Not run yet'
     return _render(screen='site', title=LABEL, subtitle=subtitle, connected=connected, key=key,
                    orders_on=choices['orders'] != 'off', budget=budget, what=what, runs=runs,
-                   key_day=_day((budget or {}).get('last_success')))
+                   key_day=_key_checked_day(key, (budget or {}).get('last_success')))
 
 
 @_route('get', '/connect', True)

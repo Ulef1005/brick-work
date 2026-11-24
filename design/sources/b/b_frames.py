@@ -201,7 +201,7 @@ def page(body, w, h):
 # Commission N round 1 (#517, approved 2026-11-19): Sync last in the Workbench row, no Collection sync row, keys and the Lost
 # Parts rule on each site's page, Settings pointing there. Wording: brick-work-marketing; rows: brick-work-product.
 GROUPS = {'Collection': ['Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes'],
-          'Workbench': ['Part Spotter', 'Set Inspector', 'Lot Sorter', 'Part Runner', 'Matchmaker', 'Build Scout', 'Orders', 'Storage', 'Sync'],
+          'Workbench': ['Sync', 'Set Inspector', 'Part Spotter', 'Lot Sorter', 'Part Runner', 'Matchmaker', 'Build Scout', 'Orders', 'Storage'],
           'Planning': ['Wishlist', 'Prices', 'Complete sets', 'Order missing parts'],
           'Manage': ['Add', 'Tools & Admin', 'Appearance']}
 

@@ -52,11 +52,10 @@ def count(pair, number, table='copy'):
 
 
 def test_sources_page_cards_and_hub_row(client, remote):
-    rb = soup(client.get('/workbench/sync/rebrickable'))
-    card = rb.select_one('[data-sync-source=rebrickable]')
-    assert card.select_one('.bk-pill').get_text(strip=True) == 'Not linked'
-    assert card.select_one('a.bk-primary').get_text(strip=True) == 'Link a collection'
-    assert 'Nothing pulled or sent yet.' in rb.get_text()
+    rb = soup(client.get('/workbench/sync/rebrickable'))          # #519: the Rebrickable page has its own cards; see test_sync_rebrickable_page.py
+    assert rb.select_one('[data-rb-account] .sr-tag').get_text(strip=True) == 'Not connected'
+    assert rb.select_one('a.bk-primary').get_text(strip=True) == 'Connect'
+    assert 'Nothing has run yet.' in rb.get_text()
     bs = soup(client.get('/workbench/sync/brickset'))
     assert bs.select_one('[data-sync-source=brickset] [data-needs-key=brickset]').strong.text == 'Needs a Brickset key'
     assert soup(client.get('/manage/tools')).find('a', href='/workbench/sync')
@@ -64,14 +63,15 @@ def test_sources_page_cards_and_hub_row(client, remote):
 
 def test_connect_link_pull_apply_undo(client, remote, pair):
     csrf = token(client)
-    link = soup(client.get('/manage/sync/rebrickable/link'))
+    assert client.get('/manage/sync/rebrickable/link').location.endswith('/workbench/sync/rebrickable/connect')     # the old Link page is step 1 now
+    link = soup(client.get('/workbench/sync/rebrickable/connect'))
     assert link.select_one('form[action$="/connect"] input[type=password][name=password]')
     response = client.post('/manage/sync/rebrickable/connect', data={'csrf_token': csrf, 'username': 'synthetic-user', 'password': PASSWORD})
     assert response.status_code == 302
-    link = soup(client.get('/manage/sync/rebrickable/link'))
-    assert 'Connected' in link.select_one('.sy-account .bk-pill').get_text()
+    link = soup(client.get('/workbench/sync/rebrickable/connect'))
+    assert 'Connected' in link.select_one('[data-rb-account] .sr-tag').get_text()
     assert PASSWORD not in link.decode() and TOKEN not in link.decode()
-    assert [i['value'] for i in link.select('input[name=owned]')] == ['1', '2', '9']
+    assert [i['value'] for i in soup(client.get('/workbench/sync/rebrickable/choose')).select('input[name=owned]')] == ['1', '2', '9']
     response = client.post('/manage/sync/rebrickable/link', data={'csrf_token': csrf, 'owned': ['1', '2'], 'wishlist': '9', 'send_to': '1', 'wish_list': 'default'})
     assert response.status_code == 302 and '/manage/sync/rebrickable/plan/' in response.location
     plan = soup(client.get(response.location))
@@ -86,7 +86,7 @@ def test_connect_link_pull_apply_undo(client, remote, pair):
     assert response.status_code == 302 and 'pulled=' in response.location
     sources = soup(client.get(response.location))
     assert 'Pulled · 2 copies' in sources.get_text()
-    assert sources.select_one('.sy-log-row')
+    assert sources.select_one('[data-rb-runs] .sr-run')
     event = re.search(r'pulled=(\d+)', response.location)[1]
     assert count(pair, '1000-1') == 2
     client.post('/manage/sync/rebrickable/undo', data={'csrf_token': csrf, 'event': event})
@@ -132,7 +132,7 @@ def test_rejected_token_message(client, remote):
     csrf = token(client)
     client.post('/manage/sync/rebrickable/paste', data={'csrf_token': csrf, 'value': 'wrong-token-123'})
     response = client.post('/manage/sync/rebrickable/pull', data={'csrf_token': csrf})
-    page = soup(client.get(response.location))
+    page = soup(client.get(response.location, follow_redirects=True))
     assert 'Rebrickable rejected the key or user token' in page.get_text()
 
 
@@ -145,7 +145,8 @@ def test_the_pages_before_setup_show_the_notice(app4, tmp_path, monkeypatch):
     """#68: no database is not a 500 (moved here from test_bw_small_68_sync.py)."""
     from tests.web_fixtures import logged_in
     monkeypatch.setenv('BW_DB_PATH', str(tmp_path / 'not-set-up' / 'brickwork.db'))
-    for path in ('/workbench/sync', '/workbench/sync/rebrickable', '/manage/sync/rebrickable/link'):
+    for path in ('/workbench/sync', '/workbench/sync/rebrickable', '/workbench/sync/rebrickable/connect', '/workbench/sync/rebrickable/choose',
+                 '/manage/sync/brickset/link'):
         response = logged_in(app4).get(path)
         assert response.status_code == 503
         assert 'database is not available' in response.get_data(as_text=True)

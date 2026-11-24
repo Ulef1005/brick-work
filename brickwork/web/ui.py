@@ -257,7 +257,7 @@ def navigation():
         current = 'Orders'
     elif endpoint.startswith('web.bw_storage'):
         current = 'Storage'
-    elif endpoint in ('web.bw_sync_hub', 'web.bw_sync', 'web.bw_sync_site', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_write'):
+    elif endpoint in ('web.bw_sync_hub', 'web.bw_sync', 'web.bw_sync_site', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_write') or endpoint.startswith('web.bw_sync_rb_'):
         current = 'Sync'
     elif endpoint in ('web.index', 'web.prices'):
         current = 'Prices'

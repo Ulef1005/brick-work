@@ -53,14 +53,18 @@ def _log(db, limit=20, source=None):
     With a source, only that site's rows (an undo counts for the site of the pull it undid), read until `limit` of them are found."""
     rows = []
     for r in db.execute("""SELECT e.id, e.entity_id, e.field, e.new_value, e.at, EXISTS(SELECT 1 FROM event_undo u WHERE u.event_id=e.id) AS undone
-            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send') ORDER BY e.id DESC""" + (' LIMIT ?' if source is None else ''),
+            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send', 'parts_receipt') ORDER BY e.id DESC""" + (' LIMIT ?' if source is None else ''),
                         (limit,) if source is None else ()):
         if source is not None and len(rows) >= limit:
             break
         value = json.loads(r['new_value']) if r['new_value'] else None
         if source is not None and _row_source(db, r, value) != source:
             continue
-        if r['field'] == 'receipt':
+        if r['field'] == 'parts_receipt':
+            c = value.get('counts', {})
+            rows.append(dict(id=r['id'], at=r['at'], source='rebrickable', direction='Pulled', event=r['id'], state='Undone' if r['undone'] else 'Done',
+                             what=f"{c.get('pieces', 0)} loose {'piece' if c.get('pieces') == 1 else 'pieces'} added from {c.get('rows', 0)} part list {'row' if c.get('rows') == 1 else 'rows'}"))
+        elif r['field'] == 'receipt':
             c = value.get('counts', {})
             what = ' · '.join(p for p in (
                 f"{c.get('copies', 0)} {'copy' if c.get('copies') == 1 else 'copies'} added" if c.get('copies') else '',
@@ -68,16 +72,16 @@ def _log(db, limit=20, source=None):
                 f"{c.get('wishes_added', 0)} {'wish' if c.get('wishes_added') == 1 else 'wishes'} added" if c.get('wishes_added') else '',
                 f"{c.get('wishes_changed', 0)} wish quantities raised" if c.get('wishes_changed') else '',
                 _lost_words(c)) if p) or 'Nothing new'
-            rows.append(dict(at=r['at'], source=value['source'], direction='Pulled', what=what, state='Undone' if r['undone'] else 'Done', event=r['id']))
+            rows.append(dict(id=r['id'], at=r['at'], source=value['source'], direction='Pulled', what=what, state='Undone' if r['undone'] else 'Done', event=r['id']))
         elif r['field'] == 'undo':
-            rows.append(dict(at=r['at'], source=_row_source(db, r, value), direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
+            rows.append(dict(id=r['id'], at=r['at'], source=_row_source(db, r, value), direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
         else:
             counts = (value or {}).get('counts', {})
             sent = counts.get('sent', 0) + counts.get('unchanged', 0)
             problems = {k: v for k, v in counts.items() if k not in ('sent', 'unchanged')}
-            what = f"{sent} {'change' if sent == 1 else 'changes'} sent" + ''.join(f" · {v} {k.replace('_', ' ')}" for k, v in problems.items())
+            what = ('Lost Parts: ' if (value or {}).get('kind') == 'lost_parts' else '') + f"{sent} {'change' if sent == 1 else 'changes'} sent" + ''.join(f" · {v} {k.replace('_', ' ')}" for k, v in problems.items())
             state = 'Done' if not problems else 'Waiting for you'
-            rows.append(dict(at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None))
+            rows.append(dict(id=r['id'], at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None, lost=(value or {}).get('kind') == 'lost_parts'))
     return rows[:limit]
 
 
@@ -85,14 +89,16 @@ def _receipt_source(db, event_id):
     """The site of one pull receipt ('' when the id names no receipt)."""
     if not str(event_id).isdigit():
         return ''
-    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (int(event_id),)).fetchone()
-    return ((json.loads(row['new_value']) if row and row['new_value'] else {}) or {}).get('source', '')
+    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field IN ('receipt', 'parts_receipt')", (int(event_id),)).fetchone()
+    return ((json.loads(row['new_value']) if row and row['new_value'] else {}) or {}).get('source', '') or ('rebrickable' if row else '')
 
 
 def _row_source(db, r, value):
     """The site a log event belongs to: a receipt names it, a send keeps it as its entity id, an undo takes it from the pull it undid."""
     if r['field'] == 'receipt':
         return (value or {}).get('source', '')
+    if r['field'] == 'parts_receipt':
+        return 'rebrickable'
     if r['field'] == 'undo':
         return _receipt_source(db, (value or {}).get('undoes'))
     return r['entity_id']
@@ -189,7 +195,7 @@ def bw_sync_hub():
                 connected=connected, state_tag=_state_tag(status, connected),
                 account='Linked' if connected else 'none', last_sync=_last_sync(status),
                 action_label='Open' if connected else 'Connect',
-                url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_link', source=source),
+                url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_rb_connect') if source == 'rebrickable' else url_for('web.bw_sync_link', source=source),
             ))
         keys_url = url_for('web.bw_admin', page='catalogues')
         for key, label in (('bricklink', 'BrickLink'), ('brickowl', 'Brick Owl')):
@@ -212,6 +218,9 @@ def bw_sync_site(source):
     from ..core.sync import lost_parts
     from .setup_state import key_missing
     _source(source)
+    if source == 'rebrickable':
+        from .sync_rebrickable import site_page
+        return site_page()
     with _db() as db:
         status = sync.status(db, source)
         cards = [dict(status, key_gap=key_missing(source), user=status['credentials']['user']['configured'],
@@ -251,6 +260,8 @@ def bw_sync_link(source):
     from ..core import sync, wishlists
     from .setup_state import key_missing
     _source(source)
+    if source == 'rebrickable':   # its account and its choices are steps 1 and 2 of the Rebrickable page (#519)
+        return redirect(url_for('web.bw_sync_rb_connect'))
     lists, list_error = [], None
     with _db() as db:
         status = sync.status(db, source)
@@ -314,6 +325,8 @@ def bw_sync_write(source, action):
         abort(403, 'Changes are switched off on this instance')
     form = request.form
     back = url_for('web.bw_sync_link', source=source)
+    if source == 'rebrickable' and form.get('next') in ('site', 'connect'):   # the Rebrickable page and its connect step keep their own account buttons (#519)
+        back = url_for('web.bw_sync_site' if form['next'] == 'site' else 'web.bw_sync_rb_connect', **({} if form['next'] == 'connect' else {'source': source}))
     try:
         with _db() as db, audit_origin('app'):
             if action == 'connect':

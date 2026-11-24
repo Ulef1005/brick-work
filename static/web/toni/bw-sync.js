@@ -24,8 +24,8 @@
         submit.textContent = ticked ? verb + ' ' + ticked + ('syPlain' in submit.dataset ? '' : ticked === 1 ? ' change' : ' changes') : verb;
         submit.disabled = ticked === 0;
       }
-      if (requests) requests.textContent = String(ticked);
-      if (total) total.textContent = ticked + ' ticked';
+      if (requests) requests.textContent = String(form.dataset.syDirection === 'run' ? form.querySelectorAll('[data-sy-send]:checked').length : ticked);
+      if (total) total.textContent = 'syOf' in total.dataset ? ticked + ' of ' + total.dataset.syOf + ' chosen' : ticked + ' ticked';
     };
     tabs.forEach((button) => button.addEventListener('click', () => {
       tab = button.dataset.syTab;

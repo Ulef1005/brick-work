@@ -1,6 +1,7 @@
 """12n Collection sync pages (#10): sources, link, pull preview, send review. Services live in core.sync."""
 from contextlib import closing
 import json
+import re
 import sqlite3
 
 from flask import abort, flash, get_flashed_messages, redirect, render_template, request, url_for
@@ -58,7 +59,8 @@ def _log(db, limit=20, source=None):
         if source is not None and len(rows) >= limit:
             break
         value = json.loads(r['new_value']) if r['new_value'] else None
-        if source is not None and _row_source(db, r, value) != source:
+        site = _row_source(db, r, value)
+        if source is not None and site != source:
             continue
         if r['field'] == 'parts_receipt':
             c = value.get('counts', {})
@@ -74,7 +76,7 @@ def _log(db, limit=20, source=None):
                 _lost_words(c)) if p) or 'Nothing new'
             rows.append(dict(id=r['id'], at=r['at'], source=value['source'], direction='Pulled', what=what, state='Undone' if r['undone'] else 'Done', event=r['id']))
         elif r['field'] == 'undo':
-            rows.append(dict(id=r['id'], at=r['at'], source=_row_source(db, r, value), direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
+            rows.append(dict(id=r['id'], at=r['at'], source=site, direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
         else:
             counts = (value or {}).get('counts', {})
             sent = counts.get('sent', 0) + counts.get('unchanged', 0)
@@ -85,11 +87,18 @@ def _log(db, limit=20, source=None):
     return rows[:limit]
 
 
+def _event_id(value):
+    """An event id from a query or form value: ASCII digits that fit SQLite's integer, else None (never a 500 on '²' or a 30-digit id)."""
+    text = str(value or '')
+    return int(text) if re.fullmatch(r'[0-9]{1,18}', text) else None
+
+
 def _receipt_source(db, event_id):
     """The site of one pull receipt ('' when the id names no receipt)."""
-    if not str(event_id).isdigit():
+    event_id = _event_id(event_id)
+    if event_id is None:
         return ''
-    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field IN ('receipt', 'parts_receipt')", (int(event_id),)).fetchone()
+    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field IN ('receipt', 'parts_receipt')", (event_id,)).fetchone()
     return ((json.loads(row['new_value']) if row and row['new_value'] else {}) or {}).get('source', '') or ('rebrickable' if row else '')
 
 
@@ -115,9 +124,10 @@ def _lost_words(c):
 
 def lost_result(db, event_id):
     """The Lost Parts step of one pull as its receipt kept it (None: that pull had none), for the result card."""
-    if not str(event_id).isdigit():
+    event_id = _event_id(event_id)
+    if event_id is None:
         return None
-    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (int(event_id),)).fetchone()
+    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (event_id,)).fetchone()
     return (json.loads(row['new_value']) if row and row['new_value'] else {}).get('lost')
 
 
@@ -152,11 +162,14 @@ def _last_sync(status):
     """Newest pull or send time formatted with stamp, or 'Never'. Compared as instants: a pull is stamped '…Z', a send '…+00:00'."""
     from datetime import datetime
 
-    def instant(value):   # both are stored in UTC, so the naive instant orders them
+    from datetime import timezone
+
+    def instant(value):   # as a UTC instant (a stamp without an offset counts as UTC, as stored)
         try:
-            return datetime.fromisoformat(str(value).replace('Z', '+00:00')).replace(tzinfo=None)
+            moment = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
         except ValueError:
             return datetime.min
+        return moment.astimezone(timezone.utc).replace(tzinfo=None) if moment.tzinfo else moment
     times = [t for t in ((status.get('last_pull') or {}).get('at'), (status.get('last_send') or {}).get('at')) if t]
     return stamp(max(times, key=instant)) if times else 'Never'
 
@@ -245,7 +258,7 @@ def bw_sync():
     if pulled:
         source = 'rebrickable'
         with _db() as db:
-            row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (int(pulled) if pulled.isdigit() else 0,)).fetchone()
+            row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (_event_id(pulled) or 0,)).fetchone()
         if row and row['new_value']:
             found = json.loads(row['new_value']).get('source')
             source = found if found in SOURCES else source
@@ -375,10 +388,12 @@ def bw_sync_write(source, action):
                 sync.apply_send(db, plan_id, form.getlist('tick'))
                 return redirect(url_for('web.bw_sync_plan', source=source, plan_id=plan_id))
             elif action == 'undo':
-                event = form.get('event', '')
-                if not event.isdigit():
+                event = _event_id(form.get('event', ''))
+                if event is None:
                     abort(400)
-                sync.undo(db, int(event))
+                if _receipt_source(db, event) != source:   # a pull of another site is undone from its own page
+                    abort(404)
+                sync.undo(db, event)
                 flash('Pull undone.', 'success')
                 return redirect(url_for('web.bw_sync_site', source=source))
             else:

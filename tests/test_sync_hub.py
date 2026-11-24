@@ -144,3 +144,17 @@ def test_site_page_ignores_a_pull_of_another_site(client, remote, pair):
     assert soup(client.get(f'/workbench/sync/rebrickable?pulled={pull}')).select_one('form.sy-undo')
     assert soup(client.get(f'/workbench/sync/brickset?pulled={pull}')).select_one('form.sy-undo') is None
     assert soup(client.get('/workbench/sync/rebrickable?pulled=999999')).select_one('form.sy-undo') is None
+    for odd in ('%C2%B2', '9' * 30, '-1', 'x'):   # a superscript digit, past SQLite's integer, signed, not a number: the page, not a 500
+        assert soup(client.get(f'/workbench/sync/rebrickable?pulled={odd}')).select_one('form.sy-undo') is None
+        assert client.get(f'/manage/sync?pulled={odd}').status_code == 302
+
+
+def test_undo_refuses_a_pull_of_another_site(client, remote, pair):
+    with closing(connect(pair)) as db:
+        pull = _event(db, 'receipt', '1', {'source': 'rebrickable', 'counts': {}})
+        db.commit()
+    csrf = csrf_token(client)
+    assert client.post('/manage/sync/brickset/undo', data={'csrf_token': csrf, 'event': str(pull)}).status_code == 404
+    assert client.post('/manage/sync/rebrickable/undo', data={'csrf_token': csrf, 'event': '9' * 30}).status_code == 400
+    with closing(connect(pair)) as db:
+        assert db.execute('SELECT COUNT(*) FROM event_undo WHERE event_id=?', (pull,)).fetchone()[0] == 0

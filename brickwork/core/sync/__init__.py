@@ -669,31 +669,32 @@ def _lost_report(section, report):
                 unmatched_sets=section['unmatched_sets'])
 
 
-def kept_rows(plan, keys, resolved=(), existing=None):
-    """`{kind: {item id as text: [remote, here]}}`: the Keep choices still standing after a run (#686). A conflict row of `plan` is kept when it is
-    named in `keys` (the run's choice Keep) or was already kept, unless this run resolved it (`resolved`: the row keys it took or sent). The
-    entries of `existing` for rows this plan does not show stay as they are. A stale pair ends itself: it counts only while both counts still
-    equal it, so nothing needs cleaning."""
+KINDS = ('owned', 'wanted')
+
+
+def kept_rows(rows, keys, resolved=(), existing=None, covered=KINDS):
+    """`{kind: {item id as text: [remote, here]}}`: the Keep choices still standing after a run (#686). A conflict row of `rows` is kept when it
+    is named in `keys` (the run's choice Keep) or was already kept, unless this run resolved it (`resolved`: the row keys it took or sent). Rows
+    of a kind in `covered` are all seen, so an entry of that kind whose row is no longer a conflict (the counts met, or the set is gone) is
+    dropped. The entries of a kind this run does not cover stay as they are. A stale pair ends itself too: it counts only while both counts
+    still equal it."""
     keys, resolved = set(keys or ()), set(resolved or ())
-    seen = {(r['kind'], str(r['item_id'])) for r in plan['rows']}
     out = {}
     for kind, items in (existing or {}).items():
-        for item, pair in items.items():
-            if (kind, item) not in seen:
-                out.setdefault(kind, {})[item] = pair
-    for row in plan['rows']:
+        if kind not in covered and items:
+            out[kind] = dict(items)
+    for row in rows:
         if row['key'] not in resolved and row.get('state') == 'conflict' and (row['key'] in keys or row.get('kept')):
             out.setdefault(row['kind'], {})[str(row['item_id'])] = [row['remote'], row['here']]
     return out
 
 
-def remember_kept(db, plan, keys):
+def remember_kept(db, source, rows, keys, covered=KINDS):
     """A run's Keep choices are written before its stages run (#686), whatever the stages do: only the `kept` map of the baseline changes (no
-    receipt, nothing to undo)."""
-    source = plan['source']
+    receipt, nothing to undo). `rows` are the rows the person saw, `covered` the kinds the run shows."""
     with transaction(db):
         baseline = _setting(db, source, 'baseline', {'remote': {'owned': {}, 'wanted': {}}, 'here': {'owned': {}, 'wanted': {}}})
-        kept = kept_rows(plan, keys, existing=baseline.get('kept'))
+        kept = kept_rows(rows, keys, existing=baseline.get('kept'), covered=covered)
         if (baseline.get('kept') or {}) != kept:
             _put(db, source, 'baseline', dict(baseline, kept=kept) if kept else {k: v for k, v in baseline.items() if k != 'kept'})
 
@@ -710,7 +711,7 @@ def _baseline(db, plan, wish_list, kept=None, resolved=(), existing=None):
                 remote[kind][key] = remote[kind].get(key, 0) + quantity
     here = _here(db, wish_list)
     out = dict(at=now().isoformat(), remote=remote, here={k: {str(i): n for i, n in v.items()} for k, v in here.items()})
-    held = kept_rows(plan, kept, resolved, existing)
+    held = kept_rows(plan['rows'], kept, resolved, existing)
     if held:
         out['kept'] = held
     return out
@@ -885,6 +886,10 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
             baseline.setdefault('remote', {}).setdefault(row['kind'], {})[str(row['item_id'])] = row['send']
             baseline.setdefault('here', {}).setdefault(row['kind'], {})[str(row['item_id'])] = row['here']
             (baseline.get('kept') or {}).get(row['kind'], {}).pop(str(row['item_id']), None)      # sent: no longer a kept conflict (#686)
+        if 'kept' in baseline:
+            baseline['kept'] = {k: v for k, v in baseline['kept'].items() if v}
+            if not baseline['kept']:
+                del baseline['kept']
         _put(db, source, 'baseline', baseline)
         _put(db, source, 'last_send', report)
         # A record, not an undoable receipt: remote changes cannot be taken back from here.

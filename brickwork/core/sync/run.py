@@ -802,20 +802,23 @@ def stage_lost_out(db, run, form_data, *, http=None, per_key=False, should_stop=
     return stages['lost_out']
 
 
-def remember_choices(db, plans, form_data):
+def remember_choices(db, run, plans, form_data):
     """The conflicts the person chose to Keep are remembered (#686) before any stage runs, so a stage with nothing to do (or one that fails) cannot
-    lose them. Not fatal: a Keep that could not be written is only forgotten."""
-    plan = plans['pull'] or plans['send']
-    if plan:
-        try:
-            sync.remember_kept(db, plan, [k for k, v in form_data['chosen'].items() if v == 'keep'])
-        except FAILURES as exc:
-            LOG.warning('The Keep choices of a run could not be written: %s', type(exc).__name__)
+    lose them. The pairs are the counts of the preview rows the person saw, for the kinds the run shows. Not fatal: a Keep that could not be
+    written is only forgotten."""
+    if not (plans['pull'] or plans['send']):
+        return
+    d = run['directions']
+    covered = tuple(kind for kind, direction in (('owned', 'owned'), ('wanted', 'wishlist')) if d[direction] != 'off')
+    try:
+        sync.remember_kept(db, run.get('source', SOURCE), rows(db, run, plans), [k for k, v in form_data['chosen'].items() if v == 'keep'], covered)
+    except FAILURES as exc:
+        LOG.warning('The Keep choices of a run could not be written: %s', type(exc).__name__)
 
 
 def _stages(db, run, plans, form, chosen, http, via, actor):
     form_data = _extract_form(run, plans, form, chosen)
-    remember_choices(db, plans, form_data)
+    remember_choices(db, run, plans, form_data)
     stage_pull(db, run, plans, form_data, via=via, actor=actor)
     stage_parts(db, run, plans, form_data, via=via, actor=actor)
     stage_send(db, run, plans, form_data, http=http)

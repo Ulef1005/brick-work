@@ -1344,3 +1344,26 @@ def test_a_job_run_remembers_the_keep_even_when_its_pull_has_nothing_to_do(clien
         run_job.queue(db, run_id, MultiDict([('choice:owned:' + item, 'keep')]))
         run_job.drain(db)
         assert sync._setting(db, 'rebrickable', 'baseline', {}).get('kept') == {'owned': {item: [5, 1]}}
+
+
+def test_a_keep_ends_when_the_counts_meet_and_does_not_come_back_later(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))                          # the Keep stands
+    item = str(db_item(pair, '1000-1'))
+    remote.lists[1]['1000-1'] = 1                                         # the counts meet (here 1)
+    remote.lists[2]['1000-4'] = 2                                         # and a pull has something to write, so the baseline is rebuilt
+    apply_run(client, csrf, start(client, csrf))
+    with db_of(pair) as db:
+        assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {})
+    remote.lists[1]['1000-1'] = 5                                         # one side moves alone: a plain add, not a resurrected conflict
+    page = preview_of(client, start(client, csrf))
+    assert not page.select('[data-rb-conflicts]') and rows_of(page)['1000-1']
+
+
+def test_sending_a_kept_conflict_ends_its_keep_without_an_empty_map(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))
+    item = str(db_item(pair, '1000-1'))
+    apply_run(client, csrf, start(client, csrf), **{'choice:owned:' + item: 'send'})
+    with db_of(pair) as db:
+        assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {})

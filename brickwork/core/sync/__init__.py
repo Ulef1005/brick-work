@@ -108,11 +108,12 @@ def link(db, source, options):
     wishlist (one list id or null), send_to (the owned list that receives sends). Both sources:
     wish_list (the Brick Work wishlist that pulls and sends wishes, default 'default'). Rebrickable also takes lost_parts (true or false): the
     remembered switch "Bring in Lost Parts" of a pull (#457), on when never set; and keep_list_names (true or false): "Keep each set's
-    Rebrickable list names as its source detail" (#531), on when never set."""
+    Rebrickable list names as its source detail" (#531), on when never set; and part_lists (part list ids): the part lists a part-list pull
+    brings into loose stock (#471), none when never set."""
     _source(source)
     if not isinstance(options, dict):
         raise errors.ValidationFailed('Send the link options as an object')
-    allowed = {'owned', 'wishlist', 'send_to', 'wish_list', 'lost_parts', 'keep_list_names'} if source == 'rebrickable' else {'wish_list'}
+    allowed = {'owned', 'wishlist', 'send_to', 'wish_list', 'lost_parts', 'keep_list_names', 'part_lists'} if source == 'rebrickable' else {'wish_list'}
     if set(options) - allowed:
         raise errors.ValidationFailed('Unknown link option: ' + ', '.join(sorted(set(options) - allowed)))
     value = dict(_setting(db, source, 'link', {}), **options)
@@ -132,6 +133,9 @@ def link(db, source, options):
         raise errors.ValidationFailed('lost_parts is true or false')
     if 'keep_list_names' in value and type(value['keep_list_names']) is not bool:
         raise errors.ValidationFailed('keep_list_names is true or false')
+    parts = value.get('part_lists')
+    if 'part_lists' in options and parts is not None and (not isinstance(parts, list) or any(type(i) is not int or i <= 0 for i in parts) or len(set(parts)) != len(parts)):
+        raise errors.ValidationFailed('Choose part lists by id, once each')
     wishlists.require(db, value.get('wish_list') or 'default')
     with transaction(db):
         before = _setting(db, source, 'link')
@@ -346,6 +350,8 @@ def _plan_lists(db, plan, remote, switch):
     all_ids = {str(i) for i in remote.get('all_list_ids', names)}
     mixed = origins.mixed_lists(db, 'rebrickable')
     for key, (old, count) in origins.lists_of(db, 'rebrickable').items():
+        if key.startswith('part:'):   # a part list's lines (#471) belong to the part-list pull, not to a set list
+            continue
         if key in names:
             state = 'unchanged' if names[key] == old and key not in mixed else 'renamed'
         else:
@@ -555,6 +561,8 @@ def _apply_lists(db, plan, choices):
     out = dict(renamed=[], dropped=[])
     names = (plan.get('lists') or {}).get('names', {})
     for key, action in choices.items():
+        if str(key).startswith('part:'):
+            continue
         if action == 'rename':
             out['renamed'] += origins.rename_list(db, 'rebrickable', key, names[key])
         elif action == 'drop':
@@ -789,3 +797,5 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
         audit(db, 'sync:' + source, 'send', None, dict(plan=plan_id, counts=summary))
     return dict(plan=plan_id, counts=summary, rows=[dict(key=k, **v) for k, v in results.items()],
                 note='Remote changes are not undone by Brick Work\'s Undo.')
+
+from . import part_lists  # noqa: E402,F401 — registers the part-list pull's Undo (#471)

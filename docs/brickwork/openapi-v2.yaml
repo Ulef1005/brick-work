@@ -5378,6 +5378,13 @@ paths:
                 keep_list_names:
                   type: boolean
                   description: 'Rebrickable only: the remembered switch "Keep each set''s Rebrickable list names as its source detail" (#531). On when never set.'
+                part_lists:
+                  type:
+                  - array
+                  - 'null'
+                  items:
+                    type: integer
+                  description: 'Rebrickable only: the ids of the part lists to pull into loose stock (#471). null clears the choice.'
       responses:
         '200':
           description: OK
@@ -5392,6 +5399,80 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-v1: put_sync_by_source_link
+      x-piece: M.11d
+  /sync/rebrickable/parts/plan:
+    post:
+      operationId: post_sync_rebrickable_parts_plan
+      x-mcp-tool: plan_sync_rebrickable_parts
+      summary: 'Compare the chosen Rebrickable part lists with the loose parts in their lots: add (Rebrickable has more), differs and only here are listed, the
+        last two never pulled. Writes nothing to the collection; the plan expires after 24 hours.'
+      tags:
+      - Sync
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Plan created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenPartsPlan'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11d
+  /sync/rebrickable/parts/apply:
+    post:
+      operationId: post_sync_rebrickable_parts_apply
+      x-mcp-tool: apply_sync_rebrickable_parts
+      summary: 'Apply a part-list plan: the ticked rows'' difference goes into loose stock (Added via Rebrickable, tag imported from Rebrickable), in one
+        transaction with one receipt. Never lowers or removes stock. Undo with POST /events/{id}/undo.'
+      tags:
+      - Sync
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - plan_id
+              properties:
+                plan_id:
+                  type: string
+                ticked:
+                  type: array
+                  description: 'Row keys to apply. Left out: every row that adds.'
+                  items:
+                    type: string
+                lots:
+                  type: object
+                  description: 'Row key to lot id: puts a row into another live lot than its list''s own.'
+                  additionalProperties:
+                    type: string
+      responses:
+        '200':
+          description: Applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenPartsApplied'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
       x-piece: M.11d
   /sync/{source}/pull/plan:
     post:
@@ -12010,6 +12091,52 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/SyncPlan'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
+    WrittenPartsPlan:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - event_id
+      - undo_url
+      - idempotent_replay
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          description: 'The plan: id, the chosen lists with their lots, the rows (add, differs, only_here), the unmatched numbers and a summary.'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
+    WrittenPartsApplied:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - event_id
+      - undo_url
+      - idempotent_replay
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          description: 'The receipt: event_id, counts, and already_applied.'
         event_id:
           type:
           - integer

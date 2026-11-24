@@ -8,6 +8,7 @@ applying it writes the ticked rows in one transaction that Undo reverses (admin)
 from flask import jsonify
 
 from ..core import errors, sync
+from ..core.sync import part_lists
 from ..core.importer import bricktracker
 from . import database, route
 from .read import respond
@@ -72,6 +73,23 @@ def post_sync_by_source_pull_apply(db, body, source):
 def post_sync_by_source_send_apply(db, body, source):
     plan_of(db, body, known(source), 'send')
     return Done(sync.apply_send(db, body['plan_id'], body.get('ticked')))
+
+
+# ---------- Rebrickable part lists into loose stock (#471) ----------
+
+@route('/sync/rebrickable/parts/plan', 'POST')
+@write(detached=True)
+def post_sync_rebrickable_parts_plan(db, body):
+    """Compare the chosen Rebrickable part lists with the loose parts in their lots; writes nothing, the plan expires after 24 hours."""
+    return Done(part_lists.plan(db), status=201)
+
+
+@route('/sync/rebrickable/parts/apply', 'POST')
+@write
+def post_sync_rebrickable_parts_apply(db, body):
+    """Add the ticked rows' difference to loose stock in one transaction; `lots` puts a row into another live lot. Undo with POST /events/{id}/undo."""
+    sync.load_plan(db, body['plan_id'], 'parts')
+    return Done(part_lists.apply(db, body['plan_id'], body.get('ticked'), lots=body.get('lots')))
 
 
 # ---------- the BrickTracker import ----------

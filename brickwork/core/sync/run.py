@@ -153,7 +153,7 @@ def _brickset_what_syncs(db):
         rows.append(dict(what='Owned sets', direction=labels[d['owned']], linked='Quantity owned'))
     if d['wishlist'] != 'off':
         rows.append(dict(what='Wanted sets', direction=labels[d['wishlist']],
-                         linked='Wanted, as a flag, ↔ wishlist ' + wish_lists.get(link.get('wish_list') or 'default', 'Wanted')))
+                         linked='Quantity wanted ↔ wishlist ' +wish_lists.get(link.get('wish_list') or 'default', 'Wanted')))
     return rows
 
 
@@ -246,8 +246,12 @@ def start(db, *, http=None, source=SOURCE):
     sets_in = d['owned'] in ('into', 'both') or d['wishlist'] in ('into', 'both')
     send_kinds = tuple(k for k, key in (('owned', 'owned'), ('wanted', 'wishlist')) if d[key] in ('to', 'both'))
     lost_in_on = d['lost'] in ('into', 'both')
-    pull = (sync.plan_pull(db, source, http=http, lost_parts_switch=lost_in_on) if source == 'rebrickable' else sync.plan_pull(db, source, http=http)) if (sets_in or lost_in_on) else None
-    send = sync.plan_send(db, source, http=http, kinds=send_kinds) if send_kinds else None
+    want_pull = sets_in or lost_in_on
+    want_send = bool(send_kinds)
+    fetched = sync._fetch(db, source, http) if want_pull and want_send else None
+    pull = (sync.plan_pull(db, source, http=http, lost_parts_switch=lost_in_on, fetched=fetched) if source == 'rebrickable'
+            else sync.plan_pull(db, source, http=http, fetched=fetched)) if want_pull else None
+    send = sync.plan_send(db, source, http=http, kinds=send_kinds, fetched=fetched) if want_send else None
     parts = part_lists.plan(db, http=http) if d['parts'] == 'into' and link.get('part_lists') else None
     lost_send = _lost_send(db, adapters.adapter(db, SOURCE, http)) if d['lost'] in ('to', 'both') else None
     run = dict(id=uuid4().hex, created_at=now().isoformat(), direction='run', source=source, directions=d,
@@ -262,11 +266,6 @@ def load(db, run_id):
     return run, {name: (sync.load_plan(db, run[name]) if run.get(name) else None) for name in ('pull', 'send', 'parts')}
 
 
-def _presence_only(source, r):
-    """Brickset holds a wanted set as a flag, so a wish of 2 here against 1 there is not a difference; Rebrickable keeps quantities."""
-    return source == 'brickset' and r['kind'] == 'wanted' and bool(r['here']) == bool(r['remote'])
-
-
 def candidates(db, d, pull, send, lost_send, source=SOURCE):
     """One entry per set a run could touch (a row that differs, a Lost Parts set), for the pick step: item id, number, name, theme, year, lists."""
     found = {}
@@ -278,7 +277,7 @@ def candidates(db, d, pull, send, lost_send, source=SOURCE):
         entry['lists'] = sorted(set(entry['lists']) | set(lists))
     for plan, ways in ((pull, ('into', 'both')), (send, ('to', 'both'))):
         for r in (plan or {}).get('rows', ()):
-            if d['owned' if r['kind'] == 'owned' else 'wishlist'] in ways and not _presence_only(source, r):    # a kind that is Off in this direction is not a set this run touches
+            if d['owned' if r['kind'] == 'owned' else 'wishlist'] in ways:    # a kind that is Off in this direction is not a set this run touches
                 add(r['item_id'], r['number'], r['name'], r.get('lists') or ())
     if d['lost'] in ('into', 'both'):
         for e in ((pull or {}).get('lost') or {}).get('sets', ()):
@@ -338,7 +337,7 @@ def rows(db, run, plans):
     for r in (plans['pull'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
-        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('into', 'both') or _presence_only(source, r):
+        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('into', 'both'):
             continue
         row = row_of(r)
         if r['state'] == 'add' and r['tickable']:
@@ -354,9 +353,10 @@ def rows(db, run, plans):
     for r in (plans['send'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
-        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('to', 'both') or _presence_only(source, r):
+        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('to', 'both'):
             continue
         row = row_of(r)
+        row['send_no'] = r.get('remote_no')          # the number a send goes to: Brickset gets one call per set number, whatever kind the row is
         if r['state'] == 'conflict':
             row['state'] = 'conflict'
             if r['tickable']:

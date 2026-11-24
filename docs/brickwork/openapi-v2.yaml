@@ -12220,6 +12220,10 @@ components:
           type: string
         label:
           type: string
+        account:
+          type:
+          - string
+          - 'null'
         credentials:
           type: object
         link:

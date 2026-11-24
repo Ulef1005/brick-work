@@ -325,7 +325,7 @@ def bw_sync_write(source, action):
         with _db() as db, audit_origin('app'):
             if action == 'connect':
                 sync.connect(db, source, form.get('username', ''), form.get('password', ''))
-                flash('Connected to ' + sync.LABELS[source] + ' · only the token is kept.', 'success')
+                flash('Connected to ' + sync.LABELS[source] + ' · only the token and your username are kept.', 'success')
             elif action == 'paste':
                 sync.paste(db, source, form.get('value', '').strip())
                 flash('Saved · the value is not shown again.', 'success')

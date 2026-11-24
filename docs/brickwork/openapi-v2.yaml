@@ -1038,6 +1038,7 @@ paths:
       - $ref: '#/components/parameters/Q_status'
       - $ref: '#/components/parameters/Q_storage'
       - $ref: '#/components/parameters/Q_place'
+      - $ref: '#/components/parameters/Q_list'
       - $ref: '#/components/parameters/Q_flag'
       - $ref: '#/components/parameters/Q_lot'
       - $ref: '#/components/parameters/Q_problem'
@@ -7720,6 +7721,12 @@ components:
       schema:
         type: string
       description: Event field.
+    Q_list:
+      name: list
+      in: query
+      schema:
+        type: string
+      description: Keep copies synced from the site list with this name (the Rebrickable set list a set came from); the exact name.
     Q_via:
       name: via
       in: query

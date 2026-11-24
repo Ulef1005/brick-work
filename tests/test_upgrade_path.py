@@ -12,7 +12,7 @@ import sqlite3
 import pytest
 
 from brickwork.core.admin import check_all, check_ok
-from brickwork.store4 import connect as connect_module
+from brickwork.store4 import connect as connect_module, origins
 from brickwork.store4.connect import SCHEMA_VERSION, connect
 from brickwork.store4.errors import UpgradeFailed
 from brickwork.store4.migrate_run import run
@@ -97,7 +97,8 @@ def test_a_050_collection_reaches_the_current_schema_step_by_step(tmp_path, cata
         assert not set(added) & set(columns(live, table))
     with closing(sqlite3.connect(live)) as db:
         at_40 = counts(db)
-    assert at_40 | {'instruction_candidate': 0, 'instruction_search': 0} == carried                                     # every row came across; only the later columns are missing
+    later = {'instruction_candidate': 0, 'instruction_search': 0, 'origin': len(origins.ORIGINS), 'synced_from': 0}   # 4.8 (#551) seeds `origin`
+    assert at_40 | later == carried                                     # every row came across; only the later tables and columns are missing
     with pytest.raises(UpgradeFailed):                          # a read-only open never upgrades (the app's read-only instance)
         connect(live, catalogue, read_only=True)
     assert version(live) == '4.0'

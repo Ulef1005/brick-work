@@ -12,7 +12,7 @@ class InProcessClient:
             extra = {'environ_base': {'REMOTE_ADDR': self.remote_addr}} if self.remote_addr else {}
             response = client.open('/api/v2' + path, method=method,
                 query_string=query, json=body, **extra,
-                headers={'Authorization': 'Bearer ' + self.token, **(headers or {})})
+                headers={'Authorization': 'Bearer ' + self.token, 'X-Brickwork-Channel': 'mcp', **(headers or {})})
             return response.status_code, response.get_json(silent=True) if response.is_json else response.get_data(as_text=True)
 
 
@@ -25,7 +25,7 @@ class HTTPClient:
     def request(self, method, path, *, query=None, body=None, headers=None):
         try:
             response = requests.request(method, self.base_url + path, params=query,
-                json=body, headers={'Authorization': 'Bearer ' + self.token, **(headers or {})},
+                json=body, headers={'Authorization': 'Bearer ' + self.token, 'X-Brickwork-Channel': 'mcp', **(headers or {})},
                 timeout=30, allow_redirects=False)
             try:
                 value = response.json()

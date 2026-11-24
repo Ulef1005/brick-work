@@ -34,6 +34,10 @@ The check script includes the naming gate, a standalone smoke test with sockets 
 
 Decisions that bind future work are recorded as ADRs in [`docs/adr/`](https://github.com/Ulef1005/brick-work/tree/main/docs/adr) in the repository.
 
+## Schema 4.7
+
+Schema 4.7 adds one nullable column, `copy.checked_by` (#489). Empty means Brick Work or nobody, and `rebrickable` means a Rebrickable pull set the copy's checked state. A check or a mark by hand clears it. The upgrade is additive and runs in place at the first read/write start of the 1.2 image; existing copies stay empty. It is one way: a 1.1.x image refuses the upgraded file, so the way back is the backup taken before.
+
 ## Instruction previews
 
 Schema 4.6 adds nullable thumbnail path and state columns to `instruction_file` through an additive upgrade.

@@ -99,7 +99,7 @@
     if(r.unresolved)identity.append(el('span','status',r.number?'To check':'Unidentified'));
     link.append(identity);row.append(link);
     if(r.unresolved){const unresolved=el('a','','Unresolved items');unresolved.href=config.unresolvedUrl;row.append(unresolved);}
-    if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),el('strong','mono',r.max_price||'Not recorded'));row.append(max);}
+    if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),(r.max_price?el('strong','mono',r.max_price):el('span','bc-wish-max-none','No max set')));row.append(max);}
     const foot=el('div','bc-card-foot');
     if(r.entity==='wish'){
       foot.append(el('span','mono',r.defects||r.quantity+' wanted'));
@@ -142,7 +142,7 @@
   function copyBar(bar,index,several){
     const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
     const [found,missing,total,figures]=bar,bartxt=el('div','bartxt'),track=el('div','bar');
-    const never=!found&&!missing&&!figures,pct=n=>(Math.round(n/total*10000)/100).toFixed(2)+'%';
+    const never=!found&&!missing&&!figures&&!bar[4],pct=n=>(Math.round(n/total*10000)/100).toFixed(2)+'%';
     if(never){
       track.append(el('i','c'));
       const chip=el('span','xchip'),box=document.createElement('i'),svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -297,7 +297,7 @@
       else {
         const values=Object.fromEntries(new FormData(form));
         newPhoto=values.new_photo;newPhotoCaption=values.new_photo_caption||'';delete values.new_photo;delete values.new_photo_caption;        // the photo goes up after the save, from the same button
-        if(form.dataset.bcFlags!==undefined)values.flags=[...form.querySelectorAll('[name=flags]:checked')].map(c=>c.value);      // switches and the multi-select fields all post the flag ids that stay on
+        if(form.dataset.bcFlags!==undefined)values.flags=[...form.querySelectorAll('[name=flags]:checked,input[type=hidden][name=flags]')].map(c=>c.value);      // switches and the multi-select fields all post the flag ids that stay on; a wish's Status and Owners ride along hidden (#670)
         data=action==='save'?{...identity,values}:{...identity,...values};
         if(action==='save'&&photoRows.length) {
           const captions={},removals=[];
@@ -782,6 +782,8 @@ document.addEventListener?.('click',async event=>{
     }
     const card=scope?.closest('[data-module="prices"]') || document.querySelector('[data-module="prices"]');
     card?.replaceWith(fresh);
+    // A wish's page opens with the answer and a state tag that come from the same prices: they follow the card (#654).
+    for(const selector of ['[data-wish-answer]','.bc-hero-status']){const next=doc.querySelector(selector),current=document.querySelector(selector);if(next&&current)current.replaceWith(next);}
     button.disabled=false;button.textContent=label;
   }catch(error){button.disabled=false;button.textContent=label;if(status){status.textContent=error.message;status.dataset.state='error';}}
   finally{scope?.setAttribute('aria-busy','false');}

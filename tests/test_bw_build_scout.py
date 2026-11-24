@@ -8,7 +8,7 @@ from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401
 PATH = '/workbench/build-scout'
 
 
-def soup(client, path=PATH):
+def soup(client, path=PATH + '?scan=1'):
     response = client.get(path)
     assert response.status_code == 200, response.get_data(as_text=True)[:300]
     return BeautifulSoup(response.get_data(as_text=True), 'html.parser')
@@ -23,8 +23,8 @@ def test_the_list_ranks_the_sets_and_selects_the_first(client, world):
     assert page.select_one('h1').get_text() == 'Build Scout'
     assert names(page) == ['1000-1 Syn Castle Keep', '1000-2 Syn Castle Gate']
     first = page.select_one('a.bs-row')
-    assert first['aria-current'] == 'true' and 'is-selected' in first['class'] and first['href'] == f'/workbench/build-scout/{world.keep}'
-    assert first['data-select'] == f'{PATH}?set={world.keep}'
+    assert first['aria-current'] == 'true' and 'is-selected' in first['class'] and first['href'] == f'/workbench/build-scout/{world.keep}?scan=1'
+    assert first['data-select'] == f'{PATH}?scan=1&set={world.keep}'
     assert first.select_one('.bartxt').get_text(' ', strip=True) == '6 of 6 · 100 %' and '6 parts' in first.get_text()      # the frame's bar line (#499)
     assert '1 of 2 figures missing' in first.select_one('.bs-missing').get_text()
     cap = page.select_one('.cap2').get_text()
@@ -35,14 +35,34 @@ def test_the_list_ranks_the_sets_and_selects_the_first(client, world):
     assert panel.select_one('a[href*="missing.xml"]')['href'].startswith(f'{PATH}/{world.keep}/missing.xml')
 
 
+def test_opening_build_scout_starts_no_scan(client, world, monkeypatch):
+    """#668: opening the screen ranks nothing and builds no index; it shows the Scan button, which carries the chosen stock."""
+    from brickwork.core import build_scout
+    monkeypatch.setattr(build_scout, 'scout', lambda *a, **k: pytest.fail('opening Build Scout ran a scan'))
+    monkeypatch.setattr(build_scout, 'scout_for', lambda *a, **k: pytest.fail('opening Build Scout built the index'))
+    page = soup(client, PATH)
+    assert not page.select('a.bs-row') and page.select_one('[data-bs-panel]') is None and page.select_one('.cap2') is None
+    assert page.select_one('[data-bs-scan]')['href'] == f'{PATH}?scan=1' and page.select_one('.bs-pop-summary').get_text(strip=True)
+    assert page.select_one('form.bs-filters input[type=hidden][name=scan]')['value'] == '1'     # Apply scans
+
+
+def test_the_scan_button_starts_the_scan(client, world):
+    """#668: the Scan button's link ranks the sets, and the scanned page's links keep scanning."""
+    href = soup(client, PATH).select_one('[data-bs-scan]')['href']
+    assert soup(client, f'{PATH}?lot={world.bag}').select_one('a.bs-row')      # a link that already names a source scans, as before
+    page = soup(client, href)
+    assert names(page) == ['1000-1 Syn Castle Keep', '1000-2 Syn Castle Gate'] and page.select_one('[data-bs-scan]') is None
+    assert all('scan=1' in a['href'] for a in page.select('a.bs-row'))
+
+
 def test_the_set_asked_for_is_the_one_selected(client, world):
-    page = soup(client, f'{PATH}?set={world.gate}')
+    page = soup(client, f'{PATH}?scan=1&set={world.gate}')
     assert page.select_one('[data-bs-panel]')['data-set'] == str(world.gate)
     assert [a.has_attr('aria-current') for a in page.select('a.bs-row')] == [False, True]
 
 
 def test_the_filters_and_sources_come_back_in_the_form_and_the_links(client, world):
-    page = soup(client, f'{PATH}?min_percent=0&theme=Castle&year_from=1991&lot={world.bag}&damaged=1')
+    page = soup(client, f'{PATH}?scan=1&min_percent=0&theme=Castle&year_from=1991&lot={world.bag}&damaged=1')
     assert names(page) == ['1000-2 Syn Castle Gate']
     form = page.select_one('form.bs-filters')
     assert form['method'] == 'get'
@@ -57,15 +77,15 @@ def test_the_filters_and_sources_come_back_in_the_form_and_the_links(client, wor
 
 
 def test_a_refused_filter_is_named_and_the_defaults_are_used(client, world):
-    page = soup(client, f'{PATH}?min_percent=lots&max_missing=-2')
+    page = soup(client, f'{PATH}?scan=1&min_percent=lots&max_missing=-2')
     assert 'min_percent is a whole number' in page.select_one('.notice').get_text()
     assert page.select_one('input[name=min_percent]')['value'] == '60' and len(names(page)) == 2
-    assert 'No such theme' in soup(client, f'{PATH}?theme=Nothing').select_one('.notice').get_text()
+    assert 'No such theme' in soup(client, f'{PATH}?scan=1&theme=Nothing').select_one('.notice').get_text()
 
 
 def test_nothing_reaching_the_minimum_and_no_stock_say_so(client, coll, world):
-    assert 'No set reaches 101%' not in soup(client, f'{PATH}?min_percent=100').get_text()
-    page = soup(client, f'{PATH}?min_percent=100&max_missing=0&year_from=2100')
+    assert 'No set reaches 101%' not in soup(client, f'{PATH}?scan=1&min_percent=100').get_text()
+    page = soup(client, f'{PATH}?scan=1&min_percent=100&max_missing=0&year_from=2100')
     assert 'No set reaches 100% of its parts' in page.select_one('.bs-empty').get_text() and page.select_one('[data-bs-panel]') is None
     coll.sql('UPDATE stock SET archived_at=? WHERE kind IN (?, ?)', ('2026-11-01T00:00:00Z', 'part', 'minifigure'))
     assert 'No loose parts to count yet' in soup(client).select_one('.bs-empty').get_text()

@@ -5,6 +5,8 @@ verified: 1.0
 
 # Give every bin a place, then label it
 
+**Try it first:** [Storage in the demo](https://brick-work.app/demo/workbench/storage/) has drawers, shelves and a label selection on invented data.
+
 You have bins, drawers and shelves full of bricks and no way to tell which one holds what. In this tutorial you name your storage places, put things in them and print QR labels for the bins. Then you scan a label to open a bin and find a part by where it is stored.
 
 It takes about 20 minutes. You need a Brick Work install with a few sets, minifigures or part lots in the [collection](../concepts/collection-model.md), and a printer that takes A4 paper. A phone with a camera helps for step 4. Your own names and numbers will differ from the examples.

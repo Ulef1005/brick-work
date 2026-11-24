@@ -60,7 +60,7 @@ def test_upgrade_fixture_copy_backfills_creation_order_and_is_idempotent(tmp_pat
         db.commit()
     target = tmp_path/'restored.db'
     shutil.copyfile(fixture,target)
-    assert upgrade(target) == upgrade(target) == '4.7'
+    assert upgrade(target) == upgrade(target) == '4.8'
     with closing(sqlite3.connect(target)) as db:
         assert db.execute('SELECT id,short_id FROM storage ORDER BY short_id').fetchall() == [('a','S-0001'),('c','S-0002'),('b','S-0003')]
         with pytest.raises(sqlite3.IntegrityError):
@@ -247,13 +247,16 @@ def test_new_and_upgraded_storage_schema_match(tmp_path):
         assert upgraded.execute(query).fetchall()==[tuple(r) for r in fresh.execute(query)]
 
 
-def test_label_screen_candidates_are_unapproved_except_the_approved_error_and_edge_has_two_sheets(tmp_path):
+def test_label_screen_states_are_built_an_unapproved_one_is_not_checked_and_edge_has_two_sheets(tmp_path):
     from scripts import screen_gate
     states=json.loads(Path('design/screens/states.json').read_text())['states']
     candidates=[s for s in states if s['screen']=='34-Storage' and s['state'].startswith('labels-')]
     assert {s['state'] for s in candidates}=={'labels-select-none','labels-select-three','labels-ready','labels-address-warning','labels-two-sheets','labels-error'}
-    # labels-error is the one approved state; an approval round (such as the logo swap's) may set it back to false for a while
-    assert all(s['built'] and '?labels=' in s['path'] and (s['state']=='labels-error' or s['approved'] is False) for s in candidates)
+    # approval is the maintainer's (Ulf approved the #503 baselines, 23.11.): any of them may be true or false, an approval round may set one back
+    assert all(s['built'] and '?labels=' in s['path'] and isinstance(s['approved'], bool) for s in candidates)
+    # an unapproved state is only a candidate: the gate never checks it against a baseline
+    found=screen_gate.counts(dict(states=[dict(c, approved=(c['state']!='labels-ready')) for c in candidates]))
+    assert [e['state'] for e in found['pending']]==['labels-ready'] and 'labels-ready' not in {e['state'] for e in found['approved']}
     path=tmp_path/'brickwork.db'
     screen_gate.build_store('edge',path)
     with closing(connect(path,tmp_path/'catalogue.db')) as db:

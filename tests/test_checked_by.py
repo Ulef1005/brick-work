@@ -36,7 +36,7 @@ def test_a_46_store_migrates_with_every_copy_null_and_matches_a_fresh_one(tmp_pa
         db.execute("INSERT INTO meta(key,value) VALUES('schema_version','4.6')")
         assert 'checked_by' not in {r[1] for r in db.execute('PRAGMA table_info(copy)')}
         db.commit()
-    assert upgrade(old) == upgrade(old) == SCHEMA_VERSION == '4.7'
+    assert upgrade(old) == upgrade(old) == SCHEMA_VERSION == '4.8'
     with closing(connect(old, tmp_path / 'catalogue.db')) as upgraded, closing(connect(tmp_path / 'new.db', tmp_path / 'catalogue.db')) as fresh:
         assert dict(upgraded.execute('SELECT key,value FROM meta'))['upgraded_to_4.7'].endswith('Z')
         defs = [db.execute("SELECT sql FROM sqlite_master WHERE name='copy'").fetchone()[0] for db in (upgraded, fresh)]
@@ -254,3 +254,15 @@ def test_choosing_manual_completeness_clears_the_label(store):
     made = labelled_copy(store)
     collection.save(store, 'copy', [made], dict(completeness_source='manual'))
     assert column(store, made)[0] is None
+
+
+def test_a_labelled_copy_counts_every_line_as_checked_on_its_page(store):
+    """The label covers the whole list, as the bars count it (_copy_bars): the copy's progress and its part groups read every line checked,
+    not "0 checked" with every group still to check (Argon review, 23.11.). The stored lines are not touched."""
+    made = labelled_copy(store)
+    item = store.execute('SELECT item_id FROM copy WHERE id=?', (made,)).fetchone()[0]
+    stored = store.execute('SELECT sum(checked) FROM copy_part WHERE copy_id=?', (made,)).fetchone()[0]
+    detail = collection.detail(store, item, copy_id=made)
+    assert detail['progress']['checked_lines'] == detail['progress']['lines'] > 0
+    assert all(group['todo'] == 0 for group in detail['part_groups'])
+    assert store.execute('SELECT sum(checked) FROM copy_part WHERE copy_id=?', (made,)).fetchone()[0] == stored

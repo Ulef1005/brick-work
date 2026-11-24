@@ -7,7 +7,7 @@
     // #222: a missing-only run counts the parts it walks, as the server's progress does.
     const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     for (const r of state.rows.filter(r => r.kind !== 'spare' && (!walked || walked.has(r.token)))) {
-      const answer = state.session ? state.session.answers[r.token] : (r.checked || r.missing > 0 ? 'answered' : undefined);   // no session: the marks the copy already has (Edit parts, a Rebrickable pull)
+      const answer = state.session ? state.session.answers[r.token] : (r.checked || r.missing > 0 || (state.copy?.checked_by && !state.figure) ? 'answered' : undefined);   // no session: the marks the copy already has (Edit parts, a Rebrickable pull; a pull's label counts every line of the set's list, #489, never a figure's component parts)
       if (!answer) counts.remaining++;
       else if (answer === 'skipped') counts.skipped++;
       else if (r.missing > 0) counts.missing++;
@@ -19,7 +19,7 @@
   // line is a part line, or a figure line; only part lines have pieces. The same lines as progress().
   function summary(state) {
     const counts = progress(state), answers = state.session?.answers || {};
-    const marked = r => state.session ? answers[r.token] === 'answered' : (r.checked || r.missing > 0);
+    const marked = r => state.session ? answers[r.token] === 'answered' : (r.checked || r.missing > 0 || (!!state.copy?.checked_by && !state.figure));
     const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     let pieces = 0, total = 0;
     for (const r of state.rows) {
@@ -258,9 +258,12 @@
     function missCard(r) {
       const card=el('div',undefined,'card chk-miss'),n=nameBlock(r,' · need '+(r.quantity??'?')),step=el('div',undefined,'step'),gap=r.missing||0;
       n.append(el('div',gap+' missing','chk-mn3'));
-      const less=el('button','−'),more=el('button','+'),mid=el('span',String(gap));
-      for(const [b,delta,label] of [[less,-1,'One fewer missing'],[more,1,'One more missing']]){b.type='button';b.dataset.action='set_count';b.dataset.token=r.token;b.dataset.delta=String(delta);b.setAttribute('aria-label',label+', '+r.color_name+' '+r.item_no);}
-      less.disabled=r.quantity===null;more.disabled=r.quantity===null||gap>=r.quantity;
+      // The stepper counts what was found (#649, Ulf: it says "found"): need 1 with 1 missing reads "0 found"; + is one more found (one fewer
+      // missing), − one fewer found, from 0 to the need. The line above keeps "n missing". `delta` stays a change of the missing count.
+      const found=r.quantity===null?null:Math.max(0,r.quantity-gap);
+      const less=el('button','−'),more=el('button','+'),mid=el('span',found===null?'?':String(found),'chk-found-n');mid.append(el('small',' found','chk-found-word'));   // the space keeps "3 found" one phrase for copy and screen readers
+      for(const [b,delta,label] of [[less,1,'One fewer found'],[more,-1,'One more found']]){b.type='button';b.dataset.action='set_count';b.dataset.token=r.token;b.dataset.delta=String(delta);b.setAttribute('aria-label',label+', '+r.color_name+' '+r.item_no);}
+      less.disabled=r.quantity===null||gap>=r.quantity;more.disabled=r.quantity===null||gap<=0;
       const bl=el('b'),br=el('b');bl.append(less);br.append(more);step.append(bl,mid,br);
       card.append(pic(r,'chk-sm96'),n,step);return card;
     }
@@ -440,7 +443,8 @@
       if(name==='select')mode='part';
       const payload={action:name,token:token||current,operation:crypto.randomUUID(),session:state.session.id};
       if(name==='missing'){payload.action='answer';payload.found=0;}
-      if(name==='set_count'){const line=state.rows.find(r=>r.token===token);if(!line||line.quantity===null)return;payload.found=line.quantity-Math.max(0,Math.min(line.quantity,(line.missing||0)+Number(delta)));}
+      // set_count starts from the missing count as shown (at most the need), so a line with more missing than it needs still moves one step (#649)
+      if(name==='set_count'){const line=state.rows.find(r=>r.token===token);if(!line||line.quantity===null)return;payload.found=line.quantity-Math.max(0,Math.min(line.quantity,Math.min(line.quantity,line.missing||0)+Number(delta)));}
       if(name==='answer')payload.found=count;
       if(name==='check_skipped'||name==='check_one'){payload.action='recheck';payload.token=null;if(name==='check_one')payload.tokens=[token];mode='part';}
       if(name==='spares_yes'||name==='spares_no'){payload.action='spares';payload.include=name==='spares_yes';mode='part';}

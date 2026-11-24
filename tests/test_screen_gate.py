@@ -261,7 +261,7 @@ def test_every_built_state_path_is_served_in_its_world():
     import urllib.request
     by_world = {}
     for entry in gate.load()['states']:
-        if entry['built'] and entry['state'] != 'not-found':    # the 404 page is the state
+        if entry['built'] and not entry['state'].startswith('not-found'):    # the 404 page is the state (three versions, #503)
             by_world.setdefault(entry['world'], []).append(entry)
     for name, entries in by_world.items():
         with gate.world(name) as base:

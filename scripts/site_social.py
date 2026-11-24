@@ -1,6 +1,9 @@
-"""Render the website's social preview (1200 x 630 PNG) via pinned Chrome for Testing.
+"""Render the social preview (1200 x 630 PNG for the website, 1280 x 640 for GitHub) via pinned Chrome for Testing.
 
-    python scripts/site_social.py [--out FILE]
+    python scripts/site_social.py [--out FILE] [--size WIDTHxHEIGHT]
+    python scripts/site_social.py --size 1280x640 --out docs/assets/social-preview-github-1280x640.png   # Ulf uploads it by hand
+
+B′ (#492, #502): IBM Plex Sans, the B′ light roles of static/web/toni/tokens-v2.css, the category line as the subtitle.
 """
 import argparse
 from pathlib import Path
@@ -18,25 +21,18 @@ HTML = """<!doctype html>
 <meta charset="utf-8">
 <style>
   @font-face {
-    font-family: 'Inter';
+    font-family: 'IBM Plex Sans';
     font-style: normal;
     font-weight: 400;
     font-display: block;
-    src: url('__INTER_400__') format('woff2');
+    src: url('__PLEX_400__') format('woff2');
   }
   @font-face {
-    font-family: 'Inter';
+    font-family: 'IBM Plex Sans';
     font-style: normal;
     font-weight: 600;
     font-display: block;
-    src: url('__INTER_600__') format('woff2');
-  }
-  @font-face {
-    font-family: 'Patrick Hand';
-    font-style: normal;
-    font-weight: 400;
-    font-display: block;
-    src: url('__PATRICK_HAND__') format('woff2');
+    src: url('__PLEX_600__') format('woff2');
   }
   * {
     box-sizing: border-box;
@@ -47,9 +43,9 @@ HTML = """<!doctype html>
     width: __WIDTH__px;
     height: __HEIGHT__px;
     overflow: hidden;
-    background: #FAF9F6;
-    color: #1C1B19;
-    font-family: 'Inter', sans-serif;
+    background: #F8F8F6;   /* --tw-surface, B′ light */
+    color: #1A1E1E;        /* --tw-text */
+    font-family: 'IBM Plex Sans', sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   .canvas {
@@ -57,7 +53,7 @@ HTML = """<!doctype html>
     width: __WIDTH__px;
     height: __HEIGHT__px;
     overflow: hidden;
-    background: #FAF9F6;
+    background: #F8F8F6;
   }
   .left {
     position: absolute;
@@ -79,61 +75,51 @@ HTML = """<!doctype html>
     width: auto;
     display: block;
   }
-  .brand-name {
-    font-family: 'Patrick Hand', cursive, sans-serif;
-    font-size: 48px;
-    line-height: 1;
-    font-weight: 400;
-    color: #1C1B19;
-  }
   h1 {
     margin-top: 28px;
-    font-family: 'Inter', sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
     font-weight: 600;
     font-size: 52px;
     line-height: 1.1;
     letter-spacing: -0.02em;
-    color: #1C1B19;
-  }
-  .clay {
-    color: #1C1B19;   /* ink, as the line above: the old logo blue is retired, the brand's colour roles are still open (#482) */
+    color: #1A1E1E;   /* ink: in B′ violet means action, found or chosen */
   }
   .subtitle {
     margin-top: 20px;
-    max-width: 390px;
-    font-family: 'Inter', sans-serif;
+    max-width: 430px;
+    font-family: 'IBM Plex Sans', sans-serif;
     font-weight: 400;
     font-size: 24px;
     line-height: 1.35;
-    color: #6F6A62;
+    color: #434A4A;   /* --tw-text-2 */
   }
   .domain {
     margin-top: auto;
-    font-family: 'Inter', sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
     font-weight: 600;
     font-size: 22px;
     line-height: 1;
-    color: #B4410A;
+    color: #7334CF;   /* --tw-accent-text: the address is the one link */
   }
   .shot-desktop {
     position: absolute;
-    left: calc(560px + __SHIFT__px);   /* the screenshots stay flush right on a wider canvas */
+    left: calc(540px + __SHIFT__px);   /* the screenshots stay flush right on a wider canvas */
     top: 150px;
     width: 640px;
     height: 400px;
     border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 30px 70px rgba(28, 27, 25, .38), 0 6px 18px rgba(28, 27, 25, .25);
+    box-shadow: 0 30px 70px rgba(26, 30, 30, .38), 0 6px 18px rgba(26, 30, 30, .25);
     z-index: 1;
   }
   .shot-phone {
     position: absolute;
-    left: calc(470px + __SHIFT__px);
+    left: calc(930px + __SHIFT__px);   /* the phone on the right, over the desktop's right edge */
     top: 250px;
     width: 260px;
     border-radius: 24px;
     overflow: hidden;
-    box-shadow: 0 30px 70px rgba(28, 27, 25, .38), 0 6px 18px rgba(28, 27, 25, .25);
+    box-shadow: 0 30px 70px rgba(26, 30, 30, .38), 0 6px 18px rgba(26, 30, 30, .25);
     z-index: 2;
   }
   .shot-desktop img,
@@ -148,8 +134,8 @@ HTML = """<!doctype html>
   <div class="canvas">
     <div class="left">
       <div class="brand">__ICON_TAG__</div>
-      <h1>Don't just manage your collection. <span class="clay">Work with it.</span></h1>
-      <p class="subtitle">A self-hosted workbench for your brick collection.</p>
+      <h1>Don't just manage your collection. Work with it.</h1>
+      <p class="subtitle">Free, self-hosted app for your brick collection and its missing parts.</p>
       <div class="domain">brick-work.app</div>
     </div>
     <div class="shot-desktop"><img src="__DESKTOP_IMG__" alt=""></div>
@@ -188,15 +174,14 @@ def build_html(folder: Path, width: int = 1200, height: int = 630) -> str:
     icon = first_existing([ROOT / 'design' / 'logo' / 'lockup-horizontal-light.png'])
     icon_tag = f'<img class="brand-icon" src="{stage(icon, folder)}" alt="">' if icon else ''
     tokens = {
-        '__INTER_400__': stage(ROOT / 'docs' / 'assets' / 'fonts' / 'inter-latin-400-normal.woff2', folder),
-        '__INTER_600__': stage(ROOT / 'docs' / 'assets' / 'fonts' / 'inter-latin-600-normal.woff2', folder),
-        '__PATRICK_HAND__': stage(ROOT / 'static' / 'fonts' / 'PatrickHand-Regular.woff2', folder),
+        '__PLEX_400__': stage(ROOT / 'docs' / 'assets' / 'fonts' / 'IBMPlexSans-Regular.woff2', folder),
+        '__PLEX_600__': stage(ROOT / 'docs' / 'assets' / 'fonts' / 'IBMPlexSans-SemiBold.woff2', folder),
         '__ICON_TAG__': icon_tag,
         '__WIDTH__': str(width),
         '__HEIGHT__': str(height),
         '__SHIFT__': str(width - 1200),
-        '__DESKTOP_IMG__': stage(ROOT / 'scripts' / 'site' / 'img' / '1c-sets-desktop-1440-light.png', folder),
-        '__PHONE_IMG__': stage(ROOT / 'scripts' / 'site' / 'img' / '3a-matcher-phone-390-light.png', folder),
+        '__DESKTOP_IMG__': stage(ROOT / 'docs' / 'img' / 'readme' / '3e-part-desktop-1440-light.png', folder),
+        '__PHONE_IMG__': stage(ROOT / 'docs' / 'img' / 'readme' / '3c-picker-pick-phone-390-light.png', folder),
     }
     page = HTML
     for key, value in tokens.items():

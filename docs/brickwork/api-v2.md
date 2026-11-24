@@ -217,7 +217,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-207 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
+215 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -243,7 +243,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 | Jobs | 7 | M.11d 7 |
 | Sources | 6 | M.11d 6 |
 | Settings | 5 | M.11c 2, M.11d 3 |
-| Admin | 10 | M.11b 1, M.11d 9 |
+| Admin | 12 | M.11b 1, M.11d 11 |
 | Matching | 2 | M.11b 2 |
 | Tokens | 3 | M.11d 3 |
 
@@ -548,7 +548,7 @@ The find tool follows the item convention: provider, kind and key, resolved thro
 
 `part_group_overrides` is a settings key too: an object `{category name: group name}` with the categories you moved out of the default group. The group is one of the twelve group names. Send `{}` to restore the default table. An entry equal to the default is dropped, and a read returns the differences only. They apply when `part_list_grouping` is `grouped`.
 
-`rebrickable_lost_parts_rule` is a settings key too (#457): `add_only`, `per_part` (default), `per_set` or `everything`. It decides which count a Rebrickable pull keeps when it brings in your Lost Parts. PATCH uses the same save and undo event as the Settings page. The pull plan, the link option `lost_parts` and the apply fields `lost_ticked` and `copy_picks` are described in [Collection sync](sync.md#lost-parts-from-rebrickable).
+`rebrickable_lost_parts_rule` is a settings key too (#457): `add_only`, `per_part` (default), `per_set` or `everything`. It decides which count a Rebrickable pull keeps when it brings in your Lost Parts. PATCH uses the same save and undo event as the Settings page. The rule moved to the Rebrickable sync page in the app; the setting is unchanged. `rebrickable_lost_parts_send` (true or false, off by default) switches the Lost Parts send to Rebrickable on, and `rebrickable_lost_parts_send_rule` (`add_only` by default, then `per_part`, `per_set` or `everything`) says which count wins when it sends (#469). The pull plan, the link option `lost_parts` and the apply fields `lost_ticked` and `copy_picks` are described in [Collection sync](sync.md#lost-parts-from-rebrickable).
 
 #### Admin
 
@@ -562,6 +562,8 @@ The find tool follows the item convention: provider, kind and key, resolved thro
 | `GET /identifications/{id}` | Identification result. | read | M.11d | same |
 | `GET /identifications/{id}/thumb` | Thumbnail bytes. | read | M.11d | same |
 | `POST /imports/bricktracker` | Upload a BrickTracker app.db (any upstream version, up to 200 MB) and get an import plan. A copy is upgraded with upstream's migrations and compared with this collection; nothing is written to the collection. | admin | M.11d | same |
+| `POST /imports/brickwork/plan` | Upload a Brick Work export zip (up to 50 MB) and get an import plan; nothing is written to the collection. | admin | M.11d | new |
+| `POST /imports/brickwork/{plan_id}/apply` | Apply a Brick Work import plan: rows marked new are written in one transaction. Undo with POST /events/{id}/undo (`admin`). | admin | M.11d | new |
 | `POST /imports/{id}/apply` | Apply an import plan: rows marked add are written in one transaction; locked rows (already imported, duplicate wishes) are always skipped. Undo with POST /events/{id}/undo (`admin`). | admin | M.11d | same |
 | `GET /statistics` | Counts by completeness, theme, storage, place. | read | M.11b | same |
 
@@ -648,6 +650,10 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `GET /api/v2/exchange-rates` | M.11d | `brickwork.api2.system.get_exchange_rates` |
 | `POST /api/v2/exchange-rates/ecb` | M.11d | `brickwork.api2.system.post_exchange_rates_ecb` |
 | `PUT /api/v2/exchange-rates/{code}` | M.11d | `brickwork.api2.system.put_exchange_rates_by_code` |
+| `GET /api/v2/export/brickwork.zip` | M.11b | `brickwork.api2.own_export.get_export_brickwork_zip` |
+| `GET /api/v2/export/collection.csv` | M.11b | `brickwork.api2.ranking.get_export_collection_csv` |
+| `GET /api/v2/export/collection.rebrickable.csv` | M.11b | `brickwork.api2.ranking.get_export_collection_rebrickable_csv` |
+| `GET /api/v2/export/collection.xml` | M.11b | `brickwork.api2.ranking.get_export_collection_xml` |
 | `GET /api/v2/export/insurance.csv` | M.11b | `brickwork.api2.valuation.get_export_insurance_csv` |
 | `GET /api/v2/export/missing.csv` | M.11b | `brickwork.api2.ranking.get_export_missing_csv` |
 | `GET /api/v2/export/missing.json` | M.11b | `brickwork.api2.ranking.get_export_missing_json` |
@@ -669,6 +675,8 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `GET /api/v2/identifications/{id}/thumb` | M.11d | `brickwork.api2.identifications.get_identifications_by_id_thumb` |
 | `GET /api/v2/images/{id}/content` | M.11b | `brickwork.api2.item_views.get_images_by_id_content` |
 | `POST /api/v2/imports/bricktracker` | M.11d | `brickwork.api2.sync.post_imports_bricktracker` |
+| `POST /api/v2/imports/brickwork/plan` | M.11d | `brickwork.api2.sync.post_imports_brickwork_plan` |
+| `POST /api/v2/imports/brickwork/{plan_id}/apply` | M.11d | `brickwork.api2.sync.post_imports_brickwork_by_plan_id_apply` |
 | `POST /api/v2/imports/{id}/apply` | M.11d | `brickwork.api2.sync.post_imports_by_id_apply` |
 | `GET /api/v2/instruction-files` | M.11b | `brickwork.api2.instructions.get_instruction_files` |
 | `POST /api/v2/instruction-files` | M.11c | `brickwork.api2.write_where.post_instruction_files` |
@@ -790,6 +798,8 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `PATCH /api/v2/storages/{id}` | M.11c | `brickwork.api2.write_where.patch_storages_by_id` |
 | `POST /api/v2/storages/{id}/contents` | M.11c | `brickwork.api2.write_where.post_storages_by_id_contents` |
 | `POST /api/v2/storages/{id}/restore` | M.11c | `brickwork.api2.write_where.post_storages_by_id_restore` |
+| `POST /api/v2/sync/rebrickable/parts/apply` | M.11d | `brickwork.api2.sync.post_sync_rebrickable_parts_apply` |
+| `POST /api/v2/sync/rebrickable/parts/plan` | M.11d | `brickwork.api2.sync.post_sync_rebrickable_parts_plan` |
 | `GET /api/v2/sync/{source}` | M.11d | `brickwork.api2.sync.get_sync_by_source` |
 | `PUT /api/v2/sync/{source}/link` | M.11d | `brickwork.api2.sync.put_sync_by_source_link` |
 | `GET /api/v2/sync/{source}/lists` | M.11d | `brickwork.api2.sync.get_sync_by_source_lists` |

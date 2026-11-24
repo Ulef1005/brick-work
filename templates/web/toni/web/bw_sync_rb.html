@@ -1,0 +1,293 @@
+{% extends 'web/toni/base.html' %}
+{% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bw-admin-page bw-sync-page bw-sync-rb-page{% endblock %}
+{% block page_assets %}
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-sync.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin-b.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-sync-rb.css') }}">
+<script src="{{ bw_static('web/toni/bw-sync.js') }}" defer></script>
+<script src="{{ bw_static('web/toni/bw-sync-rb.js') }}" defer></script>
+{% endblock %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endmacro %}
+{% macro flashes() %}{% for tone, text in messages %}<p class="bk-banner bk-{{ 'warning' if tone == 'warning' else 'success' }}" role="{{ 'alert' if tone == 'warning' else 'status' }}">{{ text }}</p>{% endfor %}{% endmacro %}
+{% macro tag(text, dash=false, hatch=false) %}<span class="sr-tag{{ ' sr-dash' if dash }}{{ ' sr-hatch' if hatch }}">{{ text }}</span>{% endmacro %}
+{% macro tile(number) %}<span class="sr-tile" aria-hidden="true">{{ number }}</span>{% endmacro %}
+{% macro head(sub) %}
+<header class="bw-page-head sr-head"><a class="bw-back" href="{{ url_for('web.bw_sync_hub') }}">{{ toni_icon('chevron-left') }}Sync</a>
+<div class="sr-headrow"><div><span class="sr-kicker">Workbench · Sync</span><h1>{{ label }}</h1><p>{{ sub }}</p></div></div></header>
+{% endmacro %}
+{% macro stepbar() %}
+<ol class="sr-steps" aria-label="Steps">{% for name in steps %}{% set n = loop.index %}<li class="{{ 'sr-done' if n < step else 'sr-now' if n == step else '' }}"{% if n == step %} aria-current="step"{% endif %}><span class="sr-stepname">{% if n < step %}<svg class="sr-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>{% else %}{{ n }} {% endif %}{{ name }}</span></li>{% endfor %}</ol>
+<p class="sr-stepline">Step {{ step }} of 6 · {{ steps[step - 1] }}{% if step < 6 %} · next: {{ steps[step] }}{% endif %}</p>
+{% endmacro %}
+{% macro segment(name, kind, current) %}
+<div class="sr-seg" role="radiogroup" aria-label="Direction">{% for v in segments[kind] %}<label><input type="radio" name="{{ name }}" value="{{ v }}" {{ 'checked' if v == current }}><span>{{ segment_labels[v] }}</span></label>{% endfor %}</div>
+{% endmacro %}
+{% block main %}
+
+{% if screen == 'site' %}
+<header class="bw-page-head sr-head"><a class="bw-back" href="{{ url_for('web.bw_sync_hub') }}">{{ toni_icon('chevron-left') }}Sync</a>
+<div class="sr-headrow"><div><span class="sr-kicker">Workbench · Sync</span><h1>{{ label }}</h1><p>{{ subtitle }}</p></div>
+{% if can_edit %}{% if connected %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_start') }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-primary bk-lg" data-busy-label="Checking {{ label }}">Start a sync</button></form>
+{% else %}<a class="bk-btn bk-primary bk-lg" href="{{ url_for('web.bw_sync_' ~ pre ~ '_connect') }}">Connect</a>{% endif %}{% endif %}</div></header>
+{{ flashes() }}
+{% if pulled and can_edit %}<form method="post" class="sy-undo" action="{{ url_for('web.bw_sync_' ~ pre ~ '_undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ pulled }}"><button class="bk-btn bk-quiet">Undo this run</button></form>{% endif %}
+{% if lost_result %}{% set lr = lost_result %}
+<section class="bk-card sy-lost-result" aria-labelledby="sy-lost-result-title"><h2 class="bk-eyebrow" id="sy-lost-result-title">Lost Parts from Rebrickable</h2>
+{% if lr.status == 'failed' %}<p class="bk-banner bk-warning" role="status">{{ lr.message }}</p>
+{% else %}{% if lr.message %}<p class="bk-banner bk-warning" role="status">{{ lr.message }}</p>{% endif %}
+<p class="bk-text">{{ lr.added + lr.replaced }} {{ 'part' if lr.added + lr.replaced == 1 else 'parts' }} marked on {{ lr.sets|length }} {{ 'set' if lr.sets|length == 1 else 'sets' }}{% if lr.cleared %} · {{ lr.cleared }} {{ 'mark' if lr.cleared == 1 else 'marks' }} cleared{% endif %}. Rule: {{ rule_labels[lr.rule] }}. Undo this run to take them back.</p>
+{% if lr.left_out or lr.skipped or lr.unmatched or lr.unmatched_sets %}<ul class="sy-lost-list">
+{% for l in lr.left_out %}<li><span class="mono">{{ l.set_no }}</span> · {{ l.parts }} {{ 'part' if l.parts == 1 else 'parts' }} left out · {{ l.reason }}. Run again and pick the copy.</li>{% endfor %}
+{% for l in lr.skipped %}<li><span class="mono">{{ l.set_no }}</span> · left out · {{ l.reason }}</li>{% endfor %}
+{% for u in lr.unmatched_sets %}<li><span class="mono">{{ u.set_no }}</span> · {{ u.parts }} {{ 'part' if u.parts == 1 else 'parts' }} not matched · {{ u.reason }}</li>{% endfor %}
+{% for u in lr.unmatched %}<li><span class="mono">{{ u.set_no }} · {{ u.part_no }} · colour {{ u.color_id }}</span> · {{ u.quantity }} not matched · {{ u.reason }}</li>{% endfor %}
+</ul>{% endif %}{% endif %}</section>{% endif %}
+<div class="sr-grid">
+<section class="sr-card" data-rb-account><h2>Your {{ label }} account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
+<dl class="sr-kv">
+{% if account %}<dt>Account</dt><dd>{{ account }}</dd>{% endif %}
+<dt>API key</dt><dd>{% if key_gap %}Not set{% elif key.origin == 'env' %}Set in the environment{% else %}Set{% if key_day %} · last used {{ key_day }}{% endif %}{% endif %}</dd>
+{% if source == 'rebrickable' %}<dt>Speed</dt><dd>About 1 request a second</dd>
+{% endif %}{% if budget and source == 'brickset' %}<dt>Today’s budget</dt><dd class="mono">{{ budget.used }} of {{ budget.budget }} calls</dd>
+{% elif budget %}<dt>Budget today</dt><dd class="mono">{{ '{:,}'.format(budget.used) }} / {{ '{:,}'.format(budget.budget) }}</dd>{% endif %}
+</dl>
+<div class="sr-actions">{% if connected and can_edit %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='test') }}">{{ csrf() }}<input type="hidden" name="next" value="site"><button class="bk-btn bk-outline">Test</button></form>{% endif %}
+<a class="bk-btn bk-quiet" href="{{ url_for('web.bw_sync_' ~ pre ~ '_connect') }}">{{ 'Change' if connected else 'Connect' }}</a>
+{% if connected and can_edit %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='remove') }}">{{ csrf() }}<input type="hidden" name="next" value="site"><button class="bk-btn bk-quiet">Remove</button></form>{% endif %}</div></section>
+<section class="sr-card" data-rb-runs><h2>Last runs</h2>
+{% for r in runs %}<div class="sr-run"><div class="sr-runid"><b>{{ r.title }} · {{ stamp(r.at) }}</b><span>{{ r.what }}</span></div>
+{% if r.state == 'Done' %}{{ tag('Done') }}{% elif r.state == 'Undone' %}{{ tag('Undone', true) }}{% else %}{{ tag(r.state, true) }}{% endif %}
+{% if can_edit and (r.retry or r.undoable) %}<span class="sr-runact">{% if r.retry %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='send') }}" data-sy-busy>{{ csrf() }}<input type="hidden" name="next" value="site"><button class="bk-btn bk-outline" data-busy-label="Checking {{ label }}">Retry</button></form>{% endif %}
+{% if r.undoable %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ r.event }}"><button class="bk-btn bk-quiet">Undo this run</button></form>{% endif %}</span>{% endif %}</div>
+{% else %}<p class="bk-text">Nothing has run yet.</p>{% endfor %}
+{% if waiting %}<p class="bk-text">{{ waiting }} {{ 'row' if waiting == 1 else 'rows' }} to {{ label }} still waiting.</p>{% endif %}
+{% if source == 'brickset' %}<p class="sr-note">Purchase date and price never leave Brick Work: Brickset has no field for them. Each call to Brickset counts against its daily limit for your key: a read of your sets, a send, and a check of your user hash.</p>
+{% else %}<p class="sr-note">Rebrickable keeps its own link to your account. Each run counts against Brick Work’s daily budget for Rebrickable.</p>{% endif %}</section>
+</div>
+<section class="sr-card" data-rb-what><h2>What syncs</h2>
+{% if what %}<table class="sr-table"><thead><tr><th>What</th><th>Direction</th><th>Linked to</th></tr></thead><tbody>
+{% for w in what %}<tr><td><b>{{ w.what }}</b></td><td>{{ tag(w.direction) }}</td><td>{{ w.linked }}</td></tr>{% endfor %}</tbody></table>
+{% else %}<p class="bk-text">Nothing is chosen yet. Choose what to sync, and in which direction.</p>{% endif %}
+{% if connected %}<div class="sr-actions"><a class="bk-btn bk-outline" href="{{ url_for('web.bw_sync_' ~ pre ~ '_choose') }}">Change what syncs</a></div>{% endif %}</section>
+
+{% elif screen == 'connect' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<div class="sr-grid">
+<section class="sr-card" data-rb-key><h2>1 · API key {{ tag('Set') if not key_gap else tag('Not set', true) }}</h2>
+<p class="sr-lede">{% if source == 'brickset' %}The key lets Brick Work ask Brickset for set data. Your account lets Brick Work read and change your sets.{% else %}The key reads Rebrickable’s catalogue. Your account lets Brick Work read and change your lists.{% endif %}</p>
+{% if key_gap %}
+{% if can_edit %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_key') }}" autocomplete="off">{{ csrf() }}<input type="hidden" name="action" value="save">
+<label class="bk-field">API key<input name="key:key" type="password" minlength="8" maxlength="256" autocomplete="off" required></label>
+<div class="sr-actions"><button class="bk-btn bk-primary">Save and test</button></div></form>{% endif %}
+{% else %}
+<div class="bk-field"><span>API key</span><input class="sr-masked" value="••••••••••••" readonly aria-label="API key, set"></div>
+{% if can_edit %}<div class="sr-actions"><form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_key') }}">{{ csrf() }}<input type="hidden" name="action" value="test"><button class="bk-btn bk-outline">Test</button></form>
+{% if key.origin != 'env' %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_key') }}">{{ csrf() }}<input type="hidden" name="action" value="remove"><button class="bk-btn bk-quiet">Remove</button></form>{% endif %}</div>
+{% if key.origin == 'env' %}<p class="sr-note">This key comes from the environment. Change it there.</p>{% endif %}{% endif %}
+{% endif %}</section>
+<section class="sr-card" data-rb-account><h2>2 · Your {{ label }} account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
+{% if connected %}{% if account %}<p class="sr-lede">Connected as {{ account }}.</p>{% endif %}
+<p class="sr-lede">A {{ 'user hash' if source == 'brickset' else 'user token' }} is stored encrypted. It is never shown again.</p>
+{% if can_edit %}<div class="sr-actions"><form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='test') }}">{{ csrf() }}<input type="hidden" name="next" value="connect"><button class="bk-btn bk-outline">Test</button></form>
+<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='remove') }}">{{ csrf() }}<input type="hidden" name="next" value="connect"><button class="bk-btn bk-quiet">Remove</button></form></div>{% endif %}
+{% else %}
+<p class="sr-lede">Your username and password go straight to {{ label }} once. Brick Work keeps only the {{ 'hash' if source == 'brickset' else 'token' }} {{ label }} returns and the username you type, never the password.</p>
+{% if can_edit %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='connect') }}" autocomplete="off">{{ csrf() }}<input type="hidden" name="next" value="connect">
+<div class="sr-two"><label class="bk-field">{{ 'Username' if source == 'brickset' else 'Username or email' }}<input name="username" autocomplete="username" required></label><label class="bk-field">Password<input name="password" type="password" autocomplete="current-password" required></label></div>
+<div class="sr-actions"><button class="bk-btn bk-primary">Connect</button></div></form>
+<details class="sr-paste"><summary>Paste a {{ 'user hash' if source == 'brickset' else 'user token' }} instead</summary><form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='paste') }}" autocomplete="off">{{ csrf() }}<input type="hidden" name="next" value="connect"><label class="bk-field">{{ 'User hash' if source == 'brickset' else 'User token' }}<input name="value" type="password" minlength="8" maxlength="256" required></label><div class="sr-actions"><button class="bk-btn bk-outline">Save</button></div></form></details>
+<p class="sr-note">A {{ 'user hash' if source == 'brickset' else 'user token' }} is stored encrypted. It is never shown again.</p>{% endif %}
+{% endif %}</section>
+</div>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_site', source=source) }}">Cancel</a>
+{% if connected and not key_gap %}<a class="bk-btn bk-outline" href="{{ url_for('web.bw_sync_' ~ pre ~ '_choose') }}">Next: choose what</a>{% else %}<span class="bk-btn" aria-disabled="true">Next: choose what</span>{% endif %}</div>
+
+{% elif screen == 'choose' and source == 'brickset' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<form method="post" class="sr-choose" action="{{ url_for('web.bw_sync_bs_choose_save') }}" data-sy-busy>{{ csrf() }}
+<div class="sr-cols">
+<div class="sr-col">
+<section class="sr-card" data-rb-owned><h2>Owned sets</h2>{{ segment('owned_dir', 'owned', directions.owned) }}
+<p class="sr-lede">Brickset keeps the quantity you own of a set; Brick Work keeps one copy for each. The quantities are compared, and a difference is a choice in the preview.</p></section>
+<section class="sr-card" data-rb-wishlist><h2>Wanted sets</h2>{{ segment('wishlist_dir', 'wishlist', directions.wishlist) }}
+<p class="sr-lede">The wanted sets, with their quantity, go to the wishlist you choose here.</p>
+<label class="bk-field">Wishlist here<select name="wish_list">{% for w in wish_lists %}<option value="{{ w.id }}" {{ 'selected' if (link.get('wish_list') or 'default') == w.id }}>{{ w.name }}</option>{% endfor %}</select></label></section>
+</div>
+<div class="sr-col">
+<section class="sr-card"><h2>When both sides differ</h2><p class="sr-lede sr-fixed">Ask me each time</p></section>
+<p class="sr-info">Purchase date and price are never sent: Brickset has no field for them.</p>
+</div></div>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_bs_connect') }}">‹ Back</a><span class="sr-foot-actions">{% if can_edit %}<button class="bk-btn bk-quiet" name="start" value="0">Save</button><button class="bk-btn bk-outline" data-busy-label="Checking {{ label }}">Next: pick sets</button>{% endif %}</span></div>
+</form>
+
+{% elif screen == 'choose' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+{% if set_error %}<p class="bk-banner bk-warning" role="alert">{{ set_error }}</p>{% endif %}{% if parts_error and parts_error != set_error %}<p class="bk-banner bk-warning" role="alert">{{ parts_error }}</p>{% endif %}
+{% set owned = link.get('owned') or [] %}{% set chosen_parts = link.get('part_lists') or [] %}
+<form method="post" class="sr-choose" action="{{ url_for('web.bw_sync_' ~ pre ~ '_choose_save') }}" data-sy-busy>{{ csrf() }}<input type="hidden" name="keep_list_names" value="{{ '1' if keep_names else '0' }}"><input type="hidden" name="set_lists_read" value="{{ '0' if set_error else '1' }}"><input type="hidden" name="part_lists_read" value="{{ '0' if parts_error else '1' }}">
+<div class="sr-cols">
+<div class="sr-col">
+<section class="sr-card" data-rb-owned><h2>Owned sets</h2>{{ segment('owned_dir', 'owned', directions.owned) }}
+<p class="sr-lede">Tick the set lists that hold sets you own. None ticked means every list except the wishlist list.</p>
+<div class="sr-checks">{% for l in lists %}<input type="hidden" name="list_name:set:{{ l.id }}" value="{{ l.name or ('List ' ~ l.id) }}"><label class="sr-check"><input type="checkbox" name="owned" value="{{ l.id }}" {{ 'checked' if l.id in owned }}><span>{{ l.name or ('List ' ~ l.id) }}</span><span class="mono">{{ l.sets if l.sets is not none else 0 }} {{ 'set' if l.sets == 1 else 'sets' }}</span></label>{% else %}<p class="bk-text">No set lists on Rebrickable yet.</p>{% endfor %}</div>
+<label class="bk-field">Send changes to<select name="send_to"><option value="">The only owned list</option>{% for l in lists %}<option value="{{ l.id }}" {{ 'selected' if link.get('send_to') == l.id }}>{{ l.name or ('List ' ~ l.id) }}</option>{% endfor %}</select></label></section>
+<section class="sr-card" data-rb-wishlist><h2>Wishlist</h2>{{ segment('wishlist_dir', 'wishlist', directions.wishlist) }}
+<div class="sr-two"><label class="bk-field">Wanted sets · go to the wishlist<select name="wishlist"><option value="">No wishlist list</option>{% for l in lists %}<option value="{{ l.id }}" {{ 'selected' if link.get('wishlist') == l.id }}>{{ l.name or ('List ' ~ l.id) }}</option>{% endfor %}</select></label>
+<label class="bk-field">Wishlist here<select name="wish_list">{% for w in wish_lists %}<option value="{{ w.id }}" {{ 'selected' if (link.get('wish_list') or 'default') == w.id }}>{{ w.name }}</option>{% endfor %}</select></label></div></section>
+<section class="sr-card" data-rb-parts><h2>Loose stock</h2>{{ segment('parts_dir', 'parts', directions.parts) }}
+<p class="sr-lede">Tick the part lists that are loose parts. None is ticked until you choose.</p>
+<div class="sr-checks">{% for l in part_lists %}<input type="hidden" name="list_name:part:{{ l.id }}" value="{{ l.name or ('List ' ~ l.id) }}"><label class="sr-check"><input type="checkbox" name="part_list" value="{{ l.id }}" {{ 'checked' if l.id in chosen_parts }}><span>{{ l.name or ('List ' ~ l.id) }}</span><span class="mono">{{ '{:,}'.format(l.parts or 0) }} parts</span></label>{% else %}<p class="bk-text">No part lists on Rebrickable yet.</p>{% endfor %}</div>
+<label class="bk-field">Put new loose parts in<select disabled aria-label="Put new loose parts in"><option>One lot per part list</option></select></label></section>
+</div>
+<div class="sr-col">
+<section class="sr-card" data-rb-lost><h2>Lost Parts</h2>{{ segment('lost_dir', 'lost', directions.lost) }}
+<p class="sr-lede">Marks the parts on your Lost Parts list as missing on the matching copy, and sends the parts you find or newly miss here back.</p>
+<h3 class="sr-sub">Into Brick Work: which count wins</h3>
+<div class="sr-radios">{% for value, label, note in lost_rules %}<label class="sr-radio"><input type="radio" name="lost_rule" value="{{ value }}" {{ 'checked' if value == lost_rule }}><span><b>{{ label }}</b><span>{{ note }}</span></span></label>{% endfor %}</div>
+<h3 class="sr-sub">To Rebrickable</h3>
+<p class="sr-lede">Parts newly missing here are added to Lost Parts there; parts found here are removed there. Removals are unticked until you tick them.</p>
+<label class="bk-field">Which count wins<select name="send_rule">{% for value, label, note in send_rules %}<option value="{{ value }}" {{ 'selected' if value == send_rule }}>{{ label }}</option>{% endfor %}</select></label></section>
+<section class="sr-card"><h2>When both sides differ</h2><p class="sr-lede sr-fixed">Ask me each time</p></section>
+</div></div>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_connect') }}">‹ Back</a><span class="sr-foot-actions">{% if can_edit %}<button class="bk-btn bk-quiet" name="start" value="0">Save</button><button class="bk-btn bk-outline" data-busy-label="Checking {{ label }}">Next: pick sets</button>{% endif %}</span></div>
+</form>
+
+{% elif screen == 'pick' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<form method="post" class="sr-pick" action="{{ url_for('web.bw_sync_' ~ pre ~ '_pick_save', run_id=run.id) }}" data-sr-pick data-sr-group="{{ group }}" data-sy-busy>{{ csrf() }}
+<section class="sr-card"><h2>Which sets</h2>
+<nav class="sr-seg" aria-label="Which sets">{% for v, label in modes %}<a href="{{ url_for('web.bw_sync_' ~ pre ~ '_pick', run_id=run.id, by=v) }}" {% if v == mode %}aria-current="true"{% endif %}><span>{{ label }}</span></a>{% endfor %}</nav>
+{% if chips %}<div class="sr-chips" role="group" aria-label="Choose by {{ mode }}">{% for name, n in chips %}<button type="button" class="sr-chip" data-sr-chip="{{ name }}" aria-pressed="false">{{ name }} <span class="mono">{{ n }}</span></button>{% endfor %}</div>{% endif %}
+<label class="sy-search sr-search"><span class="bc-visually-hidden">Search</span>{{ toni_icon('search') }}<input type="search" data-sr-search placeholder="Number or name" aria-label="Search sets"></label>
+<div class="sr-rows">{% for c in candidates %}{% set on = (picked is none and mode != 'one') or (picked is not none and c.item_id in picked) %}
+<label class="sr-pickrow" data-sr-row data-name="{{ c.number }} {{ c.name or '' }}" data-keys="{{ (c.lists if mode == 'list' else [c.theme] if mode == 'theme' and c.theme else [c.year|string] if mode == 'year' and c.year else [])|join('|') }}">
+<input type="checkbox" name="item" value="{{ c.item_id }}" {{ 'checked' if on }} data-sr-item>{{ tile(c.number) }}
+<span class="sr-pickid"><b>{{ c.name or 'Name not recorded' }}</b><span>{{ c.number }}{% if c.theme %} · {{ c.theme }}{% endif %}{% if c.year %} · {{ c.year }}{% endif %}</span>{% if mode == 'list' and c.lists %}<span class="mono">Rebrickable: {{ c.lists|join(', ') }}</span>{% endif %}</span></label>
+{% else %}<p class="bk-text">Nothing differs. Here and {{ label }} agree.</p>{% endfor %}</div></section>
+{% if mode == 'list' and run.pull %}<section class="sr-card"><h2>Keep the list names</h2><input type="hidden" name="keep_present" value="1"><input type="hidden" name="keep_list_names" value="0">
+<label class="sr-check"><input type="checkbox" name="keep_list_names" value="1" {{ 'checked' if keep_names }}><span>Keep each set’s Rebrickable list names as its source detail</span></label>
+<p class="sr-note">A set in two lists keeps both names. A list renamed or removed at Rebrickable updates or drops its name on the next run; the preview shows it first.</p></section>{% endif %}
+<p class="sr-info" data-sr-count role="status"><b data-sr-picked>{{ (picked if picked is not none else candidates)|length }}</b> of {{ candidates|length }} sets picked{% if loose %} · loose stock: {{ loose|join(', ') }}{% endif %}{% if lost_on %} · Lost Parts: on the picked sets{% endif %}{% if mode == 'list' and keep_names and list_names %} · list names kept: {{ list_names|join(', ') }}{% endif %}</p>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_choose') }}">‹ Back</a>{% if can_edit %}<button class="bk-btn bk-outline" data-busy-label="Comparing">Next: preview</button>{% endif %}</div>
+</form>
+
+{% elif screen == 'preview' %}
+{{ head((compared|string) ~ ' sets compared · checked ' ~ stamp(checked) ~ ((' · last run ' ~ stamp(last_run)) if last_run else '')) }}
+{{ stepbar() }}
+{{ flashes() }}
+<p class="sr-promise">Nothing in Brick Work is deleted unless you choose. Choose what happens to each difference, then run.</p>
+<form method="post" class="sr-preview" data-sy-plan data-sy-direction="run" action="{{ url_for('web.bw_sync_' ~ pre ~ '_apply', run_id=run.id) }}" data-sy-busy>{{ csrf() }}
+{% if lines %}<section class="sr-card" data-rb-lists><h2>Rebrickable lists</h2><p class="sr-lede">A list name follows its list on every set whose source detail carries it, picked or not. Nothing else on a copy changes.</p>
+{% for line in lines %}<div class="sr-listline"><span class="sr-listid"><b>{{ line.old_name or line.name }}</b><span>{% if line.state == 'renamed' %}Renamed at Rebrickable to “{{ line.name }}”; the source detail of {{ line.sets }} {{ 'set' if line.sets == 1 else 'sets' }} changes{% elif line.state == 'removed' %}Removed at Rebrickable; the source detail of {{ line.sets }} {{ 'set' if line.sets == 1 else 'sets' }} changes{% elif line.state == 'unlinked' %}No longer linked; the source detail of {{ line.sets }} {{ 'set' if line.sets == 1 else 'sets' }}{% else %}Unchanged; the source detail of {{ line.sets }} {{ 'set' if line.sets == 1 else 'sets' }}{% endif %}</span></span>
+{{ tag({'renamed': 'Renamed', 'removed': 'Removed', 'unlinked': 'Not linked', 'unchanged': 'Same'}[line.state], line.state != 'unchanged') }}
+<select name="list:{{ line.key }}" data-sy-listpick aria-label="List {{ line.old_name or line.name }}">{% for c in line.choices %}<option value="{{ c }}" {{ 'selected' if c == line.action }}>{{ list_words[c] }}</option>{% endfor %}</select></div>{% endfor %}</section>{% endif %}
+{% if conflicts %}<section class="sr-card" data-rb-conflicts data-sy-card aria-labelledby="sr-both"><h2 id="sr-both">Changed in both places <span class="sr-count">{{ conflicts|length }}</span></h2>
+<p class="sr-lede">{{ conflicts|length }} {{ 'item' if conflicts|length == 1 else 'items' }} changed here and on {{ label }} since the last run{% if last_run %} on {{ stamp(last_run)[:6] }}{% endif %}. Nothing happens to {{ 'it' if conflicts|length == 1 else 'them' }} unless you choose.</p>
+{% for r in conflicts %}<div class="sr-conflict" data-sy-row data-state="conflict" data-name="{{ r.number }} {{ r.name or '' }}"><div class="sr-rowid">{{ tile(r.number) }}<span><b>{{ r.name or 'Name not recorded' }}</b><span>{{ r.number }} · quantity · here {{ r.here }} · {{ label }} {{ r.remote }}</span></span></div>
+<div class="sr-choice" role="radiogroup" aria-label="{{ r.name }}">{% for o in r.options %}<label><input type="radio" name="choice:{{ r.key }}" value="{{ o.id }}" {{ 'checked' if o.id == 'keep' }} {% if o.id != 'keep' %}data-sy-tick{% endif %}{% if o.id in ('send', 'remove') %} data-sy-send{% if source == 'brickset' %} data-sy-set="{{ r.send_no or r.item_id }}"{% endif %}{% endif %}><span><b>{{ o.label }}</b>{% if o.note %}<span class="mono">{{ o.note }}</span>{% endif %}</span></label>{% endfor %}</div></div>{% endfor %}
+<p class="sr-note">Checks, storage and notes stay here either way; only quantities are compared.</p></section>{% endif %}
+<section class="sr-card" data-rb-changes>
+<div class="sr-tabs sy-tabs" role="group" aria-label="Show">{% for value, text, n in [('all', 'All', counts.all), ('into', 'Into Brick Work', counts.into), ('to', 'To ' ~ label, counts.to), ('conflict', 'Changed in both places', counts.both)] + ([('lost', 'Lost Parts', counts.lost), ('parts', 'Loose stock', counts.parts)] if source == 'rebrickable' else []) %}<button type="button" data-sy-tab="{{ value }}" aria-pressed="{{ 'true' if value == 'all' else 'false' }}">{{ text }} <span class="mono">{{ n }}</span></button>{% endfor %}</div>
+<label class="sy-search sr-search"><span class="bc-visually-hidden">Search</span>{{ toni_icon('search') }}<input type="search" data-sy-search placeholder="Number or name" aria-label="Search sets"></label>
+<div class="sr-rows">{% for r in rows %}
+<div class="sr-prow" data-sy-row data-state="{{ r.group }}" data-name="{{ r.number }} {{ r.name or '' }} {{ r.remote_no or '' }}">
+{% if r.options|length > 1 %}<div class="sr-rowid">{{ tile(r.number) }}<span><b>{{ r.name or 'Name not recorded' }}</b><span>{{ r.number }} · {{ 'Wishlist' if r.kind == 'wanted' else 'Owned' }}</span></span></div>
+<div class="sr-choice" role="radiogroup" aria-label="{{ r.name }}">{% for o in r.options %}<label><input type="radio" name="choice:{{ r.key }}" value="{{ o.id }}" {{ 'checked' if o.id == (r.default or 'keep') }} {% if o.id != 'keep' %}data-sy-tick{% endif %}{% if o.id in ('send', 'remove') %} data-sy-send{% if source == 'brickset' %} data-sy-set="{{ r.send_no or r.item_id }}"{% endif %}{% endif %}><span><b>{{ o.label }}</b>{% if o.note %}<span class="mono">{{ o.note }}</span>{% endif %}</span></label>{% endfor %}</div>
+{% else %}
+{% if r.options %}{% set o = r.options[0] %}<label class="sr-tickbox"><input type="checkbox" name="choice:{{ r.key }}" value="{{ o.id }}" {{ 'checked' if r.default == o.id }} data-sy-tick{% if o.id in ('send', 'remove') %} data-sy-send{% if source == 'brickset' %} data-sy-set="{{ r.send_no or r.item_id }}"{% endif %}{% endif %}><span class="bc-visually-hidden">{{ o.label }}</span></label>{% else %}<span class="sr-tickbox"></span>{% endif %}
+<div class="sr-rowid">{{ tile(r.number) }}<span><b>{{ r.name or 'Name not recorded' }}</b><span>{{ r.number }} · {{ 'Wishlist' if r.kind == 'wanted' else 'Owned' }}{% if r.kept %} · not taken at the last run{% endif %}</span></span></div>
+<div class="sr-rowdo">{{ tag(r.tag, r.tone in ('dash', 'warning', 'unknown'), r.tone == 'danger') }}<span>{% if r.options %}{{ r.options[0].label }}{% elif r.reason %}{{ r.reason }}{% else %}Keep here{% endif %}</span>{% if r.options and r.reason %}<span class="sr-reason">Not sent: {{ r.reason }}</span>{% endif %}</div>
+{% endif %}</div>{% else %}<p class="bk-text">Nothing differs between the sets picked.</p>{% endfor %}</div></section>
+{% if lost_in or parts or parts_unmatched %}<div class="sr-cols">
+{% if lost_in %}{% set lost = lost_in %}<section class="sr-card sy-lost" data-rb-lost-in data-sy-card aria-labelledby="sy-lost-title"><h2 id="sy-lost-title">Lost Parts <span class="sr-count">{{ lost.sets|length + (lost.unmatched_sets|length if lost.status == 'read' else 0) }}</span></h2>
+{% if lost.status == 'off' %}<p class="sr-lede">Lost Parts are switched off for this run.</p>
+{% elif lost.status == 'failed' %}<p class="bk-banner bk-warning" role="alert">{{ lost.message }}</p>
+{% else %}{% if lost.message %}<p class="bk-banner bk-warning" role="status">{{ lost.message }}</p>{% endif %}
+{% set sm = lost.summary %}<p class="mono sy-lost-summary">{{ sm.added }} added · {{ sm.replaced }} replaced · {{ sm.cleared }} cleared there · {{ sm.unmatched }} not matched{% if sm.pick %} · {{ sm.pick }} {{ 'set needs' if sm.pick == 1 else 'sets need' }} a copy{% endif %}</p>
+{% if sm.cleared %}<p class="bk-banner bk-warning" role="status">This will clear {{ sm.cleared }} missing {{ 'mark' if sm.cleared == 1 else 'marks' }} ({{ sm.cleared_pieces }} {{ 'piece' if sm.cleared_pieces == 1 else 'pieces' }}) that Rebrickable does not list. Undo takes them back.</p>{% endif %}
+{% if not lost.sets and not lost.unmatched_sets %}<p class="sr-lede">Nothing to change for Lost Parts.</p>{% endif %}
+{% for e in lost.sets %}{% set pv = e.preview %}
+<div class="sy-row sy-lost-row" data-sy-row data-state="lost" data-also="into" data-name="{{ e.number }} {{ e.name or '' }} {{ e.set_no }}">
+<div class="sy-id"><span class="mono">{{ e.number }}{% if e.set_no != e.number %} · Rebrickable {{ e.set_no }}{% endif %}</span><strong>{{ e.name or 'Name not recorded' }}</strong><span class="sy-kind">Lost Parts</span></div>
+<div class="sy-state">{% if e.state == 'pick' %}{{ tag('Choose a copy', true) }}<span class="mono sy-counts">{{ e.parts }} {{ 'part' if e.parts == 1 else 'parts' }} · {{ e.pieces }} {{ 'piece' if e.pieces == 1 else 'pieces' }}</span>
+{% else %}{{ tag('Lost Parts') }}<span class="mono sy-counts">{{ pv.added }} added · {{ pv.replaced }} replaced{% if pv.cleared %} · {{ pv.cleared }} cleared{% endif %}</span>{% endif %}</div>
+<div class="sy-do">{% if e.state == 'pick' %}<label class="sy-pick"><span>Mark the parts on</span><select name="copy:{{ e.set_no }}" data-sy-pick><option value="">Choose a copy</option>{% for c in e.copies %}<option value="{{ c.id }}">{{ c.label }}{% if c.effect %} · {{ c.effect }}{% endif %}</option>{% endfor %}</select></label>
+{% elif pv.added or pv.replaced or pv.cleared %}<label class="sy-tick"><input type="checkbox" name="lost" value="{{ e.set_no }}" checked data-sy-tick><span>Mark {{ pv.added + pv.replaced }} {{ 'part' if pv.added + pv.replaced == 1 else 'parts' }}{% if pv.cleared %}, clear {{ pv.cleared }}{% endif %}</span></label>
+{% else %}<span class="sy-muted">Nothing to change</span>{% endif %}</div>
+<ul class="sy-lost-list">
+{% if e.state == 'pick' %}{% for l in e.lost %}<li><span class="mono">{{ l.part_no }} · colour {{ l.color_id }}{% if l.is_spare %} · spare{% endif %}</span> · {{ l.quantity }} lost</li>{% endfor %}
+{% else %}{% for l in pv.parts %}<li><span class="mono">{{ l.part_no }} · colour {{ l.color_id }}{% if l.is_spare %} · spare{% endif %}</span> · {{ l.before }} to {{ l.after }}</li>{% endfor %}
+{% for l in pv.cleared_list %}<li><span class="mono">{{ l.part_no }}{% if l.is_spare %} · spare{% endif %}</span> · {{ l.before }} to 0 · not on your Rebrickable list</li>{% endfor %}
+{% for u in pv.unmatched_list %}<li><span class="mono">{{ u.part_no }} · colour {{ u.color_id }}{% if u.is_spare %} · spare{% endif %}</span> · {{ u.quantity }} not matched · {{ u.reason }}</li>{% endfor %}
+{% if pv.not_cleared %}<li>{{ pv.not_cleared }}.</li>{% endif %}{% endif %}
+</ul></div>{% endfor %}
+{% for u in lost.unmatched_sets %}<div class="sy-row sy-lost-row" data-sy-row data-state="lost" data-also="into" data-name="{{ u.set_no }}"><div class="sy-id"><span class="mono">Rebrickable {{ u.set_no }}</span><strong>Not matched</strong><span class="sy-kind">Lost Parts</span></div><div class="sy-state">{{ tag('Not matched', true) }}<span class="mono sy-counts">{{ u.parts }} {{ 'part' if u.parts == 1 else 'parts' }}</span></div><div class="sy-do"><span class="sy-muted">{{ u.reason }}</span></div></div>{% endfor %}
+{% endif %}</section>{% endif %}
+{% if parts or parts_unmatched %}<section class="sr-card" data-rb-parts data-sy-card><h2>Loose stock <span class="sr-count">{{ parts|length }}</span></h2>
+{% for r in parts %}<div class="sr-prow sr-part" data-sy-row data-state="parts" data-also="into" data-name="{{ r.part_no }} {{ r.color_no }}"><label class="sr-tickbox"><input type="checkbox" name="part" value="{{ r.key }}" {{ 'checked' if r.tickable }} {{ '' if r.tickable else 'disabled' }} data-sy-tick><span class="bc-visually-hidden">Add {{ r.count }} here</span></label>
+<div class="sr-rowid"><span><b>{{ r.part_no }}</b><span>colour {{ r.color_no }} · from {% for l in parts_lists if l.id == r.list_id %}{{ l.name }}{% endfor %} · there {{ r.remote }} · here {{ r.here }}</span></span></div>
+<div class="sr-rowdo">{{ tag('New there' if r.state == 'add' else 'Different' if r.state == 'differs' else 'Only here', r.state != 'add') }}<span>{{ ('Add ' ~ r.count ~ ' here') if r.state == 'add' else 'Keep here' }}</span></div></div>{% endfor %}
+{% if parts_unmatched %}<ul class="sy-lost-list">{% for u in parts_unmatched %}<li><span class="mono">{{ u.part_no or 'Part' }}{% if u.color_no is not none %} · colour {{ u.color_no }}{% endif %}</span>{% if u.quantity %} · {{ u.quantity }}{% endif %} not matched · {{ u.reason }}</li>{% endfor %}</ul>{% endif %}
+{% if parts %}<label class="bk-field">Put in<select name="lot_all"><option value="">One lot per part list</option>{% for lot in lots %}<option value="{{ lot.id }}">Lot · {{ lot.name }}</option>{% endfor %}</select></label>{% endif %}</section>{% endif %}
+</div>{% endif %}
+{% if lost_out %}<section class="sr-card" data-rb-lost-out data-sy-card><h2>Lost Parts to Rebrickable <span class="sr-count">{{ lost_out.rows|length }}</span></h2>
+{% if lost_out.status == 'unavailable' %}<p class="bk-banner bk-warning" role="alert">{{ lost_out.message }}</p>
+{% elif not lost_out.rows %}<p class="sr-lede">Nothing to send for Lost Parts. Rule: {{ send_rule_labels[lost_out.rule] }}.</p>
+{% else %}<p class="sr-lede">Rule: {{ send_rule_labels[lost_out.rule] }}. Removals are unticked until you tick them.</p>
+{% for r in lost_out.rows %}<div class="sr-prow" data-sy-row data-state="lost" data-also="to" data-name="{{ r.number }} {{ r.name or '' }} {{ r.part_no }}">
+{% if r.tickable %}<label class="sr-tickbox"><input type="checkbox" name="lostsend" value="{{ r.key }}" {{ 'checked' if r.ticked }} data-sy-tick data-sy-send><span class="bc-visually-hidden">Send</span></label>{% else %}<span class="sr-tickbox"></span>{% endif %}
+<div class="sr-rowid"><span><b>{{ r.name or 'Name not recorded' }}</b><span class="mono">{{ r.number }} · {{ r.part_no }} · colour {{ r.color_id }}{% if r.is_spare %} · spare{% endif %}</span></span></div>
+<div class="sr-rowdo">{% if r.tickable %}{{ tag('Send' if r.state != 'remove' else 'Removes there', r.state == 'remove') }}<span>{% if r.state == 'remove' %}Remove {{ r.before }} there{% else %}{{ r.before }} there to {{ r.after }}{% endif %}</span>{% else %}{{ tag('Not sent', true, true) }}<span>{{ r.reason }}</span>{% endif %}</div></div>{% endfor %}{% endif %}
+{% if lost_out.unmatched %}<ul class="sy-lost-list">{% for u in lost_out.unmatched %}<li><span class="mono">{{ u.set_no }}</span> · {{ u.parts }} {{ 'part' if u.parts == 1 else 'parts' }} not matched · {{ u.reason }}</li>{% endfor %}</ul>{% endif %}</section>{% endif %}
+{% if run.send or run.lost_out %}<section class="sr-info sr-before" data-rb-before><p><b>Before you send.</b> Brick Work’s Undo cannot take a sent change back. Removals are unticked until you tick them.</p>
+<dl class="sr-kv"><dt>Requests</dt><dd>about <span data-sy-requests>{{ requests }}</span></dd>{% if source == 'rebrickable' %}<dt>Time</dt><dd>about <span data-sr-seconds>{{ requests }}</span> seconds at 1 request a second</dd>{% endif %}{% if budget %}<dt>Budget today</dt><dd class="mono">{{ '{:,}'.format(budget.used) }} / {{ '{:,}'.format(budget.budget) }}</dd>{% endif %}</dl></section>{% endif %}
+<div class="sr-foot sy-footer"><a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_pick', run_id=run.id) }}">‹ Back</a><p class="mono sy-total" data-sy-total data-sy-of="{{ choosable }}" role="status" aria-live="polite"></p>
+{% if can_edit %}<button class="bk-btn bk-primary bk-lg" data-sy-submit data-sy-verb="Run" data-busy-label="Running changes">Run</button>{% endif %}</div>
+</form>
+
+{% elif screen == 'result' %}
+{% set pull = stages.get('pull') or {} %}{% set parts_stage = stages.get('parts') or {} %}{% set send = stages.get('send') or {} %}{% set lost_stage = stages.get('lost_out') or {} %}
+{{ head('Finished ' ~ stamp(finished) ~ ((' · ' ~ sent_total ~ ' sent' ) if sent_total else '') ~ ((', ' ~ waiting_total ~ ' waiting') if waiting_total else '') ~ ((', ' ~ failed_total ~ ' failed') if failed_total else '')) }}
+{{ stepbar() }}
+{{ flashes() }}
+<div class="sr-grid">
+<section class="sr-card" data-rb-here><h2>Here in Brick Work {{ tag((here|string) ~ ' changed') }}</h2>
+{% if pull.status == 'failed' %}<p class="bk-banner bk-warning" role="alert">{{ pull.message }}</p>{% endif %}
+{% if parts_stage.status == 'failed' %}<p class="bk-banner bk-warning" role="alert">{{ parts_stage.message }}</p>{% endif %}
+{% set c = pull.get('counts') or {} %}
+<p class="sr-lede">{% if here %}{{ [
+  (c.copies ~ ' ' ~ ('set' if c.copies == 1 else 'sets') ~ ' added') if c.copies else '',
+  (c.stock ~ ' loose added') if c.stock else '',
+  (c.wishes_added ~ ' ' ~ ('wish' if c.wishes_added == 1 else 'wishes') ~ ' added') if c.wishes_added else '',
+  (c.wishes_changed ~ ' wish quantities raised') if c.wishes_changed else '',
+  ((c.lost_added + c.lost_replaced) ~ ' parts marked missing on ' ~ c.lost_sets ~ ' ' ~ ('set' if c.lost_sets == 1 else 'sets')) if c.get('lost_sets') else '',
+  (c.lost_cleared ~ ' ' ~ ('mark' if c.lost_cleared == 1 else 'marks') ~ ' cleared') if c.get('lost_cleared') else '',
+  (list_changes ~ ' list ' ~ ('name' if list_changes == 1 else 'names') ~ ' changed') if list_changes else '',
+  ((parts_stage.counts.pieces) ~ ' loose pieces added from part lists') if parts_stage.get('counts') and parts_stage.counts.pieces else ''
+]|select|join(' · ') }}.{% else %}Nothing changed here.{% endif %}</p>
+{% if lost_in and (lost_in.left_out or lost_in.skipped or lost_in.unmatched_sets) %}<ul class="sy-lost-list">
+{% for l in lost_in.left_out %}<li><span class="mono">{{ l.set_no }}</span> · {{ l.parts }} {{ 'part' if l.parts == 1 else 'parts' }} left out · {{ l.reason }}. Run again and pick the copy.</li>{% endfor %}
+{% for l in lost_in.skipped %}<li><span class="mono">{{ l.set_no }}</span> · left out · {{ l.reason }}</li>{% endfor %}
+{% for u in lost_in.unmatched_sets %}<li><span class="mono">{{ u.set_no }}</span> · {{ u.parts }} {{ 'part' if u.parts == 1 else 'parts' }} not matched · {{ u.reason }}</li>{% endfor %}</ul>{% endif %}
+{% if run.applied.events and can_edit and not undone %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ run.applied.events[0] }}"><button class="bk-btn bk-outline">Undo this run</button></form>
+<p class="sr-note">Undo takes back everything this run changed here, in one step. It cannot change what was sent to {{ label }}.</p>{% elif undone %}<p class="sr-note">This run was undone.</p>{% endif %}</section>
+<section class="sr-card" data-rb-there><h2>On {{ label }} {% if sent_total %}{{ tag((sent_total|string) ~ ' sent') }}{% endif %}{% if waiting_total %}{{ tag((waiting_total|string) ~ ' waiting', true) }}{% endif %}{% if failed_total %}{{ tag((failed_total|string) ~ ' failed', true, true) }}{% endif %}{% if not sent_total and not waiting_total and not failed_total %}{{ tag('Nothing sent', true) }}{% endif %}</h2>
+{% if lost_stage.get('unsaved') %}<p class="bk-banner bk-warning" role="alert">Brick Work could not write down how far the Lost Parts send got. Check the Lost Parts on Rebrickable before you send again.</p>{% endif %}
+{% for s in (send, lost_stage) %}{% if s.status == 'failed' %}<p class="bk-banner bk-warning" role="alert">{{ s.message }}</p>{% elif s.get('message') %}<p class="bk-banner bk-warning" role="alert">{{ s.message }}</p>{% endif %}{% endfor %}
+{% for r in failed_rows %}<div class="sr-prow"><div class="sr-rowid">{{ tile(r.number) }}<span><b>{{ r.name or 'Name not recorded' }}</b><span>{{ r.number }}{% if r.options %} · {{ r.options[-1].label|lower }}{% endif %} · {{ r.result.detail or {'paused': 'waiting for the daily budget', 'key_rejected': label ~ ' refused the key', 'failed': label ~ ' did not answer'}.get(r.result.result, r.result.result) }}</span></span></div>
+{% if can_edit %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_retry', run_id=run.id) }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-outline" data-busy-label="Sending">Retry</button></form>{% endif %}</div>{% endfor %}
+{% for f in lost_stage.get('failed', ()) %}<div class="sr-prow"><div class="sr-rowid"><span><b>Lost Part {{ f.part_no }}</b><span class="mono">{{ f.set_no }} · {{ f.reason }}</span></span></div></div>{% endfor %}
+<p class="sr-info">A change on {{ label }} cannot be undone here. To reverse it, change it back on {{ label }} or send again.</p></section>
+</div>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_hub') }}#sy-log-title">Open sync log</a><a class="bk-btn bk-outline" href="{{ url_for('web.bw_sync_site', source=source) }}">Done</a></div>
+{% endif %}
+{% endblock %}

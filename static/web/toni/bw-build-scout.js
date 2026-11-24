@@ -3,6 +3,26 @@
   var root = document.getElementById('bw-build-scout');
   if (!root) return;
   var wide = window.matchMedia('(min-width: 1024px)');
+
+  // #668: a scan runs only when asked. Scan follows its link, or sends the filter form when a stock or filter was changed in it; a scanned
+  // list page shows the bare address, so a reload or coming back shows the Scan button again (Undo returns to the scanned page itself).
+  var scanned = window.location.href;
+  var scan = root.querySelector('[data-bs-scan]');
+  var form = root.querySelector('form.bs-filters');
+  if (scan && form) scan.addEventListener('click', function (event) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button) return;      // a new tab keeps the plain link
+    var changed = [].some.call(form.elements, function (field) {
+      if (field.type === 'checkbox' || field.type === 'radio') return field.checked !== field.defaultChecked;
+      if (field.options) return [].some.call(field.options, function (option) { return option.selected !== option.defaultSelected; });
+      return field.type !== 'hidden' && 'defaultValue' in field && field.value !== field.defaultValue;
+    });
+    if (!changed) return;
+    event.preventDefault();
+    if (form.requestSubmit) form.requestSubmit(); else form.submit();
+  });
+  if (!scan && form && window.location.search && window.history && history.replaceState) {
+    history.replaceState(history.state, '', window.location.pathname + window.location.hash);      // the list page only: a set's own page has no filter form
+  }
   var narrow = window.matchMedia('(max-width: 767px)');
 
   // a row opens its own page; on a wide screen it selects the set beside the list instead
@@ -23,7 +43,7 @@
   fold();
 
   // a filter number is as wide as its text, as the frame draws "0 %" and "any – any" (a number field has no content sizing of its own)
-  function fit(input) { input.style.width = input.value ? (input.value.length + 0.4) + 'ch' : ((input.placeholder || '').length * 0.9) + 'ch'; }
+  function fit(input) { input.style.width = input.value ? (Math.max(input.value.length, 1) + 1) + 'ch' : (Math.max((input.placeholder || '').length, 1) + 0.5) + 'ch'; }   // #669: a digit of the label font is a little wider than 1ch
   root.querySelectorAll('.bs-input-wrap input[type=number]').forEach(function (input) { fit(input); input.addEventListener('input', function () { fit(input); }); });
 
   // one pop-over open at a time
@@ -57,7 +77,7 @@
       undo.addEventListener('click', function () {
         undo.disabled = true;
         send(root.dataset.undoUrl, {event_id: eventId}).then(function (result) {
-          if (result.ok) window.location.reload(); else { box.textContent = result.data.message || 'Nothing was undone'; }
+          if (result.ok) { if (window.location.href === scanned) window.location.reload(); else window.location.href = scanned; } else { box.textContent = result.data.message || 'Nothing was undone'; }
         });
       });
       box.appendChild(undo);

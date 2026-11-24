@@ -21,23 +21,19 @@
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="https://github.com/Ulef1005/brick-work/milestones">Roadmap</a> ·
-  <a href="https://brick-work.app/">Website</a> ·
-  <a href="https://www.youtube.com/watch?v=R5Q_6GUB1OQ">Video</a> ·
   <a href="https://brick-work.app/docs/">Docs</a> ·
-  <a href="https://brick-work.app/workflows/">Workflows</a> ·
-  <a href="https://brick-work.app/docs/developer/api-v2-reference/">API</a> ·
-  <a href="https://brick-work.app/docs/brickwork/mcp/">MCP</a>
+  <a href="https://brick-work.app/">Website</a>
 </p>
 
 <p align="center">
   <a href="https://brick-work.app/demo/">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/1c-sets-desktop-1440-dark.png">
-      <img src="docs/img/readme/1c-sets-desktop-1440-light.png" alt="Brick Work: the sets list on an invented collection" width="620">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/3e-part-desktop-1440-dark.png">
+      <img src="docs/img/readme/3e-part-desktop-1440-light.png" alt="Brick Work: Set Inspector in the middle of a part check, the Motorized Excavator at part line 57 of 140 with Found and Missing buttons" width="620">
     </picture>
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/3c-picker-pick-390-dark.png">
-      <img src="docs/img/readme/3c-picker-pick-390-light.png" alt="Brick Work: Part Runner on a phone" width="190">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/3c-picker-pick-phone-390-dark.png">
+      <img src="docs/img/readme/3c-picker-pick-phone-390-light.png" alt="Brick Work: Part Runner on a phone, a fence lattice to pick for three sets" width="190">
     </picture>
   </a>
 </p>
@@ -49,7 +45,7 @@
 
 **Don't just manage your collection. Work with it.** Brick Work is a free, open-source (MIT) web app for your own computer or NAS. It helps you finish your sets, not only list them. Built with Claude Code; I review it and use it daily. I use it for my collection of about 200 sets.
 
-**[Try the demo](https://brick-work.app/demo/)** (the real interface on an invented collection, nothing saved) or **[watch the tour](https://www.youtube.com/watch?v=R5Q_6GUB1OQ)** (1:36).
+**[Try the demo](https://brick-work.app/demo/)** (the real interface on an invented collection, nothing saved) or **[watch the tour](https://www.youtube.com/watch?v=R5Q_6GUB1OQ)** (1:36, recorded on v1.1).
 
 ## What it does, and why collectors like it
 
@@ -59,15 +55,23 @@
 - **Build Scout** ranks every set by how much your loose stock already makes. *"What can I build?" has an answer.*
 - **Set detection** ranks the sets a bulk lot may hold, and a pull list takes you through them. *A bag of unknown bricks becomes sets.*
 - **Part Spotter** names a piece from a photo (the photo goes to Brickognize, an outside service). *No more paging through catalogues.*
-- **Order missing parts** combines the gaps of the sets you choose into one BrickLink wanted list. *One order instead of many.*
+- **Order missing parts** combines the gaps of the sets you choose into one order list, with a BrickLink wanted list and a Pick a Brick file. *One order instead of many.*
 - **Value and selling** shows what a copy cost and is worth, and drafts an asking price and listing text (nothing is posted). *You decide to keep, sell or part out with numbers.*
 - **Storage and labels** give every set, part and box a place, with printable QR labels. *You find things.*
 
-It brings your collection over from Brickset, Rebrickable and BrickTracker, plus BrickLink files and orders, and it has a REST API, a CLI and an MCP server. Screens on [the workflows page](https://brick-work.app/workflows/) and in the [tutorials](https://brick-work.app/docs/tutorials/).
+It brings your collection over from Brickset, Rebrickable and BrickTracker, plus BrickLink files and orders, and it has a [REST API](https://brick-work.app/docs/developer/api-v2-reference/), a CLI and an [MCP server](https://brick-work.app/docs/brickwork/mcp/). Screens on [the workflows page](https://brick-work.app/workflows/) and in the [tutorials](https://brick-work.app/docs/tutorials/).
 
 ## In pictures
 
 These screenshots show the built app on the demo's invented collection, with real Rebrickable set and part pictures.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/1c-sets-desktop-1440-dark.png">
+    <img src="docs/img/readme/1c-sets-desktop-1440-light.png" alt="Brick Work: the sets list on an invented collection" width="620">
+  </picture>
+  <br><sub><strong>Your sets.</strong> The whole collection in one list, searchable and sorted the way you choose.</sub>
+</p>
 
 <p align="center">
   <picture>
@@ -88,9 +92,9 @@ These screenshots show the built app on the demo's invented collection, with rea
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/readme-order-missing-1024-dark.png">
-    <img src="docs/img/readme/readme-order-missing-1024-light.png" alt="Order missing parts: four sets with gaps ticked on the left and the combined part lines on the right, each with a BrickLink price and a Pick a Brick choice" width="620">
+    <img src="docs/img/readme/readme-order-missing-1024-light.png" alt="Order missing parts: four sets with gaps ticked on the left and the combined part lines on the right, each with its BrickLink price; Pick a Brick shows &quot;no element id&quot; here, as the demo parts carry none" width="620">
   </picture>
-  <br><sub><strong>Order missing parts.</strong> The gaps of the sets you tick in one list, each line going to BrickLink or Pick a Brick.</sub>
+  <br><sub><strong>Order missing parts.</strong> The gaps of the sets you tick in one list; each line goes to BrickLink, and lines with an element id can go to Pick a Brick.</sub>
 </p>
 
 <p align="center">
@@ -119,7 +123,7 @@ Not built for sealed-box investors, BrickLink store fulfilment or social profile
 
 ## Where we stand
 
-Release 1.1 (schema 4.6). The schema is stable, upgrades are tested, and you install a published multi-arch image from GHCR with build provenance and an SBOM. Planned: sync with BrickLink (#143); the order is in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones). Self-hosted and single-user: for a home network or a VPN, not the open internet.
+Release 1.2 (schema 4.7). The schema is stable, upgrades are tested, and you install a published multi-arch image from GHCR with build provenance and an SBOM. Planned: milestone N, two-way sync and files for BrickLink and Brick Owl alongside Rebrickable and Brickset, with no dates; the order is in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones). Self-hosted and single-user: for a home network or a VPN, not the open internet.
 
 ## Install
 
@@ -132,7 +136,7 @@ Pick your platform, none of these needs Git:
 With Git and Docker Compose:
 
 ```sh
-git clone --branch v1.1.1 https://github.com/Ulef1005/brick-work.git
+git clone --branch v1.2.0 https://github.com/Ulef1005/brick-work.git
 cd brick-work
 mkdir -p data
 sudo chown 1000:1000 data    # the container runs as uid 1000

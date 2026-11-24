@@ -9,6 +9,19 @@ Planning → Wishlist has an All lists view and a picker for each active list, w
 
 Select wishes to move or copy them in bulk, or use Move wish / Copy wish on wish detail. A target collision rejects the entire operation with no partial changes. Copy retains quantity, condition, maximum and currency, colour, note and item flags. Undo detaches the copied flags while keeping the original ones. List writes, transfers and their Undo use collection receipts in one transaction. Undo checks for intervening changes and archives newly created rows rather than deleting them. Restoring a wish or undoing a move into an archived list requires restoring that list first.
 
+
+## Wish states
+
+`planning.max_comparison` gives each wish one state. The tile shows it as its tag, and the State chips filter on it.
+
+- `under` is Buy now: the price now is at or under the max.
+- `over` is Wait.
+- `differs` is Not comparable: the max and the price are in different currencies with no rate for them, or either currency is not recorded.
+- `noprice` is No price: a max is set but no quote exists for the wanted condition.
+- `None` is No max.
+
+The price now is `display_price`, the quote for the wish's condition. For Any it is the best overall by source priority, a sold average before listings. A set's quote with box is held against the max with box and is never the shown price. `planning.wishes` adds `wish_state` and `state_rank`, and the list sorts Buy now first. API v2 is unchanged: `under_max` stays `null` for `noprice` and `differs`. The heading counts wishes (rows), never piece quantities.
+
 ## Schema
 
 `wishlist` (the lists) contains `id TEXT PRIMARY KEY`, `name`, `note`, `sort`, `archived_at`, `created_at`, and optional `bricklink_id`. The last field stores a BrickLink wanted list id, never an inferred one. The default list has id `default` and name `Wishlist`; a new list gets a uuid.

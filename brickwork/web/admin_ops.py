@@ -688,8 +688,6 @@ def settings_summaries(data):
     else:
         line += 'no rates yet'
     summary = {'currencies': line, 'retail-country': data.get('retail_country') or 'DE'}
-    from ..core.sync import lost_parts
-    summary['sync'] = lost_parts.RULE_LABELS.get(data.get('rebrickable_lost_parts_rule'), lost_parts.RULE_LABELS['per_part'])
     lists = data.get('bricklink_list') or {}
     summary['part-lists'] = "BrickLink's list preferred" if lists.get('on') and lists.get('key') else "Rebrickable's list first"
     summary['part-list-grouping'] = GROUPING_WORDS.get(data.get('part_list_grouping'), GROUPING_WORDS['grouped'])

@@ -383,3 +383,18 @@ def test_undo_recomputes_derived_completeness_from_lines_the_switch_left_alone(d
         db.execute('UPDATE copy_part SET missing=1 WHERE id=?', (line_id(db, cid, 12, 4, 0),))   # a line the switch did not touch
     copies.undo_switch(db, r['event_id'], via='cli', actor='t')
     assert q(db, 'SELECT completeness FROM copy') == [('incomplete',)]
+
+
+def test_a_pull_label_guards_the_copy_and_a_switch_moves_it_aside_until_undo(db, key):
+    """#489 (Argon review, 23.11.): a copy a Rebrickable pull labelled (checked_by) counts as checked, so it is marked: an automatic switch
+    leaves it alone (Decision F). A switch the user makes clears the label, since the new list's lines are not checked; Undo puts it back."""
+    fetch_bricklink(db)
+    cid = add(db)['copy']['id']
+    assert not copies.has_marks(db, cid)
+    with db:
+        db.execute("UPDATE copy SET checked_by='rebrickable' WHERE id=?", (cid,))
+    assert copies.has_marks(db, cid)
+    r = switch(db, cid, BL)
+    assert q(db, 'SELECT checked_by FROM copy WHERE id=?', cid) == [(None,)]
+    copies.undo_switch(db, r['event_id'], via='cli', actor='t')
+    assert q(db, 'SELECT checked_by FROM copy WHERE id=?', cid) == [('rebrickable',)]

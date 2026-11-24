@@ -58,6 +58,10 @@ def read(db):
     return _read(db)[0]
 
 
+def region_locked():
+    return os.environ.get('BW_PRICE_SETTINGS_LOCK', '1') != '0'
+
+
 def save(db, data):
     from .admin import audit
     from .sources.base import now
@@ -75,7 +79,7 @@ def save(db, data):
             raise ValidationFailed('Currency must be three uppercase ISO 4217 letters')
         if 'incomplete_discount_pct' in data and (type(new['incomplete_discount_pct']) is not int or not 0 <= new['incomplete_discount_pct'] <= 95):
             raise ValidationFailed('incomplete_discount_pct must be an integer from 0 to 95')
-        if os.environ.get('BW_PRICE_SETTINGS_LOCK', '1') != '0' and any(
+        if region_locked() and any(
                 new[k] != old[k] for k in ('bricklink_region', 'bricklink_currency')):
             raise Conflict('BrickLink region and currency are locked; set BW_PRICE_SETTINGS_LOCK=0 to unlock')
         for key in ('repair_shipping', 'repair_fees', 'repair_min_order'):

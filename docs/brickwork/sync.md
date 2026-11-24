@@ -5,15 +5,15 @@ verified: 1.0
 
 # Collection sync with Rebrickable and Brickset
 
-Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wanted sets only; loose parts, minifigures, missing parts, BrickLink, two-way merge and scheduled sync are out of scope. Code: `brickwork/core/sync/` (service) and `brickwork/core/sync/adapters.py` (remote calls). The routes named below are API v2 (`brickwork/api2/`); API v1 is retired and answers 410, except `/api/v1/health`. The screens (Tools & Admin → Collection sync) and `brickwork sync` run the same service.
+Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wanted sets only; loose parts, minifigures, missing parts, BrickLink, two-way merge and scheduled sync are out of scope. Code: `brickwork/core/sync/` (service) and `brickwork/core/sync/adapters.py` (remote calls). The routes named below are API v2 (`brickwork/api2/`); API v1 is retired and answers 410, except `/api/v1/health`. The screens (Workbench → Sync) and `brickwork sync` run the same service.
 
 ## Credentials
 
 Both sites need their API key (Catalogues & keys) and a per-user credential:
 
-- **Connect** (`POST /api/v2/sources/{source}/user/connect`, `brickwork sync <source> connect --username NAME`): the username and password go straight to the site, once. Rebrickable: `POST https://rebrickable.com/api/v3/users/_token/` (form `username`, `password`, header `Authorization: key <api key>`) returns `user_token`. Brickset: `POST https://brickset.com/api/v3.asmx/login` (`apiKey`, `username`, `password`) returns `hash`. Only the token or hash is stored, encrypted like the API keys (`source_key` rows `rebrickable_user`, `brickset_user`). The password is not recorded: the connect call bypasses the recorded transport, the API replay check stores a keyed fingerprint, and the command-line tool asks for it without echo. At most 10 logins per site per UTC day (counted from the day's `sync` events of that kind: an attempt writes one, with no credential in it).
+- **Connect** (`POST /api/v2/sources/{source}/user/connect`, `brickwork sync <source> connect --username NAME`): the username and password go straight to the site, once. Rebrickable: `POST https://rebrickable.com/api/v3/users/_token/` (form `username`, `password`, header `Authorization: key <api key>`) returns `user_token`. Brickset: `POST https://brickset.com/api/v3.asmx/login` (`apiKey`, `username`, `password`) returns `hash`. Only the token or hash is stored, encrypted like the API keys (`source_key` rows `rebrickable_user`, `brickset_user`). The username as typed is kept too, in the setting `<source>_account_name`, for the page to show. A pasted token or hash, and a removal, clear it. The password is not recorded: the connect call bypasses the recorded transport, the API replay check stores a keyed fingerprint, and the command-line tool asks for it without echo. At most 10 logins per site per UTC day (counted from the day's `sync` events of that kind: an attempt writes one, with no credential in it).
 - **Paste** (`PUT /api/v2/sources/{source}/user`, `brickwork sync <source> paste`): a token or hash generated on the site.
-- **Remove** (`DELETE …/user`, Undo restores it) and **Test** (`POST …/user/test`: Rebrickable `GET /users/{token}/setlists/?page_size=1`, Brickset `checkUserHash`).
+- **Remove** (`DELETE …/user`, Undo restores the credential but not the account name the page shows) and **Test** (`POST …/user/test`: Rebrickable `GET /users/{token}/setlists/?page_size=1`, Brickset `checkUserHash`).
 - Environment overrides: `BW_REBRICKABLE_USER_TOKEN`, `BW_BRICKSET_USER_HASH`.
 
 ## Link
@@ -30,8 +30,8 @@ Both sites need their API key (Catalogues & keys) and a per-user credential:
 | Rebrickable | `PUT …/setlists/{id}/sets/{set_num}/` | `quantity`, `include_spares=true` | counted |
 | Rebrickable | `DELETE …/setlists/{id}/sets/{set_num}/` | | counted |
 | Brickset | `getSets` | `apiKey`, `userHash`, `params={"owned":1 or "wanted":1 or "setNumber":…, "pageSize":500, "pageNumber":n}` | counted against the key (100/day) |
-| Brickset | `setCollection` | `apiKey`, `userHash`, `SetID`, `params={"own":1,"qtyOwned":n}` / `{"own":0}` / `{"want":1}` / `{"want":0}` | not counted by Brickset; local cap 500 per UTC day |
-| Brickset | `checkUserHash` | `apiKey`, `userHash` | not counted |
+| Brickset | `setCollection` | `apiKey`, `userHash`, `SetID`, `params` per set: `{"own":1,"qtyOwned":n}` or `{"own":0}`, with `{"qtyWanted":n}` or `{"want":0}`, in one call | counted against the key |
+| Brickset | `checkUserHash` | `apiKey`, `userHash` | counted against the key |
 
 Recorded jobs and source records name the path template and never the token or hash.
 
@@ -65,7 +65,7 @@ The rule is the setting `rebrickable_lost_parts_rule` (`add_only`, `per_part` (d
 
 ## Send
 
-`POST /sync/{source}/send/plan` lists the remote calls: per set whose count differs, the count to send (live copies here; wishes by quantity on Rebrickable, wanted yes/no on Brickset). Removals (`remove`, here 0) and conflicts are never ticked by default. `POST /sync/{source}/send/apply` (admin scope) performs the ticked rows in order; each row reports `sent`, `unchanged`, `failed` (with the reason), `paused` (daily budget; the rest pause too) or `key_rejected` (the rest stop). Re-applying the same plan retries only rows not yet sent. On Rebrickable, a wish row can't be ticked while no `wishlist` is linked (#514). Its `reason` says *Link a Rebrickable wishlist to send wishes to*. An owned row with no list to send to can't be ticked either. Remote changes are not undone by Brick Work's Undo.
+`POST /sync/{source}/send/plan` lists the remote calls: per set whose count differs, the count to send (live copies here; wishes by quantity on both sites). Removals (`remove`, here 0) and conflicts are never ticked by default. `POST /sync/{source}/send/apply` (admin scope) performs the ticked rows in order; each row reports `sent`, `unchanged`, `failed` (with the reason), `paused` (daily budget; the rest pause too) or `key_rejected` (the rest stop). Re-applying the same plan retries only rows not yet sent. On Rebrickable, a wish row can't be ticked while no `wishlist` is linked (#514). Its `reason` says *Link a Rebrickable wishlist to send wishes to*. An owned row with no list to send to can't be ticked either. Remote changes are not undone by Brick Work's Undo.
 
 Condition, completeness, box, instructions, and storage never leave Brick Work.
 
@@ -76,5 +76,5 @@ One `sync_state` row per source: `link_json` (carried by the migration), `baseli
 ## Open facts
 
 - Rebrickable user tokens: Rebrickable documents no expiry; a refused token surfaces as `key_rejected`.
-- Brickset `setCollection` and `login` limits are not published; the local caps listed earlier are Brick Work's own.
-- Brickset wanted sets carry no quantity in the API; wishes send as wanted yes/no.
+- Brickset counts every call against the key, not only `getSets` (100 a day to start; the change came in November 2026). Brick Work counts `getSets`, `setCollection` and `checkUserHash`. Brickset also counts key checks and logins, so its own number can be a few higher. `login` has a local cap of 10 a day.
+- Brickset keeps a wanted quantity (`qtyWanted`); a wish sends its quantity.

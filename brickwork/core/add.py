@@ -20,11 +20,12 @@ import json
 import re
 import sqlite3
 import uuid
+from contextlib import nullcontext
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from ..store4 import copies, fetched, identity, jobs, part_list_read, pending
+from ..store4 import copies, fetched, identity, jobs, origins, part_list_read, pending
 from ..store4.audit import Events
 from ..store4.connect import as_current, has_catalogue, now
 from ..store4.errors import AmbiguousIdentity, Store4Error
@@ -385,17 +386,62 @@ def brickset_minifig_rows(text, kind, where):
     return result
 
 
+BRICKOWL_SET = re.compile(r'\bSet\s+([0-9]{3,7}(?:-[0-9]+)?)(?![A-Za-z0-9-])', re.IGNORECASE)
+
+
+def _brickowl_condition(code):
+    code = (code or '').strip().lower()
+    if code.startswith('new'):
+        return 'new'
+    if code.startswith('used'):
+        return 'used'
+    return 'any'
+
+
+def _brickowl_rows(root):
+    """Sets from a Brick Owl inventory XML backup. Lots without Set <number> in their name are unresolved."""
+    result, others = [], []
+    lots = root.findall('lot')
+    if not lots:
+        raise ValueError('This Brick Owl file has no lots')
+    for entry in lots:
+        name = (entry.findtext('name') or '').strip()
+        match = BRICKOWL_SET.search(name)
+        if not match:
+            others.append(name or (entry.findtext('lot_id') or '').strip() or 'lot')
+            continue
+        number = match[1] if '-' in match[1] else f'{match[1]}-1'
+        try:
+            count = quantity((entry.findtext('quantity') or '').strip() or '1')
+        except ValueError:
+            result.append(dict(unresolved=name, reason='Quantity must be between 1 and 9999'))
+            continue
+        result.append(dict(
+            kind='set',
+            number=number,
+            quantity=count,
+            condition=_brickowl_condition(entry.findtext('condition')),
+            note=(entry.findtext('personal_note') or '').strip() or None,
+        ))
+    if others:
+        shown = ', '.join(others[:3]) + (f' and {len(others) - 3} more' if len(others) > 3 else '')
+        result.append(dict(unresolved=f"{len(others)} {'lot' if len(others) == 1 else 'lots'} without a set number in their name ({shown})", reason='A Brick Owl backup has no BrickLink or Rebrickable numbers, so only sets are read'))
+    return result
+
+
 def file_rows(data, filename, kind, where='owned'):
-    """Rows of a BrickLink wanted list or inventory (XML: BrickLink numbers and colour numbers), a Rebrickable CSV (Rebrickable
-    numbers and colour ids), a Brickset My Sets CSV (set numbers; `where` picks its owned or its wanted sets) or Brickset's minifigure
-    CSV (minifigure numbers: the loose ones or the wanted ones). Nothing is looked up here."""
+    """Rows of a BrickLink XML, Brick Owl XML inventory, Rebrickable CSV or Brickset CSV. Nothing is looked up here."""
     text = data.decode('utf-8-sig')
     if filename.lower().endswith('.xml'):
         if '<!DOCTYPE' in text.upper() or '<!ENTITY' in text.upper():
             raise ValueError('Choose XML without document declarations')
         root = ET.fromstring(text)
+        if root.tag == 'inventory':
+            if kind != 'set':
+                raise ValueError('A Brick Owl file lists sets · choose Set')
+            return _brickowl_rows(root)
         if root.tag not in ('INVENTORY', 'WANTEDLIST'):
-            raise ValueError('Choose a BrickLink wanted list or inventory')
+            raise ValueError('Choose a BrickLink wanted list or inventory, or a Brick Owl inventory')
         result = []
         for entry in root.findall('ITEM'):
             letter = entry.findtext('ITEMTYPE') or ''
@@ -410,7 +456,7 @@ def file_rows(data, filename, kind, where='owned'):
                 qtyfilled=entry.findtext('QTYFILLED')))
         return result
     if not filename.lower().endswith('.csv'):
-        raise ValueError('Choose BrickLink XML, Rebrickable CSV or Brickset CSV')
+        raise ValueError('Choose BrickLink XML, Brick Owl XML, Rebrickable CSV or Brickset CSV')
     header = next(csv.reader(io.StringIO(text)), [])
     if 'SetID' in header and 'Number' in header:
         return brickset_rows(text, kind, where)
@@ -426,6 +472,38 @@ def file_rows(data, filename, kind, where='owned'):
         result.append(dict(kind=rb_kind, number=number, quantity=quantity(entry.get('quantity') or '1'),
                            rb_color=entry.get('color_id') or entry.get('color') or None))
     return result
+
+
+def file_origin(data, filename):
+    """Origin id for an uploaded Add file: BrickLink XML, Brick Owl XML, Brickset CSV or Rebrickable CSV. Returns None when unknown."""
+    name = (filename or '').lower()
+    if not isinstance(data, (bytes, bytearray)):
+        return None
+    try:
+        text = data.decode('utf-8-sig')
+    except UnicodeError:
+        return None
+    if name.endswith('.xml'):
+        if '<!DOCTYPE' in text.upper() or '<!ENTITY' in text.upper():
+            return None
+        try:
+            root = ET.fromstring(text)
+        except ET.ParseError:
+            return None
+        if root.tag in ('INVENTORY', 'WANTEDLIST'):
+            return 'bricklink_xml'
+        if root.tag == 'inventory':
+            return 'brickowl_xml'
+        return None
+    if not name.endswith('.csv'):
+        return None
+    header = next(csv.reader(io.StringIO(text)), [])
+    if ('SetID' in header and 'Number' in header) or 'MinifigNumber' in header:
+        return 'brickset_csv'
+    columns = {c.strip().lower().replace(' ', '_') for c in header if c}
+    if columns & {'part_num', 'part', 'set_num', 'set_number', 'minifig_num'}:
+        return 'rebrickable_csv'
+    return None
 
 
 # ---------- resolving rows to items ----------
@@ -799,9 +877,9 @@ def _add_copy(db, row, via, actor):
         receipt = copies.create_copy_in(db, row['item_id'], choice, via=via, actor=actor, condition=condition, completeness=completeness, note=row.get('note'))
         return receipt['copy']['id'], receipt.get('pending')
     copy_id, stamp = str(uuid.uuid4()), now()
-    db.execute("""INSERT INTO main.copy(id, item_id, inventory_source, condition, completeness, completeness_source, note, created_at, updated_at)
-                  VALUES(?, ?, 'none', ?, ?, ?, ?, ?, ?)""", (copy_id, row['item_id'], condition, completeness, 'manual' if completeness else None,
-                                                             row.get('note'), stamp, stamp))
+    db.execute("""INSERT INTO main.copy(id, item_id, inventory_source, condition, completeness, completeness_source, note, created_at, updated_at, added_via)
+                  VALUES(?, ?, 'none', ?, ?, ?, ?, ?, ?, ?)""", (copy_id, row['item_id'], condition, completeness, 'manual' if completeness else None,
+                                                                row.get('note'), stamp, stamp, origins.current()))
     Events(db, via, actor).write('copy', copy_id, 'add', new={'copy': {'id': copy_id, 'item_id': row['item_id'], 'inventory_source': 'none',
                                                                          'condition': condition, 'completeness': completeness, 'note': row.get('note')},
                                                               'figures': [], 'parts': {'columns': copies.PART_COLUMNS, 'rows': []}})
@@ -837,40 +915,43 @@ def _add_wish(db, row, receipt, via, actor):
     else:
         before, wish_id = None, uuid.uuid4().hex
         db.execute('''INSERT INTO main.wish(id, wishlist_id, kind, item_id, color_id, quantity, condition, max_price, max_price_currency,
-                      qty_filled_manual, note, added_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      qty_filled_manual, note, added_at, updated_at, added_via) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                    (wish_id, target, row['kind'], row['item_id'], row['color_id'], row['quantity'], row['condition'], row.get('max_price'),
-                    row.get('max_price_currency') if row.get('max_price') is not None else None, row.get('qty_filled'), row.get('note'), stamp, stamp))
+                    row.get('max_price_currency') if row.get('max_price') is not None else None, row.get('qty_filled'), row.get('note'), stamp, stamp,
+                    origins.current()))
     after = dict(db.execute('SELECT * FROM main.wish WHERE id=?', (wish_id,)).fetchone())
     audit(db, 'wish:' + wish_id, 'added', before, after, via=via, actor=actor)
     receipt['wish'] = dict(id=wish_id, created=before is None, before=before, after=after)
 
 
-def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=False, find_instructions=False):
+def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=False, find_instructions=False, origin=None):
     """Write the reviewed rows, one transaction each, and return their receipts (a row already saved under this batch returns its
     saved receipt, so a lost response never doubles a row). A row that fails stops the batch; rows before it stay saved.
     `photo` is the picture a photo-mode Add recognised; it is kept as the new item's own photo only with `keep_photo`."""
     if via is None:
-        via, actor = origin()
+        from .admin import origin as _origin
+        via, actor = _origin()
     require_catalogue(db)
     pipeline, result = Pipeline(db), []
-    try:
-        for index, row in enumerate(rows):
-            if row['decision'] == 'skip':
-                continue
-            with transaction(db):
-                saved = next((r for r in receipts(db, batch) if r['index'] == index), None)
-                if saved:
-                    result.append(saved)
+    with origins.adding(origin) if origin is not None else nullcontext():
+        try:
+            for index, row in enumerate(rows):
+                if row['decision'] == 'skip':
                     continue
-                try:
-                    result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None, find_instructions))
-                except Store4Error as error:
-                    raise errors.ValidationFailed(str(error)) from None
-    finally:
-        # #217: the pictures the new copies' parts and figures lack, also for the rows saved before one that failed. On the web this
-        # runs after each row committed; the API's `writes.execute` holds one transaction around the call, so there it is part of it
-        # (a dry run or a later error rolls the jobs back with the rows).
-        pictures.queue_for_copies(db, [c for r in result for c in r.get('copies') or []], via=via, actor=actor)
+                with transaction(db):
+                    saved = next((r for r in receipts(db, batch) if r['index'] == index), None)
+                    if saved:
+                        result.append(saved)
+                        continue
+                    try:
+                        result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None, find_instructions))
+                    except Store4Error as error:
+                        raise errors.ValidationFailed(str(error)) from None
+        finally:
+            # #217: the pictures the new copies' parts and figures lack, also for the rows saved before one that failed. On the web this
+            # runs after each row committed; the API's `writes.execute` holds one transaction around the call, so there it is part of it
+            # (a dry run or a later error rolls the jobs back with the rows).
+            pictures.queue_for_copies(db, [c for r in result for c in r.get('copies') or []], via=via, actor=actor)
     return result
 
 
@@ -882,8 +963,11 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None, find_i
     if row.get('unknown'):
         if row['decision'] == 'fetch':
             job, created = jobs.queue_in(db, 'rebrickable_set', payload=row['number'], via=via, actor=actor)
+            ask = {k: row.get(k) for k in ASK_KEYS}
+            if origins.current() != origins.HAND:
+                ask['origin'] = origins.current()
             receipt.update(fetch_job=job, name=row['number'], label=row['number'], job_reused=not created,
-                           ask={k: row.get(k) for k in ASK_KEYS})            # what to create when the job is done (`settle_fetches`)
+                           ask=ask)            # what to create when the job is done (`settle_fetches`)
             return _save_receipt(db, receipt, via, actor)
         row = {**row, 'item_id': _unidentified_item(db, row['kind'], row['number'], via, actor)}
         receipt.update(item_id=row['item_id'], created_item=row['item_id'])
@@ -991,15 +1075,17 @@ def _create_fetched(db, event, receipt, item_id, via, actor):
         items.ensure(db, item_id)
         live = decorate(db, row)
         made.update(name=live['name'], label=live['label'])
-        if ask.get('where') == 'wishlist':
-            _add_wish(db, row, made, via, actor)
-        else:
-            for _ in range(row['quantity']):
-                copy_id, waiting = _add_copy(db, row, via, actor)
-                made['copies'].append(copy_id)
-                made['guards'][copy_id] = dict(db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone())
-                if waiting:
-                    made['pending'].append(dict(waiting, copy_id=copy_id))
+        saved_origin = ask.get('origin')
+        with origins.adding(saved_origin) if isinstance(saved_origin, str) and saved_origin in origins.ORIGINS else nullcontext():
+            if ask.get('where') == 'wishlist':
+                _add_wish(db, row, made, via, actor)
+            else:
+                for _ in range(row['quantity']):
+                    copy_id, waiting = _add_copy(db, row, via, actor)
+                    made['copies'].append(copy_id)
+                    made['guards'][copy_id] = dict(db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone())
+                    if waiting:
+                        made['pending'].append(dict(waiting, copy_id=copy_id))
         made['job_id'] = Pipeline(db).queue_steps(item_id, via=via, actor=actor)
         if receipt.get('find_instructions'):
             from .instructions import queue_find

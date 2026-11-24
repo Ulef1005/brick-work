@@ -14,11 +14,13 @@ State per source lives in `sync_state` (link, baseline, last pull, last send; th
 after the cutover shows a full comparison and `_changed_both` has nothing to compare against). Plans are JSON files under data/sync/ and
 expire after 24 hours; whether a plan was applied is the `plan` table's (`core/plans.py`)."""
 import json
+import os
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
-from ...store4 import pending
+from ...store4 import origins, pending
 from ...store4.connect import as_current, has_catalogue, now as store_now
 from .. import errors, items, keys, stock
 from .. import undo as undoing
@@ -60,6 +62,24 @@ def _root(db):
 
 # Credentials -------------------------------------------------------------------------------
 
+def _account_key(source):
+    return f'{source}_account_name'
+
+
+def account_name(db, source):
+    _source(source)
+    row = db.execute('SELECT value FROM main.setting WHERE key=?', (_account_key(source),)).fetchone()
+    return row[0] if row and row[0] else None
+
+
+def _set_account_name(db, source, name):
+    with transaction(db):
+        if name is None:
+            db.execute('DELETE FROM main.setting WHERE key=?', (_account_key(source),))
+        else:
+            db.execute('INSERT OR REPLACE INTO main.setting(key, value) VALUES(?, ?)', (_account_key(source), name))
+
+
 def connect(db, source, username, password, *, http=None):
     """Exchange username + password at the site for its token/hash and store only that, encrypted.
 
@@ -74,6 +94,7 @@ def connect(db, source, username, password, *, http=None):
     token = adapters.adapter(db, source, http).connect(username.strip(), password)
     field = keys.fields(USER[source])[0]
     keys.save(db, USER[source], {field: token})
+    _set_account_name(db, source, username.strip())
     return credential_state(db, source)
 
 
@@ -81,12 +102,14 @@ def paste(db, source, value):
     """Store a token/hash the user generated on the site (write-only)."""
     _source(source)
     keys.save(db, USER[source], {keys.fields(USER[source])[0]: value})
+    _set_account_name(db, source, None)
     return credential_state(db, source)
 
 
 def remove(db, source):
     _source(source)
     keys.archive(db, USER[source])
+    _set_account_name(db, source, None)
     return credential_state(db, source)
 
 
@@ -107,11 +130,13 @@ def link(db, source, options):
     """Which remote lists are used. Rebrickable: owned (list ids, empty = all but the wishlist list),
     wishlist (one list id or null), send_to (the owned list that receives sends). Both sources:
     wish_list (the Brick Work wishlist that pulls and sends wishes, default 'default'). Rebrickable also takes lost_parts (true or false): the
-    remembered switch "Bring in Lost Parts" of a pull (#457), on when never set."""
+    remembered switch "Bring in Lost Parts" of a pull (#457), on when never set; and keep_list_names (true or false): "Keep each set's
+    Rebrickable list names as its source detail" (#531), on when never set; and part_lists (part list ids): the part lists a part-list pull
+    brings into loose stock (#471), none when never set."""
     _source(source)
     if not isinstance(options, dict):
         raise errors.ValidationFailed('Send the link options as an object')
-    allowed = {'owned', 'wishlist', 'send_to', 'wish_list', 'lost_parts'} if source == 'rebrickable' else {'wish_list'}
+    allowed = {'owned', 'wishlist', 'send_to', 'wish_list', 'lost_parts', 'keep_list_names', 'part_lists'} if source == 'rebrickable' else {'wish_list'}
     if set(options) - allowed:
         raise errors.ValidationFailed('Unknown link option: ' + ', '.join(sorted(set(options) - allowed)))
     value = dict(_setting(db, source, 'link', {}), **options)
@@ -129,6 +154,11 @@ def link(db, source, options):
     from .. import wishlists
     if 'lost_parts' in value and type(value['lost_parts']) is not bool:
         raise errors.ValidationFailed('lost_parts is true or false')
+    if 'keep_list_names' in value and type(value['keep_list_names']) is not bool:
+        raise errors.ValidationFailed('keep_list_names is true or false')
+    parts = value.get('part_lists')
+    if 'part_lists' in options and parts is not None and (not isinstance(parts, list) or any(type(i) is not int or i <= 0 for i in parts) or len(set(parts)) != len(parts)):
+        raise errors.ValidationFailed('Choose part lists by id, once each')
     wishlists.require(db, value.get('wish_list') or 'default')
     with transaction(db):
         before = _setting(db, source, 'link')
@@ -145,7 +175,7 @@ def status(db, source):
     _source(source)
     last_send = _setting(db, source, 'last_send')
     waiting = [r for r in (last_send or {}).get('rows', []) if r['result'] in ('failed', 'paused', 'key_rejected')]
-    return dict(source=source, label=LABELS[source], credentials=credential_state(db, source),
+    return dict(source=source, label=LABELS[source], account=account_name(db, source), credentials=credential_state(db, source),
                 link=_setting(db, source, 'link', {}), last_pull=_setting(db, source, 'last_pull'),
                 last_send=None if last_send is None else {k: v for k, v in last_send.items() if k != 'rows'},
                 waiting=len(waiting))
@@ -233,8 +263,30 @@ def _save_plan(db, plan):
                 old.unlink()
         except (OSError, ValueError, KeyError):
             old.unlink(missing_ok=True)
-    (root / (plan['id'] + '.json')).write_text(json.dumps(plan))
+    for stray in root.glob('*.tmp'):                      # a write that a crash cut short
+        try:
+            if stray.stat().st_mtime < (now() - timedelta(hours=1)).timestamp():
+                stray.unlink()
+        except OSError:
+            pass
+    for lock in root.glob('*.lock'):                      # a run's lock file (core/sync/run.py) goes with its plan file
+        if not (root / (lock.stem + '.json')).exists():
+            lock.unlink(missing_ok=True)
+    _write_plan(root, plan)
     return plan
+
+
+def _write_plan(root, plan):
+    """Write a plan file whole or not at all: a temporary file in the same folder, then `os.replace`, so a reader or a crash never sees half of it."""
+    text = json.dumps(plan)
+    fd, name = tempfile.mkstemp(dir=root, prefix=plan['id'] + '.', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as handle:
+            handle.write(text)
+        os.replace(name, root / (plan['id'] + '.json'))
+    except BaseException:
+        Path(name).unlink(missing_ok=True)
+        raise
 
 
 def load_plan(db, plan_id, direction=None):
@@ -252,7 +304,7 @@ def load_plan(db, plan_id, direction=None):
 
 
 def _store_plan(db, plan):
-    (_root(db) / (plan['id'] + '.json')).write_text(json.dumps(plan))
+    _write_plan(_root(db), plan)
 
 
 def _fetch(db, source, http):
@@ -294,8 +346,9 @@ def _compare(db, source, link_value, remote):
 def _changed_both(row):
     if row['baseline_remote'] is None and row['baseline_here'] is None:
         return False
-    return (row['remote'] != (row['baseline_remote'] or 0) and row['here'] != (row['baseline_here'] or 0)
-            and row['remote'] != row['here'])
+    r, h = row['remote'], row['here']
+    br, bh = row['baseline_remote'] or 0, row['baseline_here'] or 0
+    return r != br and h != bh and r != h
 
 
 def lost_parts_on(db, source):
@@ -312,14 +365,72 @@ def _why(exc):
     return 'Rebrickable could not be read'
 
 
-def plan_pull(db, source, *, http=None, lost_parts_switch=None):
+def keep_list_names_on(db, source):
+    """The remembered switch "Keep each set's Rebrickable list names as its source detail" (#531): on unless the link says false."""
+    return source == 'rebrickable' and _setting(db, source, 'link', {}).get('keep_list_names', True) is not False
+
+
+LIST_ACTIONS = {'renamed': ('rename', 'keep'), 'removed': ('drop', 'keep'), 'unlinked': ('keep', 'drop'), 'unchanged': ('skip',)}
+
+
+def _plan_lists(db, plan, remote, switch):
+    """#531: the plan keeps the linked lists (key, name, the set numbers in each) and, per row, the names of the lists its set is in; and one
+    preview line per list this collection recorded before: renamed, removed, unlinked or unchanged at Rebrickable, with the number of sets whose
+    source detail it carries and the default choice (Rename it, Drop the name, Keep, Skip). A list name follows its list on every set that carries
+    it, picked or not; nothing else on a copy changes."""
+    if switch is not None and switch != keep_list_names_on(db, 'rebrickable'):
+        link(db, 'rebrickable', {'keep_list_names': bool(switch)})
+    keep = keep_list_names_on(db, 'rebrickable')
+    if not keep:
+        plan['lists'] = dict(keep=False, names={}, members={}, preview=[])
+        for row in plan['rows']:
+            row['lists'] = []
+        return
+    names = {k: v for k, v in (remote.get('names') or {}).items()}
+    members = {k: sorted(n for n, q in v.items() if q > 0) for k, v in remote['per_list'].items() if k in names}
+    plan['lists'] = dict(keep=True, names=names, members=members, preview=[])
+    wish = str(plan['link'].get('wishlist') or '')
+    for row in plan['rows']:
+        want = row['kind'] == 'wanted'
+        row['lists'] = [names[k] for k in sorted(members) if (k == wish) == want and row.get('remote_no') in members[k]]
+    all_ids = {str(i) for i in remote.get('all_list_ids', names)}
+    mixed = origins.mixed_lists(db, 'rebrickable')
+    for key, (old, count) in origins.lists_of(db, 'rebrickable').items():
+        if key.startswith('part:'):   # a part list's lines (#471) belong to the part-list pull, not to a set list
+            continue
+        if key in names:
+            state = 'unchanged' if names[key] == old and key not in mixed else 'renamed'
+        else:
+            state = 'unlinked' if key in all_ids else 'removed'
+        plan['lists']['preview'].append(dict(key=key, old_name=old, name=names.get(key), state=state, sets=count, action=LIST_ACTIONS[state][0],
+                                             choices=list(LIST_ACTIONS[state])))
+
+
+def _list_choices(plan, chosen):
+    """`{list key: action}` for the plan's preview lines: the defaults, with `chosen` ({key: action}) over them."""
+    lines = {line['key']: line for line in (plan.get('lists') or {}).get('preview', [])}
+    if chosen is None:
+        chosen = {}
+    if not isinstance(chosen, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in chosen.items()):
+        raise errors.ValidationFailed('Send the list choices as an object of list id to choice')
+    unknown = set(chosen) - set(lines)
+    if unknown:
+        raise errors.ValidationFailed('Unknown Rebrickable lists: ' + ', '.join(sorted(unknown)[:5]))
+    for key, action in chosen.items():
+        if action not in lines[key]['choices']:
+            raise errors.ValidationFailed(f'Choose {" or ".join(lines[key]["choices"])} for the list {lines[key]["old_name"] or key}')
+    return {key: chosen.get(key, line['action']) for key, line in lines.items()}
+
+
+def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=None, fetched=None):
     """What the site has that Brick Work lacks. Writes nothing to the collection. A Rebrickable plan also holds the Lost Parts section
     (`plan['lost']`, `lost_parts.plan_section`) unless the switch is off: `lost_parts_switch` (true or false) sets and remembers the switch,
-    None keeps the remembered one. A Lost Parts list that cannot be read never stops the set comparison."""
+    None keeps the remembered one. A Lost Parts list that cannot be read never stops the set comparison. `keep_list_names` sets and
+    remembers the #531 switch the same way."""
     _source(source)
     if lost_parts_switch is not None and source == 'rebrickable' and lost_parts_switch != lost_parts_on(db, source):
         link(db, source, {'lost_parts': bool(lost_parts_switch)})
-    client, link_value, remote = _fetch(db, source, http)
+    client, link_value, remote = _fetch(db, source, http) if fetched is None else fetched
     rows, unmatched, _ = _compare(db, source, link_value, remote)
     section = None
     if source == 'rebrickable':
@@ -333,7 +444,7 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None):
         for row in rows:
             if row['kind'] == 'owned' and row['remote'] > row['here'] and not _changed_both(row):
                 adds[row['item_id']] = adds.get(row['item_id'], 0) + row['remote'] - row['here']
-        section = lost_parts.plan_section(db, read, remote['owned'], translate, how=lost_parts.rule(db), on=on, adds=adds)
+        section = lost_parts.plan_section(db, read, dict(remote['owned']), translate, how=lost_parts.rule(db), on=on, adds=adds)
         names = _names(db, [e['item_id'] for e in section['sets']])
         for entry in section['sets']:
             entry['number'], entry['name'] = names.get(entry['item_id'], (None, None))
@@ -353,8 +464,11 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None):
             state, action, count = 'differs', None, 0
         out.append(dict(row, state=state, action=action, count=count, tickable=count > 0))
     plan = dict(id=uuid4().hex, created_at=now().isoformat(), direction='pull', source=source, link=link_value,
-                remote=dict(owned=remote['owned'], wanted=remote['wanted']), rows=out, unmatched=unmatched,
+                remote=dict(owned=dict(remote['owned']), wanted=dict(remote['wanted'])), rows=out, unmatched=unmatched,
                 summary=_summary(out, unmatched, rows))
+    if source == 'rebrickable' and remote.get('per_list') is not None:
+        _plan_lists(db, plan, remote, keep_list_names)
+        plan['link'] = dict(link_value, keep_list_names=keep_list_names_on(db, source))
     if section is not None:
         plan['lost'] = section
     return _save_plan(db, plan)
@@ -408,7 +522,7 @@ def _placed_wish(db, wish_list, item_id, kind, count, via, actor):
     return scratch['wish']
 
 
-def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, via=None, actor=None):
+def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, via=None, actor=None):
     """Place one copy per missing unit of a set (design 4.3's preselection; flagged, condition and completeness unset), loose stock of the
     other kinds, and the missing wishes, in one transaction with one receipt. Never deletes or lowers a set, stock or wish count here.
 
@@ -424,14 +538,15 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, via=None, act
     if done:
         return dict(event_id=done['event_id'], already_applied=True, counts=done['counts'])
     rows = _ticked(plan, ticked)
+    list_choices = _list_choices(plan, lists)
     if via is None:
         via, actor = origin()
     source, stamp = plan['source'], store_now()
     wish_list = plan['link'].get('wish_list') or 'default'
     receipt = dict(plan=plan_id, source=source, copies=[], stock=[], wishes=[], pending=[], flag=None, flag_created=None, baseline_before=None,
-                   stock_flags=[], guards={}, jobs=[])
+                   stock_flags=[], guards={}, jobs=[], synced=[])
     from .. import wishlists
-    with transaction(db):
+    with transaction(db), origins.adding(source):      # #551: every row this pull makes reads Added via <site>
         done = plans.applied(db, 'sync', plan_id)       # checked again under the write lock: a second submit waits here and finds the first one's marker
         if done:
             return dict(event_id=done['event_id'], already_applied=True, counts=done['counts'])
@@ -463,6 +578,8 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, via=None, act
         if section and section.get('on'):
             receipt['lost'] = _lost_report(section, lost_parts.apply(db, section, lost, picks, new_copies=set(receipt['copies']),
                                                                     translate=translate, flag_name='imported from ' + LABELS[source]))
+        receipt['lists'] = _apply_lists(db, plan, list_choices) if (plan.get('lists') or {}).get('keep') else dict(renamed=[], dropped=[])
+        receipt['synced'] = _mark_synced(db, plan, wish_list, stamp, list_choices, left={(r['kind'], r['item_id']) for r in plan['rows'] if r['tickable']} - {(r['kind'], r['item_id']) for r in rows})
         receipt['jobs'] = queue_new_items(db, touched)
         receipt['baseline_before'] = _setting(db, source, 'baseline')
         _put(db, source, 'baseline', _baseline(db, plan, wish_list))
@@ -482,6 +599,62 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, via=None, act
     plan['applied'] = dict(event_id=event, counts=counts, at=stamp)
     _store_plan(db, plan)
     return dict(event_id=event, already_applied=False, counts=counts)
+
+
+def _apply_lists(db, plan, choices):
+    """#531: Rename it puts the new name on every row that carries the list; Drop the name removes the list from every row's source detail.
+    Returns what Undo needs: `{renamed: [touch entries], dropped: [rows]}`."""
+    out = dict(renamed=[], dropped=[])
+    names = (plan.get('lists') or {}).get('names', {})
+    for key, action in choices.items():
+        if str(key).startswith('part:'):
+            continue
+        if action == 'rename':
+            out['renamed'] += origins.rename_list(db, 'rebrickable', key, names[key])
+        elif action == 'drop':
+            out['dropped'] += origins.drop_list(db, 'rebrickable', key)
+    return out
+
+
+def _mark_synced(db, plan, wish_list, stamp, choices=None, left=frozenset()):
+    """Last synced from (#551): every live copy, set-like stock row and wish of the linked list whose item the site holds now reads as
+    matched to the site at this pull, whether this pull made it or not; a row the person left unticked (`left`: (kind, item id)) is not
+    touched. Returns `{table: [touch entries]}` for the receipt."""
+    source = plan['source']
+    mapping = translate(db, set(plan['remote']['owned']) | set(plan['remote']['wanted']))
+    owned = json.dumps(sorted({mapping[n] for n, q in plan['remote']['owned'].items() if q and mapping.get(n) and ('owned', mapping[n]) not in left}))
+    wanted = json.dumps(sorted({mapping[n] for n, q in plan['remote']['wanted'].items() if q and mapping.get(n) and ('wanted', mapping[n]) not in left}))
+    lists = plan.get('lists')
+    if source == 'rebrickable' and lists and lists['keep']:
+        return _mark_synced_by_list(db, plan, wish_list, stamp, mapping, lists, choices or {}, left)
+    rows = dict(
+        copy=[r[0] for r in db.execute('SELECT id FROM main.copy WHERE archived_at IS NULL AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (owned,))],
+        stock=[r[0] for r in db.execute(f'SELECT id FROM main.stock WHERE archived_at IS NULL AND quantity>0 AND kind IN ({_KINDS_SQL}) '
+                                        'AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (owned,))],
+        wish=[r[0] for r in db.execute(f'SELECT id FROM main.wish WHERE archived_at IS NULL AND wishlist_id=? AND kind IN ({_KINDS_SQL}) '
+                                       'AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (wish_list, wanted))])
+    return {table: [origins.touch(db, table, row_id, source, at=stamp) for row_id in ids] for table, ids in rows.items()}
+
+
+def _mark_synced_by_list(db, plan, wish_list, stamp, mapping, lists, choices, left):
+    """Last synced from per Rebrickable list (#531): a set in two lists gets two lines, each with the list's name as read now (or the name
+    recorded before, when the person chose to keep it over a rename at Rebrickable)."""
+    recorded = origins.lists_of(db, 'rebrickable')
+    wish = str(plan['link'].get('wishlist') or '')
+    out = dict(copy=[], stock=[], wish=[])
+    for key in sorted(lists['members']):
+        name = recorded[key][0] if choices.get(key) == 'keep' and key in recorded else lists['names'][key]
+        kind = 'wanted' if key == wish else 'owned'
+        items = json.dumps(sorted({mapping[n] for n in lists['members'][key] if mapping.get(n) and (kind, mapping[n]) not in left}))
+        if kind == 'owned':
+            targets = [('copy', 'SELECT id FROM main.copy WHERE archived_at IS NULL AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (items,)),
+                       ('stock', f'SELECT id FROM main.stock WHERE archived_at IS NULL AND quantity>0 AND kind IN ({_KINDS_SQL}) AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (items,))]
+        else:
+            targets = [('wish', f'SELECT id FROM main.wish WHERE archived_at IS NULL AND wishlist_id=? AND kind IN ({_KINDS_SQL}) '
+                                'AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (wish_list, items))]
+        for table, sql, args in targets:
+            out[table] += [origins.touch(db, table, r[0], 'rebrickable', at=stamp, list_key=key, list_name=name) for r in db.execute(sql, args).fetchall()]
+    return out
 
 
 def _lost_report(section, report):
@@ -548,6 +721,13 @@ def _undo_pull(db, event, via, actor):
         audit(db, 'copy:' + copy_id, 'archived_at', None, stamp, via=via, actor=actor)
     if r.get('flag_created') and not any(db.execute(f'SELECT 1 FROM main.{t} WHERE flag_id=? LIMIT 1', (flag,)).fetchone() for t in ('copy_flag', 'stock_flag', 'wish_flag')):
         db.execute('DELETE FROM main.flag WHERE id=?', (r['flag_created'],))
+    for entries in (r.get('synced') or {}).values():   # a pull saved before 4.8 has none
+        for entry in reversed(entries):
+            origins.untouch(db, entry)
+    named = r.get('lists') or {}
+    origins.restore(db, named.get('dropped', []))
+    for entry in reversed(named.get('renamed', [])):
+        origins.untouch(db, entry)
     _put(db, r['source'], 'baseline', r['baseline_before'])
     audit(db, 'sync:' + r['plan'], 'undo', None, {'undoes': event['id']}, via=via, actor=actor)
     undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
@@ -563,11 +743,13 @@ def undo(db, event_id):
     return undoing.undo_event(db, event_id)
 
 
-def plan_send(db, source, *, http=None):
+def plan_send(db, source, *, http=None, kinds=None, fetched=None):
     """The remote calls a send would make: one row per set whose count differs. Removals unticked."""
     _source(source)
-    client, link_value, remote = _fetch(db, source, http)
+    client, link_value, remote = _fetch(db, source, http) if fetched is None else fetched
     rows, unmatched, mapping = _compare(db, source, link_value, remote)
+    if kinds is not None:
+        rows = [r for r in rows if r['kind'] in kinds]
     targets = reverse(db, [r['item_id'] for r in rows if r['remote_no'] is None])
     out = []
     for row in rows:
@@ -576,10 +758,8 @@ def plan_send(db, source, *, http=None):
             continue
         remote_no = row['remote_no'] or targets.get(row['item_id'])
         if row['kind'] == 'wanted':
-            send = 1 if h else 0
-            if source == 'rebrickable':
-                send = h
-            if send == r or (source == 'brickset' and bool(h) == bool(r)):
+            send = h
+            if send == r:
                 continue
         else:
             send = h
@@ -600,7 +780,7 @@ def plan_send(db, source, *, http=None):
                 row.update(state='unmatched', action=None, tickable=False, reason='Brickset does not know this set number')
         extra['ids'] = {k: v for k, v in known.items()}
     else:
-        extra['per_list'] = remote['per_list']
+        extra['per_list'] = {k: dict(v) for k, v in remote['per_list'].items()}
         owned_lists = remote.get('owned_lists') or []
         extra['send_to'] = link_value.get('send_to') or (owned_lists[0] if len(owned_lists) == 1 else None)
         if extra['send_to'] is None:
@@ -612,7 +792,7 @@ def plan_send(db, source, *, http=None):
                 if row['kind'] == 'wanted' and row['tickable']:
                     row.update(action=None, tickable=False, reason='Link a Rebrickable wishlist to send wishes to')
     plan = dict(id=uuid4().hex, created_at=now().isoformat(), direction='send', source=source, link=link_value,
-                remote=dict(owned=remote['owned'], wanted=remote['wanted']), state=extra, rows=out, unmatched=unmatched,
+                remote=dict(owned=dict(remote['owned']), wanted=dict(remote['wanted'])), state=extra, rows=out, unmatched=unmatched,
                 summary=_summary(out, unmatched, rows),
                 note='Sending changes ' + LABELS[source] + '. Brick Work\'s Undo cannot reverse a remote change.')
     return _save_plan(db, plan)
@@ -627,23 +807,33 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
     rows = _ticked(plan, ticked)
     results = plan.setdefault('results', {})
     client = adapters.adapter(db, source, http)
+    pending_rows = [r for r in rows if results.get(r['key'], {}).get('result') not in ('sent', 'unchanged')]
+    if source == 'brickset':
+        grouped = {}
+        for row in pending_rows:
+            grouped.setdefault(row['remote_no'], []).append(row)
+        units = list(grouped.values())
+    else:
+        units = [[row] for row in pending_rows]
     stop = None
-    for row in rows:
-        if results.get(row['key'], {}).get('result') in ('sent', 'unchanged'):
-            continue
+    for group in units:
         if stop:
-            results[row['key']] = dict(result=stop, detail=None)
+            for row in group:
+                results[row['key']] = dict(result=stop, detail=None)
             continue
         try:
-            results[row['key']] = dict(result=client.send(row, plan['link'], plan['state']), detail=None, at=now().isoformat())
+            result = client.send_set(group, plan['link'], plan['state']) if source == 'brickset' else client.send(group[0], plan['link'], plan['state'])
+            outcome = dict(result=result, detail=None, at=now().isoformat())
         except WaitingForBudget as paused:
             stop = 'paused'
-            results[row['key']] = dict(result='paused', detail='Waiting for the daily budget', retry_at=paused.retry_at)
+            outcome = dict(result='paused', detail='Waiting for the daily budget', retry_at=paused.retry_at)
         except KeyRejected:
             stop = 'key_rejected'
-            results[row['key']] = dict(result='key_rejected', detail=LABELS[source] + ' refused the key or user token')
+            outcome = dict(result='key_rejected', detail=LABELS[source] + ' refused the key or user token')
         except (SourceError, errors.BrickWorkError, ValueError) as failure:
-            results[row['key']] = dict(result='failed', detail=str(failure))
+            outcome = dict(result='failed', detail=str(failure))
+        for row in group:
+            results[row['key']] = dict(outcome)
         _store_plan(db, plan)
     sent = [r for r in rows if results.get(r['key'], {}).get('result') in ('sent', 'unchanged')]
     stamp = now().isoformat()
@@ -663,3 +853,5 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
         audit(db, 'sync:' + source, 'send', None, dict(plan=plan_id, counts=summary))
     return dict(plan=plan_id, counts=summary, rows=[dict(key=k, **v) for k, v in results.items()],
                 note='Remote changes are not undone by Brick Work\'s Undo.')
+
+from . import part_lists  # noqa: E402,F401 — registers the part-list pull's Undo (#471)

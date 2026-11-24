@@ -301,7 +301,7 @@ def _value_problem(table, row):
             ('part', 'minifigure', 'instructions', 'box', 'gear', 'book', 'catalog')
         if row.get('kind') not in kinds:
             return 'This kind of row cannot be imported here'
-        if not whole('quantity', 1):
+        if row.get('quantity') is None or not whole('quantity', 1):
             return 'Quantity must be a whole number'
         if (row.get('kind') == 'part') != (row.get('color') is not None):
             return 'Only a part has a colour'
@@ -429,6 +429,11 @@ def _classify(db, parsed_tables, chosen):
                     reason = 'Part requires a colour'
             if reason is not None:
                 record(row, 'unresolved', reason=reason)
+                continue
+            if table == 'wish' and db.execute(
+                    'SELECT 1 FROM main.wish WHERE wishlist_id=? AND item_id=? AND color_id IS ? AND archived_at IS NULL',
+                    (row.get('wishlist_id'), item_id, color_id)).fetchone():
+                record(row, 'here')                                # the store keeps one live wish per list, item and colour
                 continue
             record(row, 'new')
             planned_new[table].add(row_id)
@@ -769,15 +774,15 @@ def apply(db, plan_id, *, via=None, actor=None, queue=True):
             wishlists.require(db, 'default')
         for entry in new_rows.get('wish', ()):
             row, item_id, color_id = entry['row'], entry['item_id'], entry['color_id']
-            items.ensure(db, item_id)
-            touched.add(item_id)
             raw_wl = row.get('wishlist_id')
             list_id = 'default' if raw_wl == 'default' else wishlist_map.get(raw_wl, raw_wl)
-            kind = row.get('kind') or db.execute('SELECT kind FROM main.item WHERE id=?', (item_id,)).fetchone()['kind']
             if db.execute('SELECT 1 FROM main.wish WHERE wishlist_id=? AND item_id=? AND color_id IS ? AND archived_at IS NULL',
                           (list_id, item_id, color_id)).fetchone():
                 extra_skipped += 1                                 # the store would merge it into that wish and change it
                 continue
+            items.ensure(db, item_id)
+            touched.add(item_id)
+            kind = row.get('kind') or db.execute('SELECT kind FROM main.item WHERE id=?', (item_id,)).fetchone()['kind']
             scratch = {}
             add._add_wish(
                 db,

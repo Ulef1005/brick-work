@@ -210,6 +210,7 @@ def test_a_zero_stock_row_is_unresolved_and_a_wish_already_wished_is_skipped(col
     before = coll.db.execute('SELECT count(*), sum(quantity) FROM main.wish WHERE archived_at IS NULL').fetchone()
     assert before[0] > 0
     planned = own_import.plan(coll.db, again)
+    assert planned['counts']['wish']['new'] == 0 and planned['counts']['wish']['here'] == before[0]
     done = own_import.apply(coll.db, planned['id'], via='cli', actor='test')
     after = coll.db.execute('SELECT count(*), sum(quantity) FROM main.wish WHERE archived_at IS NULL').fetchone()
     assert tuple(after) == tuple(before) and done['counts']['wishes'] == 0

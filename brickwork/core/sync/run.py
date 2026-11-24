@@ -333,7 +333,7 @@ def rows(db, run, plans):
     def row_of(r):
         return merged.setdefault(r['key'], dict(key=r['key'], item_id=r['item_id'], kind=r['kind'], number=r['number'], name=r['name'], remote=r['remote'],
                                                 here=r['here'], remote_no=r['remote_no'], options=[], default=None, state='info', reason=None,
-                                                kept=(r.get('baseline_remote') or 0) == r['remote'] and (r.get('baseline_here') or 0) == r['here'] and r['remote'] != r['here']))
+                                                kept=bool(r.get('kept')) or ((r.get('baseline_remote') or 0) == r['remote'] and (r.get('baseline_here') or 0) == r['here'] and r['remote'] != r['here'])))
     for r in (plans['pull'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
@@ -558,9 +558,11 @@ def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=
     wanted = [k for k, v in form_data['chosen'].items() if v in ('pull', 'take')]
     lost, picks, lists = form_data['lost'], form_data['copies'], form_data['lists']
     lines = {line['key']: line for line in (pull.get('lists') or {}).get('preview', ())}
+    kept = [k for k, v in form_data['chosen'].items() if v == 'keep']       # the conflicts the person chose to Keep: remembered (#686)
+    kept_covered, kept_skipped = keep_scope(run)
     if wanted or lost or picks or any(v not in ('keep', 'skip') for v in lists.values()):
         try:
-            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, via=via, actor=actor)
+            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_skipped=kept_skipped, via=via, actor=actor)
             effective = {k: lists.get(k, line['action']) for k, line in lines.items()}
             stages['pull'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted),
                                   lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']))
@@ -801,8 +803,30 @@ def stage_lost_out(db, run, form_data, *, http=None, per_key=False, should_stop=
     return stages['lost_out']
 
 
+def keep_scope(run):
+    """What the run's preview covers, for the Keep memory (#686): the kinds whose direction is not Off, and the sets it skips (the ones it could
+    touch that were not picked)."""
+    d, picked = run['directions'], picked_ids(run)
+    skipped = set() if picked is None else {c['item_id'] for c in run['candidates']} - picked
+    return tuple(kind for kind, direction in (('owned', 'owned'), ('wanted', 'wishlist')) if d[direction] != 'off'), skipped
+
+
+def remember_choices(db, run, plans, form_data):
+    """The conflicts the person chose to Keep are remembered (#686) before any stage runs, so a stage with nothing to do (or one that fails) cannot
+    lose them. The pairs are the counts of the preview rows the person saw, for the kinds the run shows. Not fatal: a Keep that could not be
+    written is only forgotten."""
+    if not (plans['pull'] or plans['send']):
+        return
+    covered, skipped = keep_scope(run)
+    try:
+        sync.remember_kept(db, run.get('source', SOURCE), rows(db, run, plans), [k for k, v in form_data['chosen'].items() if v == 'keep'], covered, skipped)
+    except FAILURES as exc:
+        LOG.warning('The Keep choices of a run could not be written: %s', type(exc).__name__)
+
+
 def _stages(db, run, plans, form, chosen, http, via, actor):
     form_data = _extract_form(run, plans, form, chosen)
+    remember_choices(db, run, plans, form_data)
     stage_pull(db, run, plans, form_data, via=via, actor=actor)
     stage_parts(db, run, plans, form_data, via=via, actor=actor)
     stage_send(db, run, plans, form_data, http=http)

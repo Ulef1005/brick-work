@@ -978,7 +978,7 @@ def test_the_page_prefers_the_names_a_pull_recorded(client, remote, pair):
     assert page.select_one('[data-rb-what] td:nth-child(3)').get_text() == '2 set lists: List 1, List 2'                  # what the pull recorded
 
 
-def test_a_conflict_that_was_kept_comes_back_unticked(client, remote, pair):
+def test_a_conflict_that_was_kept_comes_back_as_the_same_card(client, remote, pair):
     csrf = connected(client, pair)
     apply_run(client, csrf, start(client, csrf))                          # baseline: 1000-1 twice
     remote.lists[1]['1000-1'] = 5                                         # Rebrickable raised it, one copy went here: changed in both places
@@ -992,10 +992,10 @@ def test_a_conflict_that_was_kept_comes_back_unticked(client, remote, pair):
     apply_run(client, csrf, run_id, page)
     assert copies(pair, '1000-4') == 1 and copies(pair, '1000-1') == 1
     page = preview_of(client, start(client, csrf))
-    row = rows_of(page)['1000-1']
-    assert not page.select('[data-rb-conflicts]')                         # the pull reset the baseline: it is a plain row again
-    assert not row.select_one('input[name="choice:owned:1"]').has_attr('checked') and 'not taken at the last run' in row.get_text()
-    assert 'choice:owned:1' not in run_data(page)                         # Apply all cannot overwrite it
+    card = page.select_one('[data-rb-conflicts]')                         # #686: the Keep is remembered, the pull's baseline reset does not end it
+    assert card.h2.get_text(' ', strip=True) == 'Changed in both places 1'
+    assert [i['value'] for i in card.select('input[type=radio]')] == ['keep', 'take', 'send'] and card.select_one('input[checked]')['value'] == 'keep'
+    assert run_data(page)['choice:owned:1'] == ['keep']                   # Apply all keeps it: nothing is overwritten
 
 
 # --- review round 3 ---------------------------------------------------------------------------------------------------
@@ -1065,7 +1065,7 @@ def test_a_plan_file_is_written_whole_and_old_lock_files_are_pruned(client, remo
         assert not orphan.exists() and not stray.exists() and kept.exists() and (root / (run_id + '.json')).exists()
 
 
-def test_a_kept_difference_with_a_missing_baseline_side_comes_back_unticked(client, remote, pair):
+def test_a_kept_difference_with_a_missing_baseline_side_comes_back_as_the_card(client, remote, pair):
     csrf = connected(client, pair)
     apply_run(client, csrf, start(client, csrf))                         # baseline: 1000-1 twice, 1000-2 once
     with db_of(pair) as db:                                              # 1000-2 goes from here (baseline here 1, now none)...
@@ -1079,8 +1079,8 @@ def test_a_kept_difference_with_a_missing_baseline_side_comes_back_unticked(clie
     apply_run(client, csrf, run_id, page)                                # something else comes in, the baseline is reset, 1000-2 kept at 0 here
     page = preview_of(client, start(client, csrf))
     row = rows_of(page)['1000-2']
-    assert not row.select_one('input[name="choice:owned:2"]').has_attr('checked') and 'not taken at the last run' in row.get_text()
-    assert 'choice:owned:2' not in run_data(page)
+    assert row['data-state'] == 'conflict' and row.select_one('input[name="choice:owned:2"][checked]')['value'] == 'keep'       # #686: still the card, Keep selected
+    assert run_data(page)['choice:owned:2'] == ['keep']
     # a set only on Rebrickable that was left unticked (no baseline here for it) comes back unticked as well
     remote.lists[2]['1000-3'] = 1
     remote.lists[2]['1000-4'] = 2                                         # another set has more there: the pull has something to apply, 1000-3 is left out
@@ -1239,3 +1239,175 @@ def test_the_result_counts_each_renamed_list_once(client, remote, pair):
     assert '2 list names changed' in text and 'list names changed' in text
 
 
+
+
+# --- #686: a Keep is remembered across runs -------------------------------------------------------------------------------
+
+def make_a_conflict(client, remote, pair, *, also_pull=True):
+    """A conflict on 1000-1 (Rebrickable 5, one copy gone here): the card is offered; `also_pull` brings something else in so the pull applies."""
+    csrf = connected(client, pair)
+    apply_run(client, csrf, start(client, csrf))
+    remote.lists[1]['1000-1'] = 5
+    with db_of(pair) as db:
+        db.execute("UPDATE copy SET archived_at='2026-11-20T10:00:00.000Z' WHERE id=(SELECT c.id FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key='1000-1' AND c.archived_at IS NULL LIMIT 1)")
+        db.commit()
+    if also_pull:
+        remote.lists[2]['1000-4'] = 1
+    return csrf
+
+
+def test_a_keep_is_remembered_when_the_run_pulls_nothing(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair, also_pull=False)
+    run_id = start(client, csrf)
+    page = preview_of(client, run_id)
+    assert page.select_one('[data-rb-conflicts] input[checked]')['value'] == 'keep'
+    apply_run(client, csrf, run_id, page)                                 # nothing is pulled: only the baseline's kept map changes
+    with db_of(pair) as db:
+        kept = sync._setting(db, 'rebrickable', 'baseline', {}).get('kept')
+    assert kept == {'owned': {str(db_item(pair, '1000-1')): [5, 1]}}
+    card = preview_of(client, start(client, csrf)).select_one('[data-rb-conflicts]')
+    assert card.h2.get_text(' ', strip=True) == 'Changed in both places 1'
+
+
+def db_item(pair, number):
+    with db_of(pair) as db:
+        return db.execute("SELECT id FROM item WHERE born_key=?", (number,)).fetchone()[0]
+
+
+def test_a_keep_is_forgotten_when_either_side_changes(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))                          # the pull applies, the baseline resets, the Keep stays
+    assert preview_of(client, start(client, csrf)).select_one('[data-rb-conflicts]')
+    remote.lists[1]['1000-1'] = 6                                         # Rebrickable moves again: the pair no longer matches
+    page = preview_of(client, start(client, csrf))
+    assert not page.select('[data-rb-conflicts]')
+
+
+def test_the_api_does_not_add_a_kept_set_with_no_ticks(client, remote, pair):
+    """The default pull apply of the API takes every row with an action; a kept conflict has none, so it is not added."""
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))
+    before = copies(pair, '1000-1')
+    with db_of(pair) as db:
+        plan = sync.plan_pull(db, 'rebrickable')
+        row = next(r for r in plan['rows'] if r['key'] == f"owned:{db_item(pair, '1000-1')}")
+        assert row['state'] == 'conflict' and row['action'] is None and row['kept']
+        sync.apply_pull(db, plan['id'])
+    assert copies(pair, '1000-1') == before
+
+
+def test_the_kept_map_is_plain_json_and_an_undo_of_the_pull_restores_the_counts_and_keeps_the_keep(client, remote, pair):
+    """The baseline JSON carries `kept`: it round-trips as JSON (the database file is the export), and the pull's Undo puts the baseline back."""
+    csrf = make_a_conflict(client, remote, pair)
+    with db_of(pair) as db:
+        before = sync._setting(db, 'rebrickable', 'baseline', {})
+    run_id = start(client, csrf)
+    apply_run(client, csrf, run_id)
+    with db_of(pair) as db:
+        baseline = sync._setting(db, 'rebrickable', 'baseline', {})
+        assert baseline['kept'] and json.loads(json.dumps(baseline)) == baseline
+        sync_run.undo_run(db, sync_run.load(db, run_id)[0]['applied']['events'][0])
+        restored = sync._setting(db, 'rebrickable', 'baseline', {})
+        assert {k: v for k, v in restored.items() if k != 'kept'} == before          # the counts are back as they were
+        assert restored['kept'] == baseline['kept']                                   # the Keep was written before the pull: the Undo does not forget it
+
+
+def test_taking_or_sending_a_kept_conflict_ends_its_keep_and_a_send_only_run_leaves_the_other_kind(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))                          # the Keep stands after the pull
+    item = str(db_item(pair, '1000-1'))
+    with db_of(pair) as db:
+        assert sync._setting(db, 'rebrickable', 'baseline', {})['kept']['owned'][item] == [5, 1]
+    run_id = start(client, csrf)
+    apply_run(client, csrf, run_id, **{'choice:owned:' + item: 'take'})   # resolved by Take: here becomes 5
+    with db_of(pair) as db:
+        assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {}) or item not in sync._setting(db, 'rebrickable', 'baseline', {})['kept'].get('owned', {})
+    # a Keep of the other kind is left alone by a run that only sends owned sets
+    with db_of(pair) as db:
+        baseline = sync._setting(db, 'rebrickable', 'baseline', {})
+        sync._put(db, 'rebrickable', 'baseline', dict(baseline, kept={'wanted': {'999': [4, 1]}}))
+        db.commit()
+    start(client, csrf, owned_dir='to', wishlist_dir='off', lost_dir='off')
+    run_id = start(client, csrf, owned_dir='to', wishlist_dir='off', lost_dir='off')
+    apply_run(client, csrf, run_id)
+    with db_of(pair) as db:
+        assert sync._setting(db, 'rebrickable', 'baseline', {})['kept']['wanted'] == {'999': [4, 1]}
+
+
+def test_a_job_run_remembers_the_keep_even_when_its_pull_has_nothing_to_do(client, remote, pair):
+    from werkzeug.datastructures import MultiDict
+    from brickwork.core.sync import run_job
+    csrf = make_a_conflict(client, remote, pair, also_pull=False)
+    run_id = start(client, csrf)
+    item = str(db_item(pair, '1000-1'))
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, MultiDict([('choice:owned:' + item, 'keep')]))
+        run_job.drain(db)
+        assert sync._setting(db, 'rebrickable', 'baseline', {}).get('kept') == {'owned': {item: [5, 1]}}
+
+
+def test_a_keep_ends_when_the_counts_meet_and_does_not_come_back_later(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))                          # the Keep stands
+    item = str(db_item(pair, '1000-1'))
+    remote.lists[1]['1000-1'] = 1                                         # the counts meet (here 1)
+    remote.lists[2]['1000-4'] = 2                                         # and a pull has something to write, so the baseline is rebuilt
+    apply_run(client, csrf, start(client, csrf))
+    with db_of(pair) as db:
+        assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {})
+    remote.lists[1]['1000-1'] = 5                                         # one side moves alone: a plain add, not a resurrected conflict
+    page = preview_of(client, start(client, csrf))
+    assert not page.select('[data-rb-conflicts]') and rows_of(page)['1000-1']
+
+
+def test_sending_a_kept_conflict_ends_its_keep_without_an_empty_map(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))
+    item = str(db_item(pair, '1000-1'))
+    apply_run(client, csrf, start(client, csrf), **{'choice:owned:' + item: 'send'})
+    with db_of(pair) as db:
+        assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {})
+
+
+def test_a_run_that_picks_other_sets_leaves_a_keep_alone(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))                          # the Keep on 1000-1 stands
+    item = str(db_item(pair, '1000-1'))
+    remote.lists[2]['1000-3'] = 1                                         # another set the run could touch
+    run_id = start(client, csrf)
+    with db_of(pair) as db:
+        candidates = {c['item_id'] for c in sync_run.load(db, run_id)[0]['candidates']}
+        other = next(i for i in candidates if i != int(item))
+        sync_run.save_pick(db, run_id, {other})                           # a run that covers another set only
+    apply_run(client, csrf, run_id)
+    with db_of(pair) as db:
+        assert sync._setting(db, 'rebrickable', 'baseline', {})['kept']['owned'][item] == [5, 1]
+
+
+def test_a_keep_only_job_stopped_before_it_starts_writes_nothing(client, remote, pair):
+    from werkzeug.datastructures import MultiDict
+    from brickwork.core.sync import run_job
+    csrf = make_a_conflict(client, remote, pair, also_pull=False)
+    run_id = start(client, csrf)
+    item = str(db_item(pair, '1000-1'))
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, MultiDict([('choice:owned:' + item, 'keep')]))
+        run_job.request_stop(db, run_id)
+        run_job.drain(db)
+        assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {})
+        assert tuple(db.execute("SELECT state, error FROM job WHERE kind='sync_run'").fetchone()) == ('done', 'Stopped at your request')
+
+
+def test_kept_rows_covers_only_what_the_run_covers():
+    """#686: the Keep map after a run: rows it covers are rewritten, the kinds and sets it skips stay as they were."""
+    def row(kind, item, remote, here, *, kept=False):
+        return dict(key=f'{kind}:{item}', kind=kind, item_id=item, state='conflict', remote=remote, here=here, kept=kept)
+    existing = {'owned': {'1': [6, 2], '3': [9, 1]}, 'wanted': {'7': [4, 0]}}
+    rows = [row('owned', 1, 5, 1, kept=True), row('owned', 2, 3, 1), row('wanted', 7, 4, 0, kept=True)]
+    # the run skips set 1 and does not cover wanted: an old preview's row for either cannot overwrite what is stored
+    out = sync.kept_rows(rows, ['owned:2'], existing=existing, covered=('owned',), skipped={1})
+    assert out == {'owned': {'1': [6, 2], '2': [3, 1]}, 'wanted': {'7': [4, 0]}}                 # 3 is covered and no longer a conflict: dropped
+    # a covered set whose counts met is not in the rows at all: its entry ends
+    assert sync.kept_rows([], [], existing={'owned': {'1': [5, 1]}}, covered=('owned', 'wanted'), skipped=set()) == {}
+    # resolved by this run: the entry ends
+    assert sync.kept_rows(rows[:1], [], resolved=['owned:1'], existing={'owned': {'1': [5, 1]}}) == {}

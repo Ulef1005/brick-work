@@ -41,7 +41,7 @@ FOLLOW = [re.compile(p) for p in (
     r'^/workbench/lot-sorter$',
     r'^/collection/lots/[0-9a-f-]{36}(\?detect=1)?$',
     r'^/collection/lots/[0-9a-f-]{36}/pull/[1-9][0-9]*$',
-    r'^/workbench/build-scout(/[1-9][0-9]*)?$',
+    r'^/workbench/build-scout(/[1-9][0-9]*)?(\?scan=1)?$',   # opening starts nothing; the Scan button's page is ?scan=1 (#668)
     r'^/planning/order-missing-parts(\?sel=all(&step=review)?)?$',
     r'^/manage/(add|tools|statistics|sync|catalogues|tokens|jobs|refresh|appearance|history|values)$',
 )]

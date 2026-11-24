@@ -33,6 +33,7 @@ def test_a_copy_is_the_copy_body_with_words_prices_as_text_and_the_item_body(v2,
     assert copy['item']['id'] == world.keep and copy['item']['rebrickable'] == {'key': '1000-1'} and copy['name'] == 'Syn Castle Keep'
     assert (copy['condition'], copy['completeness'], copy['completeness_source']) == ('used', 'incomplete', 'manual')
     assert copy['checked_by'] is None                                            # #489: read only; NULL when Brick Work (or nobody) checked it
+    assert copy['source'] == {'added_via': 'hand', 'added_via_label': 'By hand', 'last_synced_from': []}   # #551: read only
     assert (copy['storage_id'], copy['purchase_location_id'], copy['purchase_price'], copy['purchase_currency'], copy['purchase_date'], copy['note']) == (
         world.shelf, world.shop, '12.50', 'EUR', '2024-05-01', 'Flea market')
     assert (copy['missing'], copy['damaged'], copy['pinned'], copy['archived_at']) == (1, 0, False, None)

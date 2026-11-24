@@ -217,7 +217,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-210 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
+212 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -793,6 +793,8 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `PATCH /api/v2/storages/{id}` | M.11c | `brickwork.api2.write_where.patch_storages_by_id` |
 | `POST /api/v2/storages/{id}/contents` | M.11c | `brickwork.api2.write_where.post_storages_by_id_contents` |
 | `POST /api/v2/storages/{id}/restore` | M.11c | `brickwork.api2.write_where.post_storages_by_id_restore` |
+| `POST /api/v2/sync/rebrickable/parts/apply` | M.11d | `brickwork.api2.sync.post_sync_rebrickable_parts_apply` |
+| `POST /api/v2/sync/rebrickable/parts/plan` | M.11d | `brickwork.api2.sync.post_sync_rebrickable_parts_plan` |
 | `GET /api/v2/sync/{source}` | M.11d | `brickwork.api2.sync.get_sync_by_source` |
 | `PUT /api/v2/sync/{source}/link` | M.11d | `brickwork.api2.sync.put_sync_by_source_link` |
 | `GET /api/v2/sync/{source}/lists` | M.11d | `brickwork.api2.sync.get_sync_by_source_lists` |

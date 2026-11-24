@@ -297,7 +297,7 @@
       else {
         const values=Object.fromEntries(new FormData(form));
         newPhoto=values.new_photo;newPhotoCaption=values.new_photo_caption||'';delete values.new_photo;delete values.new_photo_caption;        // the photo goes up after the save, from the same button
-        if(form.dataset.bcFlags!==undefined)values.flags=[...form.querySelectorAll('[name=flags]:checked')].map(c=>c.value);      // switches and the multi-select fields all post the flag ids that stay on
+        if(form.dataset.bcFlags!==undefined)values.flags=[...form.querySelectorAll('[name=flags]:checked,input[type=hidden][name=flags]')].map(c=>c.value);      // switches and the multi-select fields all post the flag ids that stay on; a wish's Status and Owners ride along hidden (#670)
         data=action==='save'?{...identity,values}:{...identity,...values};
         if(action==='save'&&photoRows.length) {
           const captions={},removals=[];

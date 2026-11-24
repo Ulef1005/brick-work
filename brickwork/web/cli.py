@@ -217,7 +217,7 @@ def main(argv=None):
                     result = own_export.build(db, sections=args.get('sections'))
                 Path(args['output']).write_bytes(result['content'])
                 summary = {'counts': result['counts'], 'sections': result['sections'], 'total': sum(result['counts'].values())}
-                print(json.dumps(summary), file=sys.stderr)
+                print(json.dumps(summary, indent=2) if as_json else json.dumps(summary), file=sys.stdout if as_json else sys.stderr)
             return 0
         except Exception as error:
             print('Export error: ' + _safe_error(error), file=sys.stderr)
@@ -235,6 +235,8 @@ def main(argv=None):
                 source = Path(args['file'])
                 if not source.is_file():
                     raise ValueError(f'File not found: {source}')
+                if source.stat().st_size > own_import.MAX_ZIP_BYTES:
+                    raise ValueError('Export file is larger than 50 MB')
                 content = source.read_bytes()
                 with closing(connect(path, read_only=True)) as db:
                     db.execute('BEGIN')

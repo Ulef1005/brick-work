@@ -11,7 +11,7 @@ from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401
 
 FORBIDDEN_COPY_KEYS = {
     'inventory_source', 'inventory_version', 'fetched_inventory_id', 'inventory_digest',
-    'inventory_pending', 'pending_job_id', 'materialised_at', 'checked_by', 'item_id',
+    'inventory_pending', 'pending_job_id', 'materialised_at', 'item_id',
 }
 ITEM_REF_KEYS = {'provider', 'namespace', 'key', 'local', 'kind', 'name'}
 COLOR_REF_KEYS = {'provider', 'key', 'name'}

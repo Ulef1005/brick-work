@@ -284,6 +284,30 @@ def _count_unmatched_lines(table, row, find_item, find_color):
     return unmatched
 
 
+def _value_problem(table, row):
+    """Name a value the store would refuse, so a row is never promised as new when it cannot be written."""
+    def whole(name, low=0):
+        value = row.get(name)
+        return value is None or (type(value) is int and value >= low)
+    if table in ('stock', 'wish'):
+        kinds = ('set', 'part', 'minifigure', 'instructions', 'box', 'gear', 'book', 'catalog') if table == 'wish' else \
+            ('part', 'minifigure', 'instructions', 'box', 'gear', 'book', 'catalog')
+        if row.get('kind') not in kinds:
+            return 'This kind of row cannot be imported here'
+        if not whole('quantity', 1 if table == 'wish' else 0):
+            return 'Quantity must be a whole number'
+        if (row.get('kind') == 'part') != (row.get('color') is not None):
+            return 'Only a part has a colour'
+    if table == 'stock':
+        if not whole('missing') or not whole('damaged'):
+            return 'Missing and damaged must be whole numbers'
+        if type(row.get('quantity')) is int and type(row.get('missing')) is int and row['missing'] > row['quantity']:
+            return 'Missing is more than the quantity'
+    if table in ('copy', 'stock') and row.get('purchase_price') is not None and not row.get('purchase_currency'):
+        return 'A price needs its currency'
+    return None
+
+
 def plan(db, content, sections=None, store=True):
     """Classify every row of a Brick Work export file without writing to the collection."""
     parsed = read_zip(content)
@@ -324,7 +348,12 @@ def plan(db, content, sections=None, store=True):
     planned_new = {t: set() for t in WRITE_ORDER}
     counts, rows_out, kept_tables = {}, {}, {}
     for table in selected_tables:
-        table_rows = list(parsed['tables'].get(table, []))
+        if table not in parsed['tables']:
+            raise errors.ValidationFailed(f'Export file is missing data/{table}.jsonl')
+        table_rows = list(parsed['tables'][table])
+        declared = (manifest.get('counts') or {}).get(table)
+        if type(declared) is int and declared != len(table_rows):
+            raise errors.ValidationFailed(f'data/{table}.jsonl holds {len(table_rows)} rows and the manifest says {declared}')
         if table == 'storage':
             table_rows = _order_storage(table_rows)
         kept_tables[table] = table_rows
@@ -339,11 +368,16 @@ def plan(db, content, sections=None, store=True):
             if status != 'new' and len(t_rows) < ROW_CAP:
                 t_rows.append({'id': row.get('id'), 'name': _row_name(row), 'status': status, **extra})
 
+        seen_ids = set()
         for row in table_rows:
             row_id = row.get('id')
             if not isinstance(row_id, str) or not row_id:
                 record(row, 'unresolved', reason='Missing row id')
                 continue
+            if row_id in seen_ids:
+                record(row, 'unresolved', reason='The same id twice in the file')
+                continue
+            seen_ids.add(row_id)
             if row_id in existing:
                 diffs = _differs(table, row, existing[row_id], main_items, main_colors)
                 if diffs:
@@ -361,6 +395,8 @@ def plan(db, content, sections=None, store=True):
                 elif pid not in live_ids[parent_table] and pid not in planned_new[parent_table]:
                     reason = f'Parent {parent_table} not found'
                     break
+            if reason is None:
+                reason = _value_problem(table, row)
             if reason is None and table in ('copy', 'stock', 'wish'):
                 item_ref = row.get('item')
                 if not isinstance(item_ref, dict) or item_ref.get('key') is None or item_ref.get('key') == '' or item_ref.get('local'):

@@ -12,16 +12,25 @@ from brickwork.web.cli import build_parser, main
 from tests.app4 import app4, coll, make_pair, pair, read, world  # noqa: F401
 
 
-def _repack(content, *, mutate=None, extra=None):
-    """Rewrite a zip archive with optional member edits or extra entries."""
-    buf = io.BytesIO()
-    with zipfile.ZipFile(io.BytesIO(content)) as src, zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as dst:
+def _repack(content, *, mutate=None, extra=None, keep_counts=False):
+    """Rewrite a zip archive with optional member edits or extra entries; the manifest counts follow the edited rows unless kept."""
+    members = {}
+    with zipfile.ZipFile(io.BytesIO(content)) as src:
         for info in src.infolist():
             data = src.read(info.filename)
-            if mutate:
-                data = mutate(info.filename, data)
-            dst.writestr(info.filename, data)
-        for name, data in (extra or {}).items():
+            members[info.filename] = mutate(info.filename, data) if mutate else data
+    members.update(extra or {})
+    if not keep_counts and 'manifest.json' in members:
+        manifest = json.loads(members['manifest.json'])
+        for name, data in members.items():
+            if name.startswith('data/') and name.endswith('.jsonl'):
+                table = name[len('data/'):-len('.jsonl')]
+                if table in (manifest.get('counts') or {}):
+                    manifest['counts'][table] = len([line for line in data.splitlines() if line.strip()])
+        members['manifest.json'] = json.dumps(manifest).encode('utf-8')
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as dst:
+        for name, data in members.items():
             dst.writestr(name, data)
     return buf.getvalue()
 
@@ -194,3 +203,45 @@ def test_cli_import_file_reads_without_writing(app4, coll, world, pair, tmp_path
     bad.write_bytes(b'not a zip')
     assert main(['import-file', str(bad)]) == 1
     assert 'This is not a Brick Work export file' in capsys.readouterr().err
+
+
+def test_plan_refuses_a_missing_table_a_wrong_count_and_names_a_duplicate_or_impossible_row(coll, world):
+    valid = own_export.build(coll.db)['content']
+    with zipfile.ZipFile(io.BytesIO(valid)) as zf:
+        names = zf.namelist()
+    assert 'data/copy.jsonl' in names
+    buf = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(valid)) as src, zipfile.ZipFile(buf, 'w') as dst:
+        for info in src.infolist():
+            if info.filename != 'data/copy.jsonl':
+                dst.writestr(info.filename, src.read(info.filename))
+    with pytest.raises(errors.ValidationFailed, match=r'missing data/copy\.jsonl'):
+        own_import.plan(coll.db, buf.getvalue(), store=False)
+
+    def cut(name, data):
+        if name == 'data/copy.jsonl':
+            return b''
+        return data
+
+    with pytest.raises(errors.ValidationFailed, match='the manifest says'):
+        own_import.plan(coll.db, _repack(valid, mutate=cut, keep_counts=True), store=False)
+
+    def twice(name, data):
+        if name == 'data/stock.jsonl':
+            return data + data
+        return data
+
+    def counts_follow(name, data):
+        if name == 'manifest.json':
+            m = json.loads(data)
+            m['counts'].pop('stock', None)
+            return json.dumps(m).encode('utf-8')
+        return twice(name, data)
+
+    planned = own_import.plan(coll.db, _repack(valid, mutate=counts_follow), store=False)
+    assert planned['counts']['stock']['unresolved'] >= 1
+    assert any(r.get('reason') == 'The same id twice in the file' for r in planned['rows']['stock'])
+    assert own_import._value_problem('stock', {'kind': 'part', 'quantity': -1, 'color': {'key': 1}}) == 'Quantity must be a whole number'
+    assert own_import._value_problem('stock', {'kind': 'part', 'quantity': 2, 'missing': 3, 'color': {'key': 1}}) == 'Missing is more than the quantity'
+    assert own_import._value_problem('wish', {'kind': 'set', 'quantity': 1, 'color': {'key': 1}}) == 'Only a part has a colour'
+    assert own_import._value_problem('copy', {'purchase_price': 5, 'purchase_currency': None}) == 'A price needs its currency'

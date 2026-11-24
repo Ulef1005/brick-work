@@ -181,7 +181,7 @@ def _copy_rows(db, items, colors, secrets):
         group.sort(key=lambda r: (_item_key(r['figure']), _item_key(r['item']), _color_key(r['color']), r['spare']))
     rows = db.execute('''SELECT id, item_id, inventory_source, condition, completeness, completeness_source,
                                 storage_id, place_id, purchase_date, purchase_price, purchase_currency, note,
-                                current_value, current_value_currency, pinned, added_via, created_at, updated_at
+                                current_value, current_value_currency, pinned, added_via, checked_by, created_at, updated_at
                          FROM main.copy WHERE archived_at IS NULL ORDER BY id''')
     return [
         {
@@ -192,7 +192,7 @@ def _copy_rows(db, items, colors, secrets):
             'purchase_date': r['purchase_date'], 'purchase_price': r['purchase_price'],
             'purchase_currency': r['purchase_currency'], 'note': _note(r['note'], secrets),
             'current_value': r['current_value'], 'current_value_currency': r['current_value_currency'],
-            'pinned': bool(r['pinned']), 'added_via': r['added_via'],
+            'pinned': bool(r['pinned']), 'added_via': r['added_via'], 'checked_by': r['checked_by'],
             'created_at': r['created_at'], 'updated_at': r['updated_at'],
             'flags': flags.get(r['id'], []),
             'lines': {'figures': figures.get(r['id'], []), 'parts': parts.get(r['id'], [])},

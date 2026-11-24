@@ -56,8 +56,9 @@ def test_sources_page_cards_and_hub_row(client, remote):
     assert rb.select_one('[data-rb-account] .sr-tag').get_text(strip=True) == 'Not connected'
     assert rb.select_one('a.bk-primary').get_text(strip=True) == 'Connect'
     assert 'Nothing has run yet.' in rb.get_text()
-    bs = soup(client.get('/workbench/sync/brickset'))
-    assert bs.select_one('[data-sync-source=brickset] [data-needs-key=brickset]').strong.text == 'Needs a Brickset key'
+    bs = soup(client.get('/workbench/sync/brickset'))          # #520: the Brickset page has its own cards; see test_sync_brickset_page.py
+    assert bs.select_one('[data-rb-account] .sr-tag').get_text(strip=True) == 'Not connected'
+    assert bs.select_one('a.bk-primary')['href'].endswith('/workbench/sync/brickset/connect')
     assert soup(client.get('/manage/tools')).find('a', href='/workbench/sync')
 
 
@@ -146,7 +147,7 @@ def test_the_pages_before_setup_show_the_notice(app4, tmp_path, monkeypatch):
     from tests.web_fixtures import logged_in
     monkeypatch.setenv('BW_DB_PATH', str(tmp_path / 'not-set-up' / 'brickwork.db'))
     for path in ('/workbench/sync', '/workbench/sync/rebrickable', '/workbench/sync/rebrickable/connect', '/workbench/sync/rebrickable/choose',
-                 '/manage/sync/brickset/link'):
+                 '/workbench/sync/brickset', '/workbench/sync/brickset/connect', '/workbench/sync/brickset/choose'):
         response = logged_in(app4).get(path)
         assert response.status_code == 503
         assert 'database is not available' in response.get_data(as_text=True)

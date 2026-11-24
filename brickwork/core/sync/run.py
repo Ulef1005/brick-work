@@ -1,10 +1,13 @@
-"""One Rebrickable run (#519): the choices of step 2, the plans a run reads, the merged preview and the stages it applies.
+"""One Rebrickable or Brickset run (#519, #520): the choices of step 2, the plans a run reads, the merged preview and the stages it applies.
 
 A run is not new sync logic. It reads the plans that already exist (`sync.plan_pull` with its Lost Parts and list-name sections,
 `sync.plan_send`, `part_lists.plan`, `lost_parts_send.plan`), merges their rows into one row per set with the choices that row has, and
 applies the chosen rows through the same applies, one stage after the other: the pull (sets, wishes, Lost Parts in, list names), the part
 lists, the sends, the Lost Parts out. The run record is a plan file (`direction='run'`, 24 hours like every plan); it keeps the ids of the
 plans it read, the sets picked, and what each stage did, because `lost_parts_send.apply` keeps no progress of its own.
+
+A run takes its site from its own record (`run['source']`); every other function takes `source`, Rebrickable when left out. Brickset has
+owned and wanted sets with counts only: no lists, part lists or Lost Parts, so those stages never run for it.
 
 Choices are kept without a schema change: the link (`sync.link`), the setting the Lost Parts pull rule already uses, the two settings of the
 Lost Parts send (`lost_parts_send.KEY`, `RULE_KEY`) and `DIRECTIONS_KEY` here.
@@ -23,11 +26,16 @@ from .. import sync
 from . import adapters, lost_parts, lost_parts_send, part_lists
 
 SOURCE = 'rebrickable'
+SOURCES = ('rebrickable', 'brickset')
 DIRECTIONS_KEY = 'rebrickable_sync_directions'
+DIRECTIONS_KEYS = {'rebrickable': DIRECTIONS_KEY, 'brickset': 'brickset_sync_directions'}
 SEGMENTS = {'owned': ('into', 'both', 'to', 'off'), 'wishlist': ('into', 'both', 'to', 'off'), 'parts': ('into', 'off'), 'lost': ('into', 'both', 'to', 'off')}
 SEGMENT_LABELS = {'into': 'Into Brick Work', 'both': 'Both ways', 'to': 'To Rebrickable', 'off': 'Off'}
+SEGMENT_LABELS_BY = {'rebrickable': SEGMENT_LABELS, 'brickset': dict(SEGMENT_LABELS, to='To Brickset')}
 MODE_LABELS = (('all', 'All linked'), ('list', 'By list'), ('theme', 'By theme'), ('year', 'By year'), ('one', 'One by one'))
 MODES = tuple(m for m, _ in MODE_LABELS)
+MODE_LABELS_BY = {'rebrickable': MODE_LABELS, 'brickset': tuple(m for m in MODE_LABELS if m[0] != 'list')}      # Brickset has no lists to pick by
+KINDS_BY = {'rebrickable': tuple(SEGMENTS), 'brickset': ('owned', 'wishlist')}       # the kinds of data each site has a direction for
 LIST_WORDS = {'rename': 'Rename it', 'keep': 'Keep', 'drop': 'Drop the name', 'skip': 'Skip'}
 LOG = logging.getLogger(__name__)
 FAILURES = (errors.BrickWorkError, ValueError, SourceError, sqlite3.Error)
@@ -47,18 +55,20 @@ def _put_setting(db, key, value):
 
 # Choices of step 2 ----------------------------------------------------------------------------------------------------
 
-def link_value(db):
-    return sync._setting(db, SOURCE, 'link', {})
+def link_value(db, source=SOURCE):
+    return sync._setting(db, source, 'link', {})
 
 
-def directions(db):
+def directions(db, source=SOURCE):
     """The direction of each kind of data: owned sets, the wishlist, loose stock, Lost Parts. Lost Parts come from the two switches that
     already exist (the pull's `lost_parts`, the send's setting); the others are remembered here, defaulting to what a plain sync did before
     (sets and wishes both ways) and to Into Brick Work for loose stock once a part list is chosen."""
     try:
-        saved = json.loads(_setting_row(db, DIRECTIONS_KEY) or '{}')
+        saved = json.loads(_setting_row(db, DIRECTIONS_KEYS[source]) or '{}')
     except ValueError:
         saved = {}
+    if source == 'brickset':       # owned and wanted sets only: loose stock and Lost Parts are Rebrickable's
+        return dict({kind: saved.get(kind) if saved.get(kind) in SEGMENTS[kind] else 'both' for kind in KINDS_BY[source]}, parts='off', lost='off')
     link = link_value(db)
     out = {}
     for kind, default in (('owned', 'both'), ('wishlist', 'both'), ('parts', 'into' if link.get('part_lists') else 'off')):
@@ -68,10 +78,12 @@ def directions(db):
     return out
 
 
-def save_choices(db, form):
+def save_choices(db, form, source=SOURCE):
     """Save step 2 in one transaction. `form` holds the checked values: `owned_dir`, `wishlist_dir`, `parts_dir`, `lost_dir`, `owned`
     (list ids), `wishlist`, `send_to`, `wish_list`, `part_lists`, `lost_rule`, `send_rule`, `keep_list_names`. A value that does not fit
     raises ValidationFailed and nothing is saved."""
+    if source == 'brickset':
+        return _save_brickset_choices(db, form)
     for kind in SEGMENTS:
         if form.get(kind + '_dir') not in SEGMENTS[kind]:
             raise errors.ValidationFailed('Choose a direction for ' + kind)
@@ -105,6 +117,20 @@ def save_choices(db, form):
     return directions(db)
 
 
+def _save_brickset_choices(db, form):
+    """Step 2 of the Brickset page: `owned_dir`, `wishlist_dir` and `wish_list` (the Brick Work wishlist that takes the wanted sets). One transaction."""
+    for kind in KINDS_BY['brickset']:
+        if form.get(kind + '_dir') not in SEGMENTS[kind]:
+            raise errors.ValidationFailed('Choose a direction for ' + kind)
+    with transaction(db):
+        before = dict(directions=_setting_row(db, DIRECTIONS_KEYS['brickset']))
+        sync.link(db, 'brickset', dict(wish_list=form.get('wish_list') or 'default'))
+        saved = json.dumps({k: form[k + '_dir'] for k in KINDS_BY['brickset']}, sort_keys=True)
+        _put_setting(db, DIRECTIONS_KEYS['brickset'], saved)
+        audit(db, 'sync:brickset', 'choices', before, dict(directions=saved))
+    return directions(db, 'brickset')
+
+
 def _saved_names(db):
     try:
         return json.loads(_setting_row(db, DIRECTIONS_KEY) or '{}').get('names') or {}
@@ -117,8 +143,24 @@ def lost_labels(db):
     return lost_parts.RULE_LABELS[lost_parts.rule(db)], dict((v, l) for v, l, _ in lost_parts_send.RULES)[lost_parts_send.send_rule(db)]
 
 
-def what_syncs(db):
-    """The rows of the What syncs table of the page at rest, from what is stored: no call to Rebrickable."""
+def _brickset_what_syncs(db):
+    link = link_value(db, 'brickset')
+    d = directions(db, 'brickset')
+    labels = SEGMENT_LABELS_BY['brickset']
+    wish_lists = {w['id']: w['name'] for w in wishlists.listing(db)}
+    rows = []
+    if d['owned'] != 'off':
+        rows.append(dict(what='Owned sets', direction=labels[d['owned']], linked='Quantity owned'))
+    if d['wishlist'] != 'off':
+        rows.append(dict(what='Wanted sets', direction=labels[d['wishlist']],
+                         linked='Wanted, as a flag, ↔ wishlist ' + wish_lists.get(link.get('wish_list') or 'default', 'Wanted')))
+    return rows
+
+
+def what_syncs(db, source=SOURCE):
+    """The rows of the What syncs table of the page at rest, from what is stored: no call to the site."""
+    if source == 'brickset':
+        return _brickset_what_syncs(db)
     from ...store4 import origins
     link = link_value(db)
     d = directions(db)
@@ -197,20 +239,20 @@ def _lost_send(db, client):
     return planned
 
 
-def start(db, *, http=None):
-    """Read what the saved choices cover and save the run. Writes nothing to the collection. Raises what a read of Rebrickable raises."""
-    d = directions(db)
-    link = link_value(db)
+def start(db, *, http=None, source=SOURCE):
+    """Read what the saved choices cover and save the run. Writes nothing to the collection. Raises what a read of the site raises."""
+    d = directions(db, source)
+    link = link_value(db, source)
     sets_in = d['owned'] in ('into', 'both') or d['wishlist'] in ('into', 'both')
-    sets_out = d['owned'] in ('to', 'both') or d['wishlist'] in ('to', 'both')
+    send_kinds = tuple(k for k, key in (('owned', 'owned'), ('wanted', 'wishlist')) if d[key] in ('to', 'both'))
     lost_in_on = d['lost'] in ('into', 'both')
-    pull = sync.plan_pull(db, SOURCE, http=http, lost_parts_switch=lost_in_on) if (sets_in or lost_in_on) else None
-    send = sync.plan_send(db, SOURCE, http=http) if sets_out else None
+    pull = (sync.plan_pull(db, source, http=http, lost_parts_switch=lost_in_on) if source == 'rebrickable' else sync.plan_pull(db, source, http=http)) if (sets_in or lost_in_on) else None
+    send = sync.plan_send(db, source, http=http, kinds=send_kinds) if send_kinds else None
     parts = part_lists.plan(db, http=http) if d['parts'] == 'into' and link.get('part_lists') else None
     lost_send = _lost_send(db, adapters.adapter(db, SOURCE, http)) if d['lost'] in ('to', 'both') else None
-    run = dict(id=uuid4().hex, created_at=now().isoformat(), direction='run', source=SOURCE, directions=d,
+    run = dict(id=uuid4().hex, created_at=now().isoformat(), direction='run', source=source, directions=d,
                pull=pull and pull['id'], send=send and send['id'], parts=parts and parts['id'], lost_out=lost_send, picked=None, stages={})
-    run['candidates'] = candidates(db, d, pull, send, lost_send)
+    run['candidates'] = candidates(db, d, pull, send, lost_send, source)
     return sync._save_plan(db, run)
 
 
@@ -220,7 +262,12 @@ def load(db, run_id):
     return run, {name: (sync.load_plan(db, run[name]) if run.get(name) else None) for name in ('pull', 'send', 'parts')}
 
 
-def candidates(db, d, pull, send, lost_send):
+def _presence_only(source, r):
+    """Brickset holds a wanted set as a flag, so a wish of 2 here against 1 there is not a difference; Rebrickable keeps quantities."""
+    return source == 'brickset' and r['kind'] == 'wanted' and bool(r['here']) == bool(r['remote'])
+
+
+def candidates(db, d, pull, send, lost_send, source=SOURCE):
     """One entry per set a run could touch (a row that differs, a Lost Parts set), for the pick step: item id, number, name, theme, year, lists."""
     found = {}
 
@@ -231,7 +278,7 @@ def candidates(db, d, pull, send, lost_send):
         entry['lists'] = sorted(set(entry['lists']) | set(lists))
     for plan, ways in ((pull, ('into', 'both')), (send, ('to', 'both'))):
         for r in (plan or {}).get('rows', ()):
-            if d['owned' if r['kind'] == 'owned' else 'wishlist'] in ways:         # a kind that is Off in this direction is not a set this run touches
+            if d['owned' if r['kind'] == 'owned' else 'wishlist'] in ways and not _presence_only(source, r):    # a kind that is Off in this direction is not a set this run touches
                 add(r['item_id'], r['number'], r['name'], r.get('lists') or ())
     if d['lost'] in ('into', 'both'):
         for e in ((pull or {}).get('lost') or {}).get('sets', ()):
@@ -261,10 +308,10 @@ def save_pick(db, run_id, ids, keep_names=None, *, http=None):
         if ids - {c['item_id'] for c in run['candidates']}:
             raise errors.ValidationFailed('Pick sets from the list')
         pull = sync.load_plan(db, run['pull']) if run.get('pull') else None
-        if keep_names is not None and pull and bool((pull.get('lists') or {}).get('keep')) != bool(keep_names):
+        if keep_names is not None and pull and run.get('source', SOURCE) == SOURCE and bool((pull.get('lists') or {}).get('keep')) != bool(keep_names):
             pull = sync.plan_pull(db, SOURCE, http=http, lost_parts_switch=run['directions']['lost'] in ('into', 'both'), keep_list_names=bool(keep_names))
             run['pull'] = pull['id']
-            run['candidates'] = candidates(db, run['directions'], pull, sync.load_plan(db, run['send']) if run.get('send') else None, run.get('lost_out'))
+            run['candidates'] = candidates(db, run['directions'], pull, sync.load_plan(db, run['send']) if run.get('send') else None, run.get('lost_out'), SOURCE)
         run['picked'] = sorted(ids & {c['item_id'] for c in run['candidates']})
         sync._store_plan(db, run)
         return run
@@ -280,6 +327,8 @@ def rows(db, run, plans):
     `take` takes Rebrickable's count (a pull only raises a count here), `send` sends the count here, `remove` takes the set off the list
     there (unticked), `keep` leaves both sides (the first of a row with a choice). `default` is the option chosen at first, if any."""
     d, picked = run['directions'], picked_ids(run)
+    source = run.get('source', SOURCE)
+    site = sync.LABELS[source]
     merged = {}
 
     def row_of(r):
@@ -289,7 +338,7 @@ def rows(db, run, plans):
     for r in (plans['pull'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
-        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('into', 'both'):
+        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('into', 'both') or _presence_only(source, r):
             continue
         row = row_of(r)
         if r['state'] == 'add' and r['tickable']:
@@ -299,29 +348,29 @@ def rows(db, run, plans):
         elif r['state'] == 'conflict':
             row['state'] = 'conflict'
             if r['tickable']:
-                row['options'].append(dict(id='take', label=f"Take {r['remote']} from Rebrickable", note=f"Brick Work becomes {r['remote']}"))
+                row['options'].append(dict(id='take', label=f"Take {r['remote']} from {site}", note=f"Brick Work becomes {r['remote']}"))
         else:
             row['state'] = r['state']
     for r in (plans['send'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
-        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('to', 'both'):
+        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('to', 'both') or _presence_only(source, r):
             continue
         row = row_of(r)
         if r['state'] == 'conflict':
             row['state'] = 'conflict'
             if r['tickable']:
-                row['options'].append(dict(id='send', label=f"Send {r['send']} to Rebrickable", note=f"Rebrickable becomes {r['send']}"))
+                row['options'].append(dict(id='send', label=f"Send {r['send']} to {site}", note=f"{site} becomes {r['send']}"))
         elif r['state'] in ('remove', 'change') and r['tickable'] and any(o['id'] == 'pull' for o in row['options']):
             # Rebrickable has more than here: a lower count there is offered only when this set was lowered here since the last run
             if (r.get('baseline_here') or 0) > r['here'] and r.get('baseline_remote') is not None:
                 row['state'] = 'gone'
                 row['options'].append(dict(id='remove' if r['state'] == 'remove' else 'send',
-                                           label='Remove from Rebrickable' if r['state'] == 'remove' else f"Quantity {r['remote']} to {r['send']}",
+                                           label=f'Remove from {site}' if r['state'] == 'remove' else f"Quantity {r['remote']} to {r['send']}",
                                            note='Takes the set off the list there' if r['state'] == 'remove' else None))
         elif r['state'] == 'remove' and r['tickable']:        # only sending: a set taken off the list here is offered for the list there, unticked
             row['state'] = 'remove'
-            row['options'].append(dict(id='remove', label='Remove from Rebrickable', note=None))
+            row['options'].append(dict(id='remove', label=f'Remove from {site}', note=None))
         elif r['state'] in ('add', 'change') and r['tickable'] and r['action']:
             row['state'] = 'send_add' if r['state'] == 'add' else 'change'
             row['options'].append(dict(id='send', label=(f"Add {r['send']} there" if r['state'] == 'add' else f"Quantity {r['remote']} to {r['send']}"), note=None))
@@ -390,9 +439,9 @@ def part_rows(plans):
     return (plans['parts'] or {}).get('rows', [])
 
 
-def budget(db):
+def budget(db, source=SOURCE):
     try:
-        status = adapters.ADAPTERS[SOURCE](db).status()
+        status = adapters.ADAPTERS[source](db).status()
         return dict(used=status['used_today'], budget=status['budget'], last_success=status['last_success'], key=status['key_state'])
     except Exception:
         return None
@@ -400,13 +449,14 @@ def budget(db):
 
 # Applying -------------------------------------------------------------------------------------------------------------
 
-def _message(exc):
+def _message(exc, source=SOURCE):
+    label = sync.LABELS[source]
     if isinstance(exc, KeyRejected):
-        return 'Rebrickable rejected the key or user token. Nothing more was changed there.'
+        return label + ' rejected the key or user token. Nothing more was changed there.'
     if isinstance(exc, WaitingForBudget):
-        return 'Rebrickable is paused: the daily budget is used up. Try again after ' + (exc.retry_at or 'midnight UTC')[:16].replace('T', ' ') + '.'
+        return label + ' is paused: the daily budget is used up. Try again after ' + (exc.retry_at or 'midnight UTC')[:16].replace('T', ' ') + '.'
     if isinstance(exc, SourceError):
-        return 'Rebrickable could not be reached. Nothing more was changed there.'
+        return label + ' could not be reached. Nothing more was changed there.'
     return str(exc) or 'This step could not be done.'
 
 
@@ -467,6 +517,7 @@ def apply(db, run_id, form, *, http=None, via=None, actor=None):
 
 def _stages(db, run, plans, form, chosen, http, via, actor):
     stages, events = run['stages'], []
+    source = run.get('source', SOURCE)
     pull = plans['pull']
     if pull:
         wanted = [k for k, v in chosen.items() if v in ('pull', 'take')]
@@ -486,7 +537,7 @@ def _stages(db, run, plans, form, chosen, http, via, actor):
                                       lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']))   # distinct lists, as the preview names them
                 events.append(result['event_id'])
             except FAILURES as exc:
-                stages['pull'] = dict(status='failed', message=_message(exc))
+                stages['pull'] = dict(status='failed', message=_message(exc, source))
         else:
             stages['pull'] = dict(status='none')
         sync._store_plan(db, run)
@@ -510,7 +561,7 @@ def _stages(db, run, plans, form, chosen, http, via, actor):
                 result = sync.apply_send(db, plans['send']['id'], wanted, http=http)
                 stages['send'] = dict(status='done', counts=result['counts'], rows=len(wanted), results=result['rows'])
             except FAILURES as exc:
-                stages['send'] = dict(status='failed', message=_message(exc))
+                stages['send'] = dict(status='failed', message=_message(exc, source))
         else:
             stages['send'] = dict(status='none')
         sync._store_plan(db, run)
@@ -520,7 +571,7 @@ def _stages(db, run, plans, form, chosen, http, via, actor):
         stages['lost_out'] = _apply_lost_out(db, run, wanted, http) if wanted else dict(status='none')
         sync._store_plan(db, run)
     with transaction(db):
-        audit(db, 'sync:' + SOURCE, 'run', None, dict(run=run['id'], events=events), via=via, actor=actor)
+        audit(db, 'sync:' + source, 'run', None, dict(run=run['id'], events=events), via=via, actor=actor)
     run['applied_events'] = events
 
 

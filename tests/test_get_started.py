@@ -279,3 +279,12 @@ def test_got_it_marks_the_guide_done_and_the_flow_links_it(client):
     assert response.location.endswith('/manage/get-started')
     assert states(soup(client))['guide'] == 'done'
     assert soup(client, '/manage/get-started/guide').select_one('[data-guide-done]') and not soup(client, '/manage/get-started/guide').select('.fr-guide-end form')
+
+
+def test_a_stored_rebrickable_key_in_the_flow_replaces_through_step_1(client, coll):
+    from brickwork.core import keys
+    keys.save(coll.db, 'rebrickable', {'key': token_source.token_hex(14)})
+    card = soup(client).select_one('[data-flow-keys] [data-key-card=rebrickable]')
+    assert '/workbench/sync/rebrickable/connect' in card.find('a', string='Replace')['href']
+    replacing = BeautifulSoup(client.get('/manage/get-started?replace=rebrickable').data, 'html.parser').select_one('[data-flow-keys] [data-key-card=rebrickable]')
+    assert replacing.select_one('input[type=password]') and replacing.find('a', string='Cancel')       # the old replace form still has its Cancel

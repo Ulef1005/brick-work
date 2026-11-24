@@ -1,9 +1,11 @@
 ---
 audience: developer
-verified: 0.8
+verified: 1.2
 ---
 
 # Brick Work import pipeline (4.0)
+
+*Checked in full against the 1.2 code on 2026-11-24 (#677). Every step, setting, default, table row, error code, claim rule, route and figure below was read in the code. The corrections of that pass are in the text.*
 
 One **job** per confirmed Add row, six **steps**, run in the background beside the fetch jobs. Everything lives in the collection file's
 `job`, `job_step` and `job_owner` tables, so a job survives a restart. The data model is in the
@@ -18,7 +20,7 @@ position, sources, source_index, source, state, error, error_code, retry_at, cou
 it confirms (`Pipeline.queue_steps`), so a row and its job commit or roll back together.
 
 The two fetch kinds (`bricklink_subsets`, `rebrickable_set`) live in the same table and are run by `store4.jobs`. Each runner ignores the
-other's kinds; `core.drainer` runs both, fetch jobs first, and stops when neither has anything queued, running, waiting, or due for a retry.
+other's kinds. `core.drainer` runs both, fetch jobs first. It then runs the instruction downloads and thumbnails and the sync runs (`sync_run`, [Sync](sync.md)), and reconciles the catalogue. It stops when none of those kinds has anything queued, running, waiting, or due for a retry.
 
 ## The six steps
 
@@ -32,26 +34,26 @@ market_price `bricklink`. Changing the settings affects new jobs only. Pictures:
 | --- | --- | --- |
 | `identity` | checks that the item has a number from some provider | `unidentified` when it has none |
 | `inventory` | checks that a set or figure has a part list (catalogue or fetched) | `unidentified` (no number), `not_found` (identified, no list) |
-| `matching` | checks for a confirmed BrickLink number; when none, records `item_provider_status(bricklink, unmatched, no_match)` | `unidentified` when there is no BrickLink number |
+| `matching` | checks for a confirmed BrickLink number; when none and the item has a provider number, records `item_provider_status(bricklink, unmatched, no_match)` | `unidentified` when there is no BrickLink number |
 | `pictures` | one handler per source, in the order of `source_priority.pictures` (parts: `rebrickable_dump`, `bricklink`, `rebrickable_api`; everything else: `bricklink`, `rebrickable_dump`): serves the colours the item still has no picture for, the next source gets the rest | `unidentified` when the item has no number; fails with the most telling error when no source could serve a colour |
-| `metadata` | Brickset: `item_property` and the retail price of the retail country, for a set | `unidentified` (no number), `not_found` (Brickset does not know the set; `item_provider_status` records it) |
-| `market_price` | BrickLink's price guide through `items.bricklink_key`, new and used, for each colour a part is held in; `price_observation` with its `provider_key`, `price_current`, `price_watch` | `unidentified` when there is no BrickLink number: nothing is called |
+| `metadata` | Brickset: `item_property` and the retail price of the retail country, for a set | `unidentified` (no number), `not_found` (Brickset does not know the set; `item_provider_status` records it); no key: `done` with `source_not_configured` (see Handlers) |
+| `market_price` | BrickLink's price guide through `items.bricklink_key`, new and used, for each colour a part is held in; `price_observation` with its `provider_key`, `price_current`, `price_watch` | `unidentified` when there is no BrickLink number (nothing is called), and also when some colours have no BrickLink colour number, after the other colours are priced; no key: `done` with `source_not_configured` (see Handlers) |
 
-Without a registered handler (a process that runs no worker) these three steps end `done`. Each gets `error` = "skipped: no source handler is registered for this step" with count 0 and no source. So do steps whose kind has no source in the setting (`metadata` for a part). The embedded drainer and `brickwork worker` register the handlers at start (`core.source_ops.register_handlers`).
+Without a registered handler (a process that runs no worker) these three steps end `done`. Each gets the `error` text `skipped: no source handler is registered for this step`, with count 0, total 0, and no source. A step whose kind has no source at all in the setting (`metadata` for a part) also ends `done`. Its `error` text is `skipped: no source is set for this step and kind`, with count 0, total 0, and no source. The embedded drainer and `brickwork worker` register the handlers at start (`core.source_ops.register_handlers`).
 
 A step that finds nothing to work with ends `done` with the finding, never `failed`: the job finishes. A **user-asked** BrickLink
 fetch that finds no number for the set stays `failed` (`store4.jobs`, error code `unidentified`). Only a step a handler failed is
 `failed`; `Pipeline.queue_retry(job, step=None)` puts failed steps back to `queued` and leaves done (and skipped) steps alone.
 
 The copies an Add confirms are materialised in the Add transaction from the catalogue's list (or BrickLink's, as decision F describes), so no
-step builds part lines. BrickLink's list for a copy is a separate `bricklink_subsets` job; when it succeeds, `store4.pending` switches the
-copy that is waiting for it.
+step builds part lines. BrickLink's list for a copy is a separate `bricklink_subsets` job. When that job settles, `store4.pending` settles the
+copy that is waiting for it. The outcome is `switched` when nothing on the copy is checked or marked. It is `offered` when the copy has marks, and the copy stays pending. It is `released` when the job failed for good, and the copy stays on its Rebrickable list.
 
 ## Handlers
 
 `pipeline.register(step, source, handler)` runs `handler(db, job, step)` when a step tries `source`. It returns normally (step done),
 or raises `StepDone(code, message)` (done with a finding such as `unidentified`). It can also raise `StepWait(retry_at, why)` (the step and job
-`waiting_for_budget`, retried when due) or `StepFailed(code, message)` (the next source is tried; the step fails after the last).
+`waiting_for_budget`, retried when due), `StepNeedsKey(message)`, or `StepFailed(code, message)` (the next source is tried; the step fails after the last). `StepNeedsKey` means the source has no key. The step ends `done` with `source_not_configured` and the message. Storing the key puts it back in the queue through `requeue_for_key`, which `core.drainer.requeue_configured_keys` also calls at a start.
 
 ## Claims and restarts
 
@@ -65,9 +67,9 @@ pid's current ones, compared exactly (`store4.jobs.pid_alive`). After a containe
 live process, which fails the comparison: its job runs again. A claim with no identity (made before 4.2, so before the restart that
 ran the upgrade) is dead wherever `/proc` answers. Where `/proc` cannot answer (macOS) the pid alone decides. No wall clock is
 involved. The fetch and reconcile jobs claim the same way, and the API's `interrupted` and the Jobs page read it. A catalogue job
-(`catalogue-job.json`) records the same `boot_id` and `start_ticks` beside its pid and is read as interrupted by the same test. An
-interrupt leaves the job `queued` and unclaimed; a process killed outright leaves it `running`, and the next start takes it over and
-runs the steps that are not done again. The embedded drainer starts at app start-up when a job is active, and `BW_EMBEDDED_WORKER=0` leaves draining to
+(`catalogue-job.json`) records the same `boot_id` and `start_ticks` beside its pid and is read as interrupted by the same test. For
+a pipeline job, an interrupt leaves the job `queued` and unclaimed; a fetch job keeps `running` with its claim dropped. A process killed outright leaves any job
+`running`, and the next start takes it over and runs the steps that are not done again. The embedded drainer starts at app start-up when a job is active, and `BW_EMBEDDED_WORKER=0` leaves draining to
 `brickwork worker`.
 
 ## Progress

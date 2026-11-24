@@ -1,5 +1,5 @@
 """Commission N (Sync and files, #517), round 5 (draft): every frame still missing for milestone N (Ulf, 24.11., via brick-work-product:
-"ask design to write all missing frames"; gap list ~/Workspace/_exports/design-brief-n/frame-gaps-n.md). Folders 78 to 93.
+"ask design to write all missing frames"; gap list ~/Workspace/_exports/design-brief-n/frame-gaps-n.md). Folders 78 to 95.
 
 G2/G3 (#551): the added-via chip and filter on loose-stock lots (78) and on wishes (79). G4 (#521): BrickLink's price guide, preview and result
 (80, 81). G5 (#523): one choose-file frame for each import format still undrawn (82 to 86). G6 (#523, #470): one choose frame for each export
@@ -18,6 +18,7 @@ sys.path.insert(0, str(HERE))
 import n2_frames as N2  # noqa: E402
 import n_frames as N  # noqa: E402
 import n6_frames as N6  # noqa: E402,F401
+import n4_frames as N4  # noqa: E402
 B = N.B
 
 tag, btn, head, foot, kv, card, two, seg, chk, field, rad = N.tag, N.btn, N.head, N.foot, N.kv, N2.card, N2.two, N.seg, N.chk, N.field, N.rad
@@ -154,7 +155,7 @@ def exp(title, sub, what, fmt, ph, facts='', preview='Preview what is included')
 def exp_db(ph):
     what = card('1 · What to export', '<p class="n">The whole database, as it is on disk.</p>' + kv([('Sets and copies', '8'), ('Loose stock', '1,830 parts'), ('Everything else', 'included')]))
     fmt = card('2 · The file', seg('SQLite', ['SQLite']) + field('Name', 'brick-work-2026-11-24.sqlite', sel=False) + kv([('Size', 'About 38 MB'), ('Made from', 'a copy taken now')])
-               + f'<div class="ninfo">{unv}&nbsp; Whether the file holds your site keys and tokens is checked in the app before this is built. The frame will say so in words once it is known.</div>')
+               + '<div class="ninfo"><b>Keys are not included.</b> The file keeps your sync settings (directions, what syncs, remembered choices, account names), never a key, a token or a password. You re-enter your keys on each site page after a restore.</div>')
     return exp('Database file', 'A copy of the whole database for a backup.', what, fmt, ph)
 
 
@@ -201,9 +202,33 @@ def reimport_result(ph):
     done = card(f'brick-work-2026-11-19.zip {tag("Imported")}', '<p class="n">3 rows applied: 1 added (31109-1 · Pirate Ship), 2 replaced by the file’s values (7213-1 copy 1, Bulk bin). 1 row was the same and skipped.</p>'
                 '<span class="btn sec sm" style="align-self:flex-start">Undo this import</span>'
                 '<p class="n">Undo takes back everything this import changed, in one step.</p>')
-    skipped = card('Not changed', '<p class="n">Settings and keys are never part of the file. Catalogue data was fetched again for the added set.</p>')
+    skipped = card('Not changed', '<p class="n">Keys are not included: re-enter your keys on each site page. Sync settings came back with the file. Catalogue data was fetched again for the added set.</p>')
     return (head('Re-import', 'Finished 24 Nov, 19:03', ph) + steps_n(['Choose file', 'Choose what', 'Preview', 'Run', 'Result'], 'Result', ph)
             + (done + skipped if ph else two(done, skipped, ph)) + foot(btn('Open sync log', 'q'), btn('Done', 'sec')))
+
+
+# ---- 94 and 95: frames 23 and 57 redrawn (#685; brick-work-product, 24.11.) ------------------------------------------------
+# The pull and the part lists apply in one transaction and cannot report "N of M": they read "Applying the pull" with a spinner, no count and no
+# ETA. Sends and Lost Parts out keep "N of M" per call. 23 and 57 stay approved until Ulf approves these.
+def _spin(text):
+    return f'<p class="n" style="display:flex;gap:10px;align-items:center">{N4.SPIN}{text}</p>'
+
+
+def run_applying(ph):
+    into = card('Into Brick Work', _spin('Applying the pull') + '<p class="n">Sets, wishes, loose stock and part lists are applied together, so there is no count for this part. If it fails, nothing here changed.</p>')
+    out = card('To Rebrickable', f'<p class="mono" style="{small}">0 of 2 sent</p>{N.prog(0, 2)}<p class="n">Sends and Lost Parts start when the pull is applied, one request each.</p>')
+    top = card('Running 6 changes', f'<p class="mono" style="{small}">about 1 request a second for the sends · budget today 144 / 2,000</p>'
+               '<p class="n">You can leave this page. The run goes on and shows in Jobs. The pull is applied in one step, so it cannot be stopped halfway; Stop after this one works on the sends.</p>'
+               '<span class="btn sec sm" style="align-self:flex-start;opacity:.55">Stop after this one</span>')
+    return head('Rebrickable', 'Running 6 changes', ph) + N.steps('Run', ph) + top + (into + out if ph else f'<div class="ngrid g2">{into}{out}</div>')
+
+
+def long_applying(ph):
+    top = card('Sending 1,120 of 1,500', f'{N.prog(1120, 1500)}<p class="mono" style="{small}">about 6 min left · 1 request a second · budget today 1,310 / 2,000</p>'
+               '<div class="ninfo">You can close this page, the browser or the tablet. The run keeps going on the server and shows in Jobs. If the server restarts it goes on from the last sent change.</div>'
+               f'<div style="display:flex;gap:10px;flex-wrap:wrap">{btn("Stop after this one", "sec sm")}{btn("Open Jobs", "q sm")}</div>')
+    done = card(f'Pull applied {tag("Done")}', '<p class="n">2,500 changes applied here, in one step. Undo for the run stays on the result page.</p>')
+    return head('Rebrickable', 'Running 4,000 changes, started 19 Nov, 15:02', ph) + N.steps('Run', ph) + done + top
 
 
 N.FRAMES = [('N7-01', '78-stock-added-via', N2._shell('Collection', 'Parts', stock_source)), ('N7-02', '79-wishes-added-via', N2._shell('Planning', 'Wishlist', wish_source)),
@@ -212,7 +237,8 @@ N.FRAMES = [('N7-01', '78-stock-added-via', N2._shell('Collection', 'Parts', sto
             ('N7-08', '85-import-bricktracker', imp_bricktracker), ('N7-09', '86-import-brickwork-csv', imp_bw_csv),
             ('N7-10', '87-export-database', exp_db), ('N7-11', '88-export-insurance', exp_insurance), ('N7-12', '89-export-missing-parts', exp_missing),
             ('N7-13', '90-export-order-files', exp_orderfiles), ('N7-14', '91-export-brickwork-csv', exp_bw_csv), ('N7-15', '92-export-other-formats', exp_other),
-            ('N7-16', '93-re-import-result', reimport_result)]
+            ('N7-16', '93-re-import-result', reimport_result),
+            ('N7-17', '94-rebrickable-run-applying', run_applying), ('N7-18', '95-sync-long-run-applying', long_applying)]
 N.DRAFTS = []
 
 if __name__ == '__main__':

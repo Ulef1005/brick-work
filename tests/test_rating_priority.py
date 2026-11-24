@@ -16,7 +16,9 @@ def test_the_columns_start_empty_and_the_write_path_holds_the_range(coll, world)
             collection.save(coll.db, 'copy', [world.copy_a], dict(rating=bad))
     with pytest.raises(ValueError):
         collection.save(coll.db, 'wish', [world.wish_set], dict(priority=0))
-    collection.save(coll.db, 'wish', [world.wish_set], dict(priority=9))      # Brickset's top value is unknown: no upper limit
+    with pytest.raises(ValueError):
+        collection.save(coll.db, 'wish', [world.wish_set], dict(priority=2 ** 63))      # no SQLite overflow
+    collection.save(coll.db, 'wish', [world.wish_set], dict(priority=9))      # Brickset's top value is unknown: a wide guard only
 
 
 def test_a_rating_and_a_priority_save_clear_and_undo(coll, world):
@@ -54,7 +56,7 @@ def test_the_own_file_round_trips_both_values(coll, world, tmp_path):
 
 def test_the_import_plan_refuses_a_rating_out_of_range():
     assert own_import._value_problem('copy', {'rating': 6}) == 'Rating must be 1 to 5'
-    assert own_import._value_problem('wish', {'kind': 'set', 'quantity': 1, 'priority': 0}) == 'Priority must be 1 or more'
+    assert own_import._value_problem('wish', {'kind': 'set', 'quantity': 1, 'priority': 0}) == 'Priority must be 1 to 999'
     assert own_import._value_problem('copy', {'rating': 3}) is None
 
 

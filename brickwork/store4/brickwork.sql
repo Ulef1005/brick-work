@@ -906,7 +906,7 @@ CREATE INDEX synced_from_stock ON synced_from(stock_id);
 CREATE INDEX synced_from_wish ON synced_from(wish_id);
 CREATE INDEX synced_from_site ON synced_from(site, list_key);
 
--- Your own rating and priority, schema 4.9 (#690): a copy's stars (1 to 5) and a wish's priority (1 or more, 1 highest). NULL: not set; every row older than 4.9 stays NULL.
+-- Your own rating and priority, schema 4.9 (#690): a copy's stars (1 to 5) and a wish's priority (1 to 999, 1 highest). NULL: not set; every row older than 4.9 stays NULL.
 ALTER TABLE copy ADD COLUMN rating INTEGER;
 ALTER TABLE wish ADD COLUMN priority INTEGER;
 -- Brick Owl is a source like the other three sites, so its calls count against a daily budget (#522). Idempotent; a user's enabled=0 stays.

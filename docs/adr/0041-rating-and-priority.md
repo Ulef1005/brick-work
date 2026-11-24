@@ -11,8 +11,8 @@ Brickset holds a rating and a wanted priority for each set. Brick Work has no pl
 ## Decision
 
 - `copy.rating`: a whole number from 1 to 5, or NULL for not rated. The person's own stars for one copy.
-- `wish.priority`: a whole number of 1 or more, or NULL for none. 1 is the highest. Brickset's own top value cannot be seen from its answers (a live read showed only 1, its default), so no upper limit is set.
-- Schema 4.8 to 4.9, one additive step. Every row already there stays NULL. No index, no trigger and no CHECK: the range is validated in the write path (a rating 1 to 5, a priority 1 or more); Brickset's rating 0 means not rated and maps to NULL in its adapter, because an upgrade step can only add and a wrong CHECK would stay.
+- `wish.priority`: a whole number from 1 to 999, or NULL for none. 1 is the highest. Brickset's own top value cannot be seen from its answers (a live read showed only 1, its default), so the limit is a generous guard only.
+- Schema 4.8 to 4.9, one additive step. Every row already there stays NULL. No index, no trigger and no CHECK: the range is validated in the write path (a rating 1 to 5, a priority 1 to 999); Brickset's rating 0 means not rated and maps to NULL in its adapter, because an upgrade step can only add and a wrong CHECK would stay.
 - Both are ordinary editable fields: the edit path, Undo, API v2 and the own export and import carry them. The own CSV gets a `Rating` column for sets.
 - The Brickset mapping is not part of this change. A set's Brickset rating goes to every live copy of the set, and its priority to the wish; that rule belongs to the Brickset sync (#690, the sync session).
 

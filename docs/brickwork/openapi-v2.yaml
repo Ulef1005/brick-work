@@ -9841,6 +9841,7 @@ components:
           - integer
           - 'null'
           minimum: 1
+          maximum: 999
           description: How much you want the wish, 1 is highest (#690); null when not set.
         list_id:
           type: string
@@ -10012,6 +10013,7 @@ components:
           - integer
           - 'null'
           minimum: 1
+          maximum: 999
           description: How much you want the wish, 1 is highest (#690); null when not set.
         list_id:
           type: string

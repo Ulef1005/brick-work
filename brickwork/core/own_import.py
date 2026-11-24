@@ -317,8 +317,8 @@ def _value_problem(table, row):
         return 'This condition is not one this install knows'
     if table == 'copy' and row.get('rating') is not None and not (type(row['rating']) is int and 1 <= row['rating'] <= 5):
         return 'Rating must be 1 to 5'
-    if table == 'wish' and row.get('priority') is not None and not (type(row['priority']) is int and row['priority'] >= 1):
-        return 'Priority must be 1 or more'
+    if table == 'wish' and row.get('priority') is not None and not (type(row['priority']) is int and 1 <= row['priority'] <= 999):
+        return 'Priority must be 1 to 999'
     if table in ('copy', 'stock') and row.get('purchase_price') is not None and not row.get('purchase_currency'):
         return 'A price needs its currency'
     return None

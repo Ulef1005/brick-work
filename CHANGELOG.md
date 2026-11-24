@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Rate a copy and rank a wish** (#690). A copy takes a rating from 1 to 5 stars and a wish a priority of 1 or more (1 is the highest). Both are optional, change through the API like any field, undo with the edit and travel in Brick Work's own export file and its import. The own CSV of your sets has a `Rating` column. The schema moves from 4.8 to 4.9 in place at the first read/write start; every row stays unrated. The Brickset sync uses them next. See [ADR 0041](docs/adr/0041-rating-and-priority.md).
+- **Rate a copy and rank a wish** (#690). A copy takes a rating from 1 to 5 stars and a wish a priority from 1 to 999 (1 is the highest). Both are optional, change through the API like any field, undo with the edit and travel in Brick Work's own export file and its import. The own CSV of your sets has a `Rating` column. The schema moves from 4.8 to 4.9 in place at the first read/write start; every row stays unrated. The Brickset sync uses them next. See [ADR 0041](docs/adr/0041-rating-and-priority.md).
 
 - **The BrickLink sync page, orders first** (#521). **Workbench → Sync → BrickLink** shows your account, today's budget, the last runs with **Undo this run** and what syncs, and **Start a sync** takes you through connect, choose what, pick lots, preview, run and result. Choose which orders to pull (received and paid, or all, since a date), pick them, and pull them into Orders; one Undo takes back the whole run. Choose the region the price guide reads. The four BrickLink key values are added on the first step, with a note that BrickLink binds the token to one IP address. Loose stock and the wanted-list file follow. See [A BrickLink run](docs/how-to/sync-collection.md#a-bricklink-run).
 

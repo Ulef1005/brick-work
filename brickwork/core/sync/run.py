@@ -333,7 +333,7 @@ def rows(db, run, plans):
     def row_of(r):
         return merged.setdefault(r['key'], dict(key=r['key'], item_id=r['item_id'], kind=r['kind'], number=r['number'], name=r['name'], remote=r['remote'],
                                                 here=r['here'], remote_no=r['remote_no'], options=[], default=None, state='info', reason=None,
-                                                kept=(r.get('baseline_remote') or 0) == r['remote'] and (r.get('baseline_here') or 0) == r['here'] and r['remote'] != r['here']))
+                                                kept=bool(r.get('kept')) or ((r.get('baseline_remote') or 0) == r['remote'] and (r.get('baseline_here') or 0) == r['here'] and r['remote'] != r['here'])))
     for r in (plans['pull'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
@@ -558,9 +558,10 @@ def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=
     wanted = [k for k, v in form_data['chosen'].items() if v in ('pull', 'take')]
     lost, picks, lists = form_data['lost'], form_data['copies'], form_data['lists']
     lines = {line['key']: line for line in (pull.get('lists') or {}).get('preview', ())}
+    kept = [k for k, v in form_data['chosen'].items() if v == 'keep']       # the conflicts the person chose to Keep: remembered (#686)
     if wanted or lost or picks or any(v not in ('keep', 'skip') for v in lists.values()):
         try:
-            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, via=via, actor=actor)
+            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, via=via, actor=actor)
             effective = {k: lists.get(k, line['action']) for k, line in lines.items()}
             stages['pull'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted),
                                   lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']))
@@ -572,6 +573,7 @@ def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=
         except FAILURES as exc:
             stages['pull'] = dict(status='failed', message=_message(exc, source))
     else:
+        sync.remember_kept(db, pull, kept)
         stages['pull'] = dict(status='none')
     sync._store_plan(db, run)
     return stages['pull']
@@ -606,6 +608,8 @@ def stage_send(db, run, plans, form_data, *, http=None, per_key=False, should_st
         return None
     stages, source = run['stages'], run.get('source', SOURCE)
     wanted = [k for k, v in form_data['chosen'].items() if v in ('send', 'remove')]
+    if not plans['pull']:        # a run that only sends has no pull to carry the Keep choices (#686)
+        sync.remember_kept(db, plans['send'], [k for k, v in form_data['chosen'].items() if v == 'keep'])
     if not wanted:
         stages['send'] = dict(status='none')
         sync._store_plan(db, run)

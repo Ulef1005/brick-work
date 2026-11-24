@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **A conflict you kept comes back as the same card** (#686). When you choose Keep on a set that changed in both places, the next Rebrickable or Brickset run shows it again as "Changed in both places", with Take and Send offered, until either count changes. Before, it came back as a plain row, and a pull with no ticks through the API could add it. No schema change.
+
 - **A long sync run keeps going without the page** (#685). A Rebrickable or Brickset run can now be queued as a job: it shows in Jobs, survives a restart, and a step's `count` and `total` say how many changes are done. A call is never repeated after a restart; the stage that was in flight is marked failed (interrupted) and Send again can resend what did not go out. Stop after this one works between calls. The progress page follows.
 
 - **Filter copies by the set list they came from** (#531). `GET /copies?list=NAME` keeps the copies a Rebrickable sync took from the set list with that exact name (a copy in several lists answers to each). The list names were already on each copy under `source`.

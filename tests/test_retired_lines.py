@@ -25,7 +25,7 @@ BY_KEY = re.compile(r'\bWHERE\b[^;]*?(?<![\w.])id\s*=\s*\?', re.IGNORECASE | re.
 # (file, qualified function) -> why retired rows belong in that query.
 ALLOWED = {
     ('brickwork/core/add.py', '_copy_untouched'): "Undo of an Add refuses when a person marked a line, and a mark on a line the copy later switched away from is still their work",
-    ('brickwork/core/importer/bricktracker.py', 'line_digest'): "the digest Undo of an import compares: any change to any line, retired or not, means the copy was edited since",
+    ('brickwork/core/importer/shared.py', 'line_digest'): "the digest Undo of an import compares: any change to any line, retired or not, means the copy was edited since",
     ('brickwork/core/stock.py', 'part_digest'): 'the digest Undo of an add compares: any change to any line of a loose figure, retired or not, means it was edited since',
     ('brickwork/core/stock.py', 'dependents'): 'a Take or Give that points at a retired line still depends on it',
     ('brickwork/store4/copies.py', '_plan'): 'the switch itself (design 4.4): it matches the wanted lines to every existing row, retired ones too, and re-activates a line that came back',

@@ -538,7 +538,7 @@ def test_the_preview_counts_the_calls_the_run_makes_one_per_set(client, remote, 
     assert made >= 1 and shown == made
 
 
-def test_the_two_rows_of_one_set_share_a_send_key_so_the_page_counts_one_request(client, remote, pair):
+def test_the_owned_and_wanted_rows_of_one_set_share_a_send_key(client, remote, pair):
     csrf = connected(client, pair)
     with db_of(pair) as db:
         coll = Coll(db)

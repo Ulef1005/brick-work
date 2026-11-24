@@ -563,3 +563,16 @@ def test_every_send_control_of_a_brickset_preview_carries_its_set_key_conflict_r
     sends = page.select('input[data-sy-send]')
     assert sends and all(box.get('data-sy-set') for box in sends)
     assert page.select_one('[data-rb-conflicts] input[type=radio][data-sy-send]')['data-sy-set'] == '1000-1'
+
+
+def test_the_read_carries_the_notes_the_flags_that_are_on_and_the_flag_labels(client, remote, pair):
+    connected(client, pair)
+    remote.notes['1000-1'] = 'bought at the fair'
+    remote.flags['1000-1'] = {2, 5}
+    remote.labels = [{'flagNo': 2, 'label': 'Display'}]
+    with db_of(pair) as db:
+        reader = adapters.adapter(db, 'brickset', remote)
+        fields = reader.fetch({})['fields']
+        assert fields['1000-1'] == dict(notes='bought at the fair', flags=[2, 5])
+        assert fields['1000-4'] == dict(notes='', flags=[])
+        assert reader.flag_labels() == {2: 'Display'}

@@ -16,6 +16,14 @@
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips:not(.bp-price-filter *),.wl-lists,.bf-tabs)>:is([aria-pressed=true],[aria-current=page]) {color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent);background:none}
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips:not(.bp-price-filter *),.wl-lists,.bf-tabs)>:is(button,a):disabled {color:var(--tw-text-muted);cursor:default}
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips,.wl-lists) :is(.mono,.bp-chip-count) {font:400 12px/1 var(--tw-mono),ui-monospace,monospace;color:var(--tw-text-muted);padding:0;background:none}
+/* #650: a grid item of #content; without this a long row of lists (it scrolls on its own) widened the page past a phone's edge */
+#bw-planning:not(#_):not(#_):not(#_) {min-width:0}
+/* A wish tile's number line: the number stays on one line and the tags (Wants used, Under max) wrap under it when the tile is narrow;
+   before, two tags squeezed the number into one digit per line and ran past the tile on a phone */
+#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number {flex-wrap:wrap;row-gap:4px;min-width:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number>.mono {white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number .bc-status {max-width:100%;white-space:normal}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number .bc-status {height:auto;min-height:22px;padding-block:2px;line-height:14px}   /* a flex pill cannot end in an ellipsis: a long tag wraps inside the tile */
 #bw-planning:not(#_):not(#_):not(#_) .wl-head {align-items:flex-end;gap:12px}
 #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:1 1 auto;min-width:0}
 
@@ -54,22 +62,89 @@
 #bw-planning:not(#_):not(#_):not(#_) .bp-list:not(.bp-wishlist) .bp-row {border-radius:0;box-shadow:none;background:none;border-bottom:1px solid var(--tw-divider)}
 #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-row {border-radius:var(--tw-r-2);box-shadow:none;background:var(--tw-surface);border:1px solid var(--tw-divider)}
 
-/* Tags: ink outline, label type (R3-01 .tag); a verdict is a word with an ink dot: under filled, over open, not comparable dashed */
+/* Tags: ink outline, label type (R3-01 .tag); a state is a word: Buy now filled, Wait outlined, the rest dashed */
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bc-status,.bf-phone-pill) {display:inline-flex;align-items:center;gap:6px;height:22px;min-height:0;padding:0 7px;border:1.5px solid var(--tw-text);border-radius:3px;background:transparent;box-shadow:none;color:var(--tw-text);font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .bc-status::before {content:none}
-#bw-planning:not(#_):not(#_):not(#_) .bp-verdict.differs {border-style:dashed}
-#bw-planning:not(#_):not(#_):not(#_) .bp-max-dot {display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tw-text);border:1.5px solid var(--tw-text);box-sizing:border-box}
-#bw-planning:not(#_):not(#_):not(#_) .bp-max-dot:is(.over,.differs) {background:transparent}
-#bw-planning:not(#_):not(#_):not(#_) .bp-max-dot.differs {border-style:dashed}
+/* #653: a wish with no max says so in body text; the 20px mono stays for an amount */
+#bw-planning:not(#_):not(#_):not(#_) .bp-max-none {font:400 14px/20px var(--tw-font);color:var(--tw-text-2)}
 
 /* The part colour: R3-02's colour block, the colour with its name in ink on it, a hairline so white shows */
 #bw-planning:not(#_):not(#_):not(#_) .bc-colour {display:inline-flex;align-items:center;height:22px;min-height:0;padding:0 7px;border:0;border-radius:3px;box-shadow:inset 0 0 0 1px var(--tw-divider-strong);font:500 12px var(--tw-font);white-space:nowrap}
 
 /* Bars: ink on the track (BRAND § 10) */
-#bw-planning:not(#_):not(#_):not(#_) :is(.bp-ratio-track,.bp-filled-track,.bp-wish-track) {background:var(--tw-surface-2);border-radius:0}
+#bw-planning:not(#_):not(#_):not(#_) :is(.bp-ratio-track,.bp-filled-track) {background:var(--tw-surface-2);border-radius:0}
 #bw-planning:not(#_):not(#_):not(#_) .bp-ratio-track i {background:var(--tw-text);border-radius:0}
 
 @media(max-width:767.98px) {
-  #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:1 1 100%;width:100%;margin-left:0}
+  /* #650: on a phone the head is one column at the content width. Many lists scroll in their own row instead of widening the page, and
+     the actions start at the left edge (Manage lists first) and wrap. */
+  #bw-planning:not(#_):not(#_):not(#_) .wl-head {flex-direction:column;align-items:stretch;min-width:0;max-width:100%}
+  #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:none;width:auto;max-width:100%;margin-left:0}
+  #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-toolbar {justify-content:flex-start;flex-wrap:wrap;max-width:100%}
   :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_)>h1 {font-size:26px}
 }
+
+/* The Wishlist tile (#654, frames 59 to 62): one question, "can I buy this set now at a price I accept". Picture, the number with its one state
+   tag, the name and what it is, what I want, my max, the price now, and the gap in words. State is shape and a word: Buy now filled, Wait
+   outlined, No max, Not comparable and No price dashed. The same markup is the list view (frame 60): a row of columns, the tag at its right. */
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-row {padding:10px;gap:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-identity {position:relative;gap:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-identity .bc-picture {width:100%;height:112px;aspect-ratio:auto}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-select {position:absolute;left:6px;top:6px;z-index:1;display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;background:var(--tw-surface);border-radius:3px}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-identity>div:last-child {width:100%}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-identity a {display:block}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bc-identity {gap:4px}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-wish-number {align-self:stretch;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1.5px solid var(--tw-rule)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-wish-number>.mono {font:600 16px/22px var(--tw-mono);color:var(--tw-text)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bc-identity>strong {font:600 15px/20px var(--tw-font);color:var(--tw-text)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bc-identity>.secondary {font:400 12.5px/18px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-state-under {background:var(--tw-text);color:var(--tw-bg)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-state-nomax,#bw-planning:not(#_):not(#_):not(#_) .bp-state-differs,#bw-planning:not(#_):not(#_):not(#_) .bp-state-noprice {border-style:dashed}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wl {display:flex;flex-direction:column;gap:5px;margin-top:10px;font:400 12.5px/1.4 var(--tw-font);color:var(--tw-text-2)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wl-r {display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wl-r>:is(strong,.mono) {font:600 13px var(--tw-mono);color:var(--tw-text)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wl-r>.bp-wl-quiet {font-weight:400;color:var(--tw-text-muted)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wl-r a {color:var(--tw-accent-text);font:600 12.5px var(--tw-font);text-decoration:none;white-space:nowrap}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wl .bp-max-none {font:400 12.5px/1.4 var(--tw-font);color:var(--tw-text-muted)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wl .bp-filled {display:inline-flex;flex-direction:row;align-items:baseline;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wl .bp-filled .mono {font:400 13px var(--tw-mono);color:var(--tw-text-2)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-gap {margin:2px 0 0;padding-top:6px;border-top:1px solid var(--tw-divider);font:600 13px/1.4 var(--tw-font);color:var(--tw-text)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-list-head {display:none}
+/* List view (frame 60): the row is a grid of columns; the identity and values wrappers dissolve into it and the tag sits at the right */
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-list-head {display:grid;grid-template-columns:24px 56px minmax(0,1.6fr) minmax(120px,1.1fr) minmax(96px,.8fr) minmax(88px,.8fr) minmax(0,1.1fr) 120px;gap:14px;padding:0 0 8px;border-bottom:1.5px solid var(--tw-rule);font:600 12px var(--tw-font-label);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-list-head>:nth-child(2) {grid-column:2/span 2}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-row {position:relative;display:grid;grid-template-columns:24px 56px minmax(0,1.6fr) minmax(120px,1.1fr) minmax(96px,.8fr) minmax(88px,.8fr) minmax(0,1.1fr) 120px;gap:14px;align-items:center;padding:10px 0;min-height:0;border:0;border-bottom:1px solid var(--tw-divider);border-radius:0;background:none}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-identity,#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-values {display:contents}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-select {position:static;grid-column:1;grid-row:1}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-identity .bc-picture {grid-column:2;grid-row:1;width:56px;height:56px}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-identity>div:last-child {grid-column:3;grid-row:1;min-width:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity {display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;row-gap:2px}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity>strong {grid-column:1/-1;grid-row:1}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wish-number {display:contents}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wish-number>.mono {grid-row:2;grid-column:1;font:400 12.5px/18px var(--tw-mono);color:var(--tw-text-2)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity>.secondary {grid-row:2;grid-column:2}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-colour {grid-column:1/-1;grid-row:3;justify-self:start}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-state {position:absolute;left:calc(100% - 120px);top:50%;transform:translateY(-50%)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-want {grid-column:4;grid-row:1}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-max {grid-column:5;grid-row:1}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-price {grid-column:6;grid-row:1;flex-direction:column-reverse;align-items:flex-start;gap:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-gap {grid-column:7;grid-row:1;margin:0;padding:0;border:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-r {margin:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-max>span:first-child:not(.bp-max-none),#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-quiet {display:none}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-want {justify-content:flex-start;flex-wrap:wrap}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-max {flex-wrap:wrap;justify-content:flex-start}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-list-head[hidden] {display:none}
+@media(max-width:767.98px) {
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-identity .bc-picture {height:92px}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-list-head {display:none}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-row {grid-template-columns:24px 56px minmax(0,1fr);gap:4px 12px;align-items:start;padding:12px 0}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-identity .bc-picture {grid-row:1/span 5}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-select {grid-row:1/span 5}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-state {position:static;transform:none}   /* in the flow after the number: it cannot lie over a long title */
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity {display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity>strong {flex-basis:100%}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] :is(.bp-wl-want,.bp-wl-max,.bp-wl-price,.bp-gap) {grid-column:3;grid-row:auto}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-price {flex-direction:row;align-items:baseline;gap:6px}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-max>span:first-child:not(.bp-max-none) {display:inline}
+}
+#bw-planning:not(#_):not(#_):not(#_) .bp-conversion {display:block;margin-top:2px;font:400 11.5px/16px var(--tw-mono);color:var(--tw-text-2)}

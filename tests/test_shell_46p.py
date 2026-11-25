@@ -33,3 +33,11 @@ def test_group_links_in_migrated_shell(client, world, path, active):
     assert desktop and [(a['href'], a.text, a.get('aria-current')) for a in desktop] == [(a['href'], a.text, a.get('aria-current')) for a in phone]
     assert tabs[['Collection', 'Workbench', 'Planning', 'Manage'].index(active)]['href'] == desktop[0]['href']
     assert soup.select_one('nav.sub a[aria-current="page"]')
+
+
+def test_the_appearance_choices_are_labelled_buttons(client, world):
+    """#674: each theme choice says its name next to its icon (an icon alone does not name the choice) and wires to data-theme-mode."""
+    soup = BeautifulSoup(client.get('/manage/appearance').get_data(as_text=True), 'html.parser')
+    buttons = soup.select('#content .theme-segments > button[data-theme-mode]')
+    assert [(b['data-theme-mode'], b.get_text(strip=True)) for b in buttons] == [('system', 'Automatic'), ('light', 'Light'), ('dark', 'Dark')]
+    assert all(b['type'] == 'button' and b.select_one('svg') and not b.has_attr('aria-label') for b in buttons)

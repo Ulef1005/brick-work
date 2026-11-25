@@ -172,16 +172,27 @@ def test_a_stored_key_shows_configured_with_test_and_the_step_done(client, coll)
 def test_a_rejected_key_comes_back_to_the_flow_with_the_sites_reason(client, monkeypatch):
     from brickwork.core.sources.base import KeyRejected
     def refuse(action, **kwargs):
-        raise KeyRejected('Rebrickable says: invalid key')
+        raise KeyRejected('Brickset says: invalid key')
     monkeypatch.setattr('brickwork.web.admin_ops.tools_write', refuse)
     value = token_source.token_hex(14)
-    response = client.post('/manage/catalogues', data={'csrf_token': csrf(client), 'action': 'key_test_save', 'source': 'rebrickable',
+    response = client.post('/manage/catalogues', data={'csrf_token': csrf(client), 'action': 'key_test_save', 'source': 'brickset',
                                                        'key:key': value, 'back': 'flow'})
-    assert response.status_code == 302 and response.location.endswith('/manage/get-started#key-rebrickable')
-    card = soup(client).select_one('[data-flow-keys] [data-key-card=rebrickable]')
+    assert response.status_code == 302 and response.location.endswith('/manage/get-started#key-brickset')
+    card = soup(client).select_one('[data-flow-keys] [data-key-card=brickset]')
     assert card.select_one('[data-key-pill]').get_text(strip=True) == 'Rejected'
     assert 'invalid key' in card.select_one('[role=alert]').get_text()
     assert value not in client.get('/manage/get-started').get_data(as_text=True)
+
+
+def test_the_rebrickable_key_step_of_the_flow_opens_the_connect_step(client):
+    """#519 (product, 24.11.): the Rebrickable key is added on step 1 of the Rebrickable sync page, not on a form of Catalogues & keys."""
+    card = soup(client).select_one('[data-flow-keys] [data-key-card=rebrickable]')
+    assert not card.select('form, input')
+    link = card.select_one('a.bk-btn')
+    assert link.get_text(strip=True) == 'Add a key' and link['href'].endswith('/workbench/sync/rebrickable/connect')
+    brickset = soup(client).select_one('[data-flow-keys] [data-key-card=brickset]')                             # #520: Brickset's key is added on its own page too
+    assert not brickset.select('form, input') and brickset.select_one('a.bk-btn')['href'].endswith('/workbench/sync/brickset/connect')
+    assert soup(client).select_one('[data-flow-keys] [data-key-card=bricklink] form[data-key-form]')          # the other sites keep their form
 
 
 def test_without_the_flow_marker_a_key_action_stays_on_catalogues_and_keys(client, monkeypatch):
@@ -200,7 +211,7 @@ def test_the_choice_screen_offers_every_source_with_its_path(client):
     choices = {c['data-choice']: c for c in page.select('[data-collection-choices] [data-choice]')}
     assert list(choices) == ['rebrickable', 'brickset', 'bricklink', 'bricktracker', 'file', 'hand']
     assert {k: c.find('a', class_='fr-btn')['href'] for k, c in choices.items()} == {
-        'rebrickable': '/manage/sync', 'brickset': '/manage/sync', 'bricklink': '/manage/add?mode=file',
+        'rebrickable': '/workbench/sync', 'brickset': '/workbench/sync', 'bricklink': '/manage/add?mode=file',
         'bricktracker': '/manage/import-legacy', 'file': '/manage/add?mode=file', 'hand': '/manage/add'}
     assert choices['brickset'].select_one('[data-choice-file]')['href'] == '/manage/add?mode=file'      # Brickset's My Sets CSV (#12 step 2)
     for key in ('rebrickable', 'brickset'):                                          # no keys in this fixture: each sync says so
@@ -218,7 +229,7 @@ def test_without_the_catalogue_the_choices_wait_for_it(client, monkeypatch):
 def test_the_pages_a_choice_opens_offer_the_way_back_and_others_do_not(client):
     assert not soup(client, '/manage/add').select('[data-flow-return]')            # not sent by the flow yet
     soup(client, '/manage/get-started/collection')
-    for route in ('/manage/add?mode=file', '/manage/import-legacy', '/manage/sync'):
+    for route in ('/manage/add?mode=file', '/manage/import-legacy', '/workbench/sync'):
         back = soup(client, route).select_one('[data-flow-return] a')
         assert back['href'] == '/manage/get-started/collection', route
     assert not soup(client, '/collection/sets').select('[data-flow-return]')
@@ -270,3 +281,12 @@ def test_got_it_marks_the_guide_done_and_the_flow_links_it(client):
     assert response.location.endswith('/manage/get-started')
     assert states(soup(client))['guide'] == 'done'
     assert soup(client, '/manage/get-started/guide').select_one('[data-guide-done]') and not soup(client, '/manage/get-started/guide').select('.fr-guide-end form')
+
+
+def test_a_stored_rebrickable_key_in_the_flow_replaces_through_step_1(client, coll):
+    from brickwork.core import keys
+    keys.save(coll.db, 'rebrickable', {'key': token_source.token_hex(14)})
+    card = soup(client).select_one('[data-flow-keys] [data-key-card=rebrickable]')
+    assert '/workbench/sync/rebrickable/connect' in card.find('a', string='Replace')['href']
+    replacing = BeautifulSoup(client.get('/manage/get-started?replace=rebrickable').data, 'html.parser').select_one('[data-flow-keys] [data-key-card=rebrickable]')
+    assert replacing.select_one('input[type=password]') and replacing.find('a', string='Cancel')       # the old replace form still has its Cancel

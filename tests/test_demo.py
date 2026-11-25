@@ -56,7 +56,7 @@ def test_agreed_routes_are_exported(site):
     assert any(k.startswith('/workbench/check-parts/') and k.endswith('?run=1') for k in pages)  # Start opens a running check
     assert any(k.startswith('/workbench/part-picker?copy=') for k in pages)  # Continue opens the picking view
     for route in ('/collection/G', '/collection/B', '/collection/C', '/workbench/match', '/workbench/orders', '/workbench/orders/1', '/planning/wishlist',
-                  '/manage/add', '/manage/tools', '/manage/statistics', '/manage/sync', '/manage/jobs'):
+                  '/manage/add', '/manage/tools', '/manage/statistics', '/workbench/sync', '/manage/jobs'):
         assert route in pages, route                                                          # every kind and every area of 0.9.0 has its pages
     assert not any(k.startswith('/manage/get-started') for k in pages)
     assert manifest['skipped'] == {} and manifest['gets']['/planning/prices/records']
@@ -92,12 +92,47 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
     assert '/*MANIFEST*/null' not in shim and json.dumps(manifest['base']) in shim
     assert export.NOTE in shim and "method !== 'GET'" in shim and 'serviceWorker' in shim
     banner = shim.split('// The banner:', 1)[1].split('const realFetch', 1)[0]
-    assert "website.href = 'https://ulef1005.github.io/brick-work/'; website.textContent = 'Website'; website.style.color = 'inherit';" in banner
-    assert banner.index('bar.append(link);') < banner.index("bar.append(' · ', website);")
+    assert "install.href = base.replace(/demo\\/$/, 'install/')" in banner
     assert 'target' not in banner
     assert "document.querySelector('[data-bw-topbar]')" in banner and 'top.after(bar)' in banner and 'document.body.prepend(bar)' in banner   # under the site's top bar when there is one
-    # Missing-picture tiles say where the app gets pictures (checked against the pipeline's pictures step).
-    assert 'Loads from BrickLink when you add the set' in shim and 'Loads from Rebrickable or BrickLink with Refresh pictures' in shim
+    assert 'html.tw-dark #bw-demo-banner' in banner and 'prefers-color-scheme:dark' in banner   # the banner follows the dark theme
+    assert "keyOf(location.href) === '/collection/sets'" in banner and 'bw-demo-start' in banner   # the first screen says what the app is for and where to start
+    for path in ('workbench/check-parts/', 'workbench/build-scout/', 'workbench/lot-sorter/', 'planning/order-missing-parts/'):
+        assert path in banner, path
+    # The demo draws no sentence where a picture is missing.
+    assert 'Loads from BrickLink' not in shim and 'Loads from Rebrickable or BrickLink' not in shim
+
+
+def test_the_shim_rewrites_the_footer_and_the_error_texts():
+    """The REWRITE table of shim.js (run in Node) turns the server-rendered footer and the refused-write texts into the demo's own wording."""
+    import subprocess
+    from tests import rendered
+    node = rendered.need_node()
+    shim = (Path(__file__).resolve().parents[1] / 'brickwork/demo/shim.js').read_text()
+    table = shim[shim.index('  const REWRITE = ['):shim.index('  function calmNode')]
+    samples = ['Authentication disabled', 'Set and part data from Rebrickable · 14 ms', 'Set and part data from Rebrickable · 9ms',
+               'Not saved · waiting for network · The answer could not be saved. Retry.', 'Search unavailable. Try again.', 'Sets']
+    program = table + "\nconst say = text => { for (const [pattern, to] of REWRITE) if (pattern.test(text)) return text.replace(pattern, to); return text; };\n" \
+        + f"console.log(JSON.stringify({json.dumps(samples)}.map(say)));"
+    shown = json.loads(subprocess.run([node, '-e', program], capture_output=True, text=True, check=True).stdout)
+    assert shown == ['Demo: nothing is saved', 'Set and part data from Rebrickable', 'Set and part data from Rebrickable', 'Demo: this answer is shown here and not saved',
+                     'Search is not part of the demo', 'Sets']
+    assert 'calmTree(document.body)' in shim   # the footer is server-rendered, so it is rewritten once at load
+
+
+def test_the_shim_keys_a_url_like_the_export_does():
+    """keyOf in shim.js (run in Node) and export.key_of give the same route for the same URL, query order and repeated names included: Continue in the
+    Part Runner picker sends the copies in checkbox order and the export keys them by name and value."""
+    import subprocess
+    from tests import rendered
+    node = rendered.need_node()
+    shim = (Path(__file__).resolve().parents[1] / 'brickwork/demo/shim.js').read_text()
+    key_js = shim[shim.index('  const keyOf = href => {'):shim.index('  const isPage')]
+    urls = ['collection/item/P/3001?colour=4', 'workbench/part-picker?copy=b&copy=a&copy=c', 'workbench/part-picker?copy=zz-2&copy=aa-9&x=1', 'collection/sets/', 'collection/item/P/3001?colour=4&colour=1']
+    program = ("const base = '/demo/'; const location = {href: 'https://demo.test/demo/', origin: 'https://demo.test'};\n" + key_js
+               + "\nconsole.log(JSON.stringify(" + json.dumps(urls) + ".map(u => keyOf('https://demo.test/demo/' + u))));")
+    shown = json.loads(subprocess.run([node, '-e', program], capture_output=True, text=True, check=True).stdout)
+    assert shown == [export.key_of('/demo/' + u.replace('&', '&amp;'), '/demo/') for u in urls]   # the export reads HTML attributes, where & is written &amp;
 
 
 def test_the_shim_orders_a_query_by_name_then_value_like_the_export():

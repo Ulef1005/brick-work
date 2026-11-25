@@ -405,21 +405,22 @@ def test_stale_freshness_and_archives(coll, world):
 
 
 ROWS = [('Money and prices', [('currencies', 'Display currency and rates'), ('retail-country', 'Country for retail prices')]),
-        ('Sets and parts', [('part-list-grouping', 'Group parts by'), ('part-lists', 'Part list for a new set'), ('sync', 'Lost Parts from Rebrickable')]),
+        ('Sets and parts', [('part-list-grouping', 'Group parts by'), ('part-lists', 'Part list for a new set')]),
+        ('Sync', []),
         ('Labels', [('labels-address', 'Address on printed labels')]),
         ('Where data comes from for experts', [('pictures', 'Pictures you have'), ('picture-priority', 'Where pictures come from'),
                                                ('source-priority', 'Where set details and prices come from'), ('freshness', 'When data counts as out of date')])]
 
 
-def test_settings_is_four_sections_of_ten_exclusive_rows_with_their_summaries(client, coll, world):
+def test_settings_is_five_sections_of_nine_exclusive_rows_with_their_summaries(client, coll, world):
     seed(coll)
     soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     groups = soup.select('.bw-set-groups > .bw-set-group')
     assert [(g.select_one('h2').get_text(' ', strip=True), [(d['id'], d.select_one('.bw-set-title').get_text()) for d in g.select('details.bw-set')]) for g in groups] == ROWS
-    assert [g.get('id') for g in groups[:3]] == ['set-money', 'set-parts', 'set-labels'] and soup.select_one('details#set-sources') and not soup.select_one('details#set-sources').has_attr('open')
+    assert [g.get('id') for g in groups[:4]] == ['set-money', 'set-parts', 'set-sync', 'set-labels'] and soup.select_one('details#set-sources') and not soup.select_one('details#set-sources').has_attr('open')
     assert not soup.select('#refresh, [data-picture-open], [data-picture-dialog]') and 'Refresh prices' not in soup.get_text()          # the refreshes are on Tools & Admin
     rows = soup.select('details.bw-set')
-    assert len(rows) == 10 and {d['name'] for d in rows} == {'bw-settings'} and not [d for d in rows if d.has_attr('open')]
+    assert len(rows) == 9 and {d['name'] for d in rows} == {'bw-settings'} and not [d for d in rows if d.has_attr('open')]
     assert len(soup.select('form#bw-settings-form')) == 1
     summary = admin_ops.settings_summaries({**admin_ops.tools_read('settings'), 'currency': {'display': 'EUR', 'rates': []}, 'labels_address': ''})
     shown = {d['id']: d.select_one('.bw-set-value').get_text() for d in rows}
@@ -428,9 +429,9 @@ def test_settings_is_four_sections_of_ten_exclusive_rows_with_their_summaries(cl
     assert re.fullmatch(r'[\d,]+ with a picture · [\d,]+ without', shown['pictures'])
     assert shown['picture-priority'] == 'Rebrickable catalogue, BrickLink, Rebrickable API' and shown['source-priority'] == 'Default order'
     assert shown['freshness'] == summary['freshness']
-    assert shown['sync'] == 'Rebrickable wins per part'
-    assert [i['value'] for i in soup.select('#sync input[name=rebrickable_lost_parts_rule]')] == ['add_only', 'per_part', 'per_set', 'everything']
-    assert soup.select_one('#sync input[checked]')['value'] == 'per_part' and soup.select_one('#sync input')['form'] == 'bw-settings-form'
+    assert not soup.select('input[name=rebrickable_lost_parts_rule]')                    # the Lost Parts rule moved to the Rebrickable page (#519)
+    pointer = soup.select_one('#set-sync a')                                              # Settings keeps one pointer row to Workbench · Sync
+    assert pointer['href'].endswith('/workbench/sync') and 'Keys and sync rules are on each site' in pointer.get_text()
     assert set(summary) == {d['id'] for d in rows}
     text = soup.get_text(' ')
     assert 'metadata' not in text.lower() and 'market price' not in text.lower()          # visible words: set details, prices
@@ -462,11 +463,11 @@ def test_settings_rows_keep_the_ids_links_point_to(client, coll, world):
     soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     for anchor, row in {'currencies': 'currencies', 'labels-address': 'labels-address', 'pictures': 'pictures', 'part-lists': 'part-lists',
                         'part-list-grouping': 'part-list-grouping', 'edit-grouping': 'part-list-grouping', 'picture-priority': 'picture-priority',
-                        'freshness': 'freshness', 'sync': 'sync', 'retail-country': 'retail-country',
+                        'freshness': 'freshness', 'retail-country': 'retail-country',
                         'source-priority': 'source-priority'}.items():
         assert soup.select_one('details.bw-set#' + row).select_one('#' + anchor) or anchor == row
-    for anchor in ('currencies', 'labels-address', 'pictures', 'part-lists', 'part-list-grouping', 'edit-grouping', 'picture-priority', 'freshness', 'sync',
-                   'set-money', 'set-parts', 'set-labels', 'set-sources'):
+    for anchor in ('currencies', 'labels-address', 'pictures', 'part-lists', 'part-list-grouping', 'edit-grouping', 'picture-priority', 'freshness',
+                   'set-money', 'set-parts', 'set-sync', 'set-labels', 'set-sources'):
         assert len(soup.select('[id="' + anchor + '"]')) == 1, anchor               # every anchor a link points to is on the page once
     assert soup.select_one('#pictures a[href="#picture-priority"]')
     assert soup.select_one('#pictures a[href$="/manage/tools#refresh"]')           # Refresh pictures now lives on Tools & Admin
@@ -521,7 +522,7 @@ def test_settings_read_only_shows_the_rows_without_forms(app4, client, coll, wor
     app4.config['BW_READ_ONLY'] = True
     try:
         soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
-        assert len(soup.select('details.bw-set')) == 10 and soup.select_one('#currencies .bw-set-value').get_text()
+        assert len(soup.select('details.bw-set')) == 9 and soup.select_one('#currencies .bw-set-value').get_text()
         assert not soup.select('form#bw-settings-form') and not soup.select('button[form=bw-settings-form]')
         assert [f['class'] for f in soup.select('details.bw-set form')] == [['bwc-switch-form']]              # the part-list switch, as before, with its controls disabled
         assert all(c.has_attr('disabled') for c in soup.select('details.bw-set form button, details.bw-set form input[type=checkbox]'))
@@ -737,8 +738,8 @@ def test_49e_booklet_picture_ignores_own_photos(client, coll, pair):
     assert img['src'].split('?')[0].endswith(f'/{catalogue}') and img['loading'] == 'lazy' and img.has_attr('data-bw-fallback')
 
 
-def test_settings_saves_the_lost_parts_rule_from_its_row(client, coll, world):
-    """#457: the Sync row's radios belong to the one settings form; a save changes the rule, reopens the row and Undo puts it back."""
+def test_settings_save_leaves_the_lost_parts_rule_to_the_rebrickable_page(client, coll, world):
+    """#457, #519: the rule lives on the Rebrickable page now; the one settings form neither shows nor changes it."""
     seed(coll)
     soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     data = {i['name']: i.get('value', '') for i in soup.select('input[form=bw-settings-form], select[form=bw-settings-form]')
@@ -748,7 +749,7 @@ def test_settings_saves_the_lost_parts_rule_from_its_row(client, coll, world):
     for s in soup.select('select[form=bw-settings-form]'):
         chosen = s.select_one('option[selected]') or s.select_one('option')
         data[s['name']] = chosen.get('value', chosen.get_text()) if chosen else ''
-    data.update(rebrickable_lost_parts_rule='per_set', row='sync')
+    assert 'rebrickable_lost_parts_rule' not in data
     response = client.post('/manage/settings', data={**data, 'csrf_token': token(client)}, follow_redirects=False)
-    assert response.status_code in (302, 303) and response.headers['Location'].endswith('#sync')
-    assert admin.settings(coll.db)['rebrickable_lost_parts_rule'] == 'per_set'
+    assert response.status_code in (302, 303) and '#sync' not in response.headers['Location']
+    assert admin.settings(coll.db)['rebrickable_lost_parts_rule'] == 'per_part'

@@ -111,7 +111,7 @@ GTM = """<script>
         var f=d.getElementsByTagName(s)[0], j=d.createElement(s);j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-PKVSLMMS');
 </script>"""
-HOME_TITLE = 'Brick Work: free, open-source, self-hosted app for your brick collection and its missing parts'     # the home page's <title> and share title (the other pages end in ' · Brick Work')
+HOME_TITLE = 'Brick Work: free, self-hosted app for your brick collection'     # the home page's <title> and share title (the other pages end in ' · Brick Work')
 HOME_DESCRIPTION = ('Free, open-source, self-hosted app for your brick collection and its missing parts. Check sets, pull parts from loose stock, '
                     'see what you can finish.')
 MD_DESCRIPTIONS = {'use-cases': 'Nine moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
@@ -155,7 +155,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
     col = lambda heading, links: (f'<div><b>{heading}</b><ul>' + ''.join(f'<li><a href="{href}">{label}</a></li>' for label, href in links)
                                   + '</ul></div>')
     footer_cols = ''.join((
-        col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
+        col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Questions', f'{up}questions/'), ('Workflows', f'{up}workflows/'))),
         col('Learn', (('Docs', f'{up}docs/'), ('Changelog', f'{up}changelog/'), ('API', f'{up}docs/developer/api-v2-reference/'),
                       ('MCP', f'{up}docs/brickwork/mcp/'), ('For AI assistants', f'{up}llms.txt'))),
         col('Project', (('About', f'{up}about/'), ('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),
@@ -281,6 +281,40 @@ def home(up):
     return fill((SITE / 'landing.html').read_text(), up)
 
 
+def questions_markup(meta, body):
+    """The question pages and their hub (#544): the 'Home / Questions' label becomes real links, and the page carries BreadcrumbList structured data
+    (the hub also an ItemList of the seven, a question page a HowTo from its numbered steps). Returns the body and the extra head markup."""
+    import json
+    path = meta['path']
+
+    def swap(text, old, new):
+        if old not in text:
+            raise RuntimeError(f'{path}: the breadcrumb label {old!r} is missing, so the page would ship without its links')
+        return text.replace(old, new, 1)
+    if not path.startswith('questions/'):
+        return body, ''
+    root, name = origin() + site_base(), html.unescape(meta['title'])
+    crumbs = [('Home', root), ('Questions', root + 'questions/')] + ([] if path == 'questions/' else [(name, root + path)])
+    data = [{'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
+        {'@type': 'ListItem', 'position': n, 'name': label, 'item': url} for n, (label, url) in enumerate(crumbs, 1)]}]
+    if path == 'questions/':
+        links = re.findall(r'<a href="\{up\}(questions/[^"]+)"><span><b>(.+?)</b>', body)
+        data.append({'@context': 'https://schema.org', '@type': 'ItemList', 'itemListElement': [
+            {'@type': 'ListItem', 'position': n, 'name': html.unescape(label), 'url': root + href} for n, (href, label) in enumerate(links, 1)]})
+        body = swap(body, '<span class="label">Home / Questions</span>', '<span class="label"><a href="{up}">Home</a> / Questions</span>')
+    else:
+        steps = re.findall(r'<li><span class="n">\d+</span><div><b>(.+?)</b><span class="d">(.+?)</span></div></li>', body, re.S)
+        strip = lambda text: html.unescape(re.sub(r'<[^>]+>', '', text)).strip()
+        items = body.count('<li><span class="n">')
+        if len(steps) != items:
+            raise RuntimeError(f'{path}: {len(steps)} steps read for {items} step items, so the HowTo data would be wrong')
+        if steps:
+            data.append({'@context': 'https://schema.org', '@type': 'HowTo', 'name': name, 'step': [
+                {'@type': 'HowToStep', 'name': strip(step), 'text': strip(text)} for step, text in steps]})
+        body = swap(body, '<span class="label">Home / Questions</span>', '<span class="label"><a href="{up}">Home</a> / <a href="{up}questions/">Questions</a></span>')
+    return body, ''.join('<script type="application/ld+json">' + json.dumps(item, ensure_ascii=False).replace('</', '<\\/') + '</script>' for item in data)
+
+
 def build_pages(out):
     """Every scripts/site/pages/*.html is one page: a header of `key: value` lines (title, path, current), a line `---`, then the body.
     `path` is the folder from the site root (`install/`, `coming-from/rebrickable/`); `current` names the top-bar item to mark."""
@@ -290,8 +324,9 @@ def build_pages(out):
         depth = len(Path(meta['path']).parts)
         folder = out / meta['path']
         folder.mkdir(parents=True, exist_ok=True)
+        body, head = questions_markup(meta, body)
         (folder / 'index.html').write_text(page(meta['title'], fill(body, '../' * depth), depth, current=meta.get('current') or None, main='home',
-                                                path=meta['path'], description=meta.get('description')))
+                                                path=meta['path'], description=meta.get('description'), head=head))
 
 
 def json_ld():

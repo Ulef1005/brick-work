@@ -294,9 +294,9 @@ def test_the_lot_sheet_keeps_every_field(world, client):
 def test_the_wish_sheet_keeps_every_field(world, client):
     w = world
     panel = sheet(client, f'/collection/wishes/{w.wish_part}')
-    assert {'quantity', 'qty_filled_manual', 'color_id', 'max_price', 'max_price_currency', 'condition', 'flags', 'note'} <= names(panel)
+    assert {'quantity', 'qty_filled_manual', 'color_id', 'max_price', 'condition', 'flags', 'note'} <= names(panel) and 'max_price_currency' not in names(panel)   # #670: the currency shows only when it differs
     assert 'storage_id' not in names(panel) and not panel.select('.bc-switches')
-    assert [l.get_text() for l in panel.select('form#bc-edit-form .bc-group .bc-field > label, form#bc-edit-form .bc-group .bc-field > .bc-label')] == ['Status', 'Owners', 'Tags', 'Note']
+    assert [l.get_text() for l in panel.select('form#bc-edit-form .bc-group .bc-field > label, form#bc-edit-form .bc-group .bc-field > .bc-label')] == ['Tags', 'Note']        # #670: Status and Owners are not on Edit wish
 
 
 # ---------- one Save is all or nothing, and a Save sent again still saves ----------

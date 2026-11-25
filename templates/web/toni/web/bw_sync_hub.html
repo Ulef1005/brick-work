@@ -1,0 +1,65 @@
+{% extends 'web/toni/base.html' %}
+{% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bw-admin-page bw-sync-page bw-sync-hub-page{% endblock %}
+{% block page_assets %}
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-sync.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin-b.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-sync-hub.css') }}">
+{% endblock %}
+{% macro pill(tone, text) %}<span class="bk-pill bk-{{ tone }}"><span class="bk-dot"></span><span>{{ text }}</span></span>{% endmacro %}
+{% block main %}
+<header class="bw-page-head bw-hub-head">
+  <span class="bw-hub-kicker">Workbench · Sync</span>
+  <h1>{{ title }}</h1>
+  <p>Bring a collection in from another site, work on it here, then send the changes back.</p>
+</header>
+{% for tone, text in messages %}<p class="bk-banner bk-{{ 'warning' if tone == 'warning' else 'success' }}" role="{{ 'alert' if tone == 'warning' else 'status' }}">{{ text }}</p>{% endfor %}
+<div class="sh-wrap">
+  <div class="sh-sites" data-sync-sites>
+    {% for site in sites %}
+    <section class="bk-card sh-site" data-sync-site="{{ site.key }}">
+      <div class="sh-head">
+        <h2 class="sh-name">{{ site.label }}</h2>
+        <div class="sh-tags">
+          <span class="sh-tag{{ ' sh-tag-dash' if not site.connected }}">{{ 'Connected' if site.connected else 'Not connected' }}</span>
+          {% if site.state_tag %}
+          <span class="sh-tag{{ ' sh-tag-dash' if site.state_tag.dashed }}">{{ site.state_tag.text }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <dl class="sh-meta">
+        <div><dt>Account</dt><dd>{{ site.account }}</dd></div>
+        <div><dt>Last sync</dt><dd>{{ site.last_sync }}</dd></div>
+      </dl>
+      <p class="bk-text sh-site-desc">{{ site.description }}</p>
+      <div class="bk-actions">
+        <a class="bk-btn {{ 'bk-primary' if site.connected else 'bk-outline' }}" href="{{ site.url }}">{{ site.action_label }}</a>
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  <section class="bk-card sh-import" data-sync-import aria-labelledby="sh-import-title">
+    <div class="sh-import-body">
+      <h2 class="sh-name" id="sh-import-title">Import &amp; export</h2>
+      <p class="bk-text sh-site-desc">Every file format in and out, and your own complete export</p>
+    </div>
+    <dl class="sh-import-meta">
+      <div><dt>Last import</dt><dd>{{ import_export.last_import }}</dd></div>
+      <div><dt>Last export</dt><dd>{{ import_export.last_export }}</dd></div>
+    </dl>
+    <div class="bk-actions sh-import-actions">
+      <a class="bk-btn bk-outline" href="{{ import_export.url }}">Open</a>
+    </div>
+  </section>
+  <section class="sy-log" aria-labelledby="sy-log-title">
+    <h2 class="bk-eyebrow" id="sy-log-title">Sync log</h2>
+    {% if log %}
+    <div class="sy-log-head" aria-hidden="true"><span>When</span><span>Site</span><span>Direction</span><span>What</span><span></span></div>
+    {% for r in log %}<div class="sy-log-row"><span class="mono">{{ stamp(r.at) }}</span><span>{{ r.source|capitalize if r.source else '' }}</span><span>{{ r.direction }}</span><span>{{ r.what }}</span><span>{% if r.state == 'Done' %}{{ pill('success', 'Done') }}{% else %}{{ pill('warning', r.state) }}{% endif %}</span></div>{% endfor %}
+    {% else %}
+    <p class="bk-text">Nothing pulled or sent yet.</p>
+    {% endif %}
+  </section>
+  <section class="bk-card sy-how"><h2 class="bk-eyebrow">How sync works</h2><p class="bk-text">A run never deletes anything here unless you choose. Items that are only here are listed for you to decide. Changes to a site are always shown first, and removals there wait until you tick them.</p></section>
+</div>
+{% endblock %}

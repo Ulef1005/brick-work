@@ -16,8 +16,8 @@ async function fetchCase({priced=139,lines=145,failed=false,pending=false,states
   scope.nodes['[data-bc-fetch-status]']=status;
   updated.nodes={'[data-bc-fetch-prices]':newButton,'[data-bc-fetch-status]':newStatus};
   fresh.nodes['[data-bc-partout]']=updated;
-  let replaced=null,listener,calls=[],waits=0;
-  const live={replaceWith:n=>{replaced=n;}};scope.closest=()=>detached?null:live;
+  let replaced=null,listener,calls=[],waits=0;const every=[];
+  const live={replaceWith:n=>{replaced=n;every.push(n);}};scope.closest=()=>detached?null:live;
   button.closest=s=>s==='[data-bc-fetch-scope]'?scope:old;
   const context={document:{addEventListener:(event,fn)=>{listener=fn;},getElementById:()=>({dataset:{csrf:'token'}}),querySelector:()=>live,createElement:()=>new Node()},
     location:{href:'/collection/item/1?copy=Alex'},DOMParser:class{parseFromString(){return {querySelector:()=>fresh};}},
@@ -38,7 +38,7 @@ async function fetchCase({priced=139,lines=145,failed=false,pending=false,states
   assert.equal(calls.filter(c=>c.url==='/refresh').length,1);
   assert.equal(scope.attrs['aria-busy'],'false');
   if(failed){assert.equal(button.disabled,false);assert.equal(button.textContent,'Fetch part prices');assert.equal(status.textContent,'Could not queue');assert.equal(status.dataset.state,'error');assert.equal(replaced,null);return;}
-  assert.equal(replaced,fresh);assert.equal(button.disabled,false);
+  assert.equal(replaced,fresh);assert.equal(every.length,3);assert.equal(button.disabled,false);   // the Prices card, then a wish page's answer and state tag (#654)
   assert.equal(waits,states?0:1);
   const budget=states?.includes('waiting_for_budget'),bad=states?.filter(s=>['failed','cancelled'].includes(s)).length;
   assert.equal(!!newButton.removed,!budget&&!bad&&!remaining);

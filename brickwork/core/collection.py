@@ -1745,7 +1745,10 @@ def source_chips(rows):
         for value in row.get('via') or []:
             via[value] = via.get(value, 0) + 1
         for value in row.get('list') or []:
-            lists.setdefault(value, [row['list_labels'][value], 0])[1] += 1
+            entry = lists.setdefault(value, [row['list_labels'][value], 0])
+            entry[1] += 1
+            if ' · ' not in entry[0] and ' · ' in row['list_labels'][value]:     # a row recorded without the list's name: the name another row has wins
+                entry[0] = row['list_labels'][value]
     order = [o for o in origins.ORIGINS] + ['before']
     return ([(v, 'Before this release' if v == 'before' else origins.label(v), via[v]) for v in order if v in via],
             [(v, label, n) for v, (label, n) in sorted(lists.items(), key=lambda kv: kv[1][0].casefold())])

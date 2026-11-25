@@ -68,6 +68,23 @@ def test_a_chip_filters_the_tiles_and_a_second_press_clears_it(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+@rendered.group
+def test_a_filter_no_chip_offers_is_dropped_not_kept_invisible(tmp_path):
+    chrome = rendered.chrome()
+    script = ("if(document.querySelectorAll('.stile').length!==7)throw new Error('tiles: '+document.querySelectorAll('.stile').length);")
+    with screen_gate.world('frames-source') as base:
+        jobs = {'jobs': [{'url': base + '/collection/sets?via=gone&list=rebrickable%7Cold', 'out': str(tmp_path / 'a.png'), 'width': 1440, 'theme': 'light', 'wait': 'main', 'script': script}]}
+        (tmp_path / 'jobs.json').write_text(json.dumps(jobs))
+        result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome, str(tmp_path / 'jobs.json')], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_a_list_recorded_without_its_name_takes_the_name_another_row_has():
+    rows = [dict(via=['hand'], list=['rebrickable|42'], list_labels={'rebrickable|42': 'Rebrickable'}),
+            dict(via=['hand'], list=['rebrickable|42'], list_labels={'rebrickable|42': 'Rebrickable · Main collection'})]
+    assert collection.source_chips(rows)[1] == [('rebrickable|42', 'Rebrickable · Main collection', 2)]
+
+
 def test_the_script_combines_the_two_rows_and_a_pressed_chip_clears_its_row():
     js = (ROOT / 'static/web/toni/bw-collection.js').read_text()
     assert "data-bc-src" in js and "control.value=on?'':v" in js

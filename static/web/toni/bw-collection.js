@@ -474,6 +474,8 @@
     const params=new URLSearchParams(location.search);
     if(tabs.length){const requested=params.get('inventory')||saved?.filters?.inventory;if(tabs.some(t=>t.dataset.bcTab===requested))inventory=requested;}
     filterControls.forEach(c=>{if(params.has(c.dataset.bcFilter)){c.value=params.get(c.dataset.bcFilter);if(!c.value)c.value=preset(c);}});
+    // #551: a Source filter that no chip offers any more (a set archived, a run undone, a stale link) is dropped, not kept invisible; a select drops it by itself.
+    filterControls.forEach(c=>{if(c.type==='hidden'&&c.value&&!srcButtons.some(b=>{const [k,v]=srcPair(b);return k===c.dataset.bcFilter&&v===c.value;}))c.value='';});
     function filters(){return {...Object.fromEntries(filterControls.map(c=>[c.dataset.bcFilter,c.value])),...(tabs.length && inventory!=='extras'?{inventory}:{})};}
     function selection(){if(virtual)return selectedInstances(records.map(r=>({checked:r.selected,entity:r.entity,ids:r.ids})));return selectedInstances([...list.querySelectorAll('[data-bc-selected]')].map(c=>({checked:c.checked,hidden:c.closest('[data-bc-row]').hidden,entity:c.dataset.entity,ids:JSON.parse(c.value)})));}
     if(virtual)mainSelection=selection;

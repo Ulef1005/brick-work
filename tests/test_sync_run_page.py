@@ -251,3 +251,46 @@ def test_a_call_is_written_down_before_it_is_made(three_sends, monkeypatch):  # 
         run_job.queue(db, run_id, form_for(db, run_id))
         run_job.drain(db)
         assert seen and all(key == flight for key, flight in seen) and sync_run.load(db, run_id)[0]['job_progress']['in_flight'] is None
+
+
+def test_a_send_whose_result_was_saved_before_the_restart_stays_sent(three_sends):  # noqa: F811
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run = sync_run.load(db, run_id)[0]
+        first = next(k for k, v in run['job_form']['chosen'].items() if v in ('send', 'remove'))
+        plan_id = sync_run.load(db, run_id)[1]['send']['id']
+        plan = sync.load_plan(db, plan_id, 'send')
+        plan['results'] = {first: dict(result='sent', detail=None)}                  # saved by the send, the worker died before it cleared `in_flight`
+        sync._store_plan(db, plan)
+    order, results = _interrupt(pair, run_id, in_flight=first)
+    assert dict(zip(order, results))[first] == 'sent' and 'unknown' not in results
+
+
+def test_a_pull_that_succeeded_in_part_is_not_reported_as_applied_or_as_nothing_changed(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run = sync_run.load(db, run_id)[0]
+        run['stages'] = {'pull': {'status': 'done'}, 'parts': {'status': 'failed', 'message': 'x'}}
+        sync._store_plan(db, run)
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
+        db.execute("INSERT INTO job_step(job_id, name, position, sources, source, state, count, total, updated_at) VALUES(?, 'parts', 5, '[\"rebrickable\"]', 'rebrickable', 'failed', 0, 2, '2026-11-25T00:00:00.000Z')", (job_id,))
+        db.commit()
+    pull = soup(page_of(client, run_id)).select_one('[data-rb-pull]')
+    assert 'applied in part' in text(pull) and 'Nothing here changed' not in text(pull) and 'Pull applied' not in text(pull)
+
+
+def test_an_interrupt_between_two_sends_says_every_row_did_not_go(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run = sync_run.load(db, run_id)[0]
+        run['stages'] = {'send': {'status': 'started'}}
+        sync._store_plan(db, run)
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
+        db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
+        db.commit()
+        run_job.drain(db)
+    send = soup(page_of(client, run_id)).select_one('[data-rb-send]')
+    assert 'between two sends' in text(send) and 'Not known' not in text(send) and not send.select('input[name=also]')

@@ -62,6 +62,7 @@ def _interrupted(db, run, plans, form_data, name):
         if in_flight and plan.get('source') == 'brickset':
             by_key = {r['key']: r for r in plan['rows']}
             in_flight = {k for k in wanted if by_key[k]['remote_no'] == by_key[flight]['remote_no']}
+        in_flight = {k for k in in_flight if kept.get(k, {}).get('result') not in ('sent', 'unchanged')}     # the call was made and its result saved before the restart: that is known
         rows = [dict(key=k, **(dict(result='unknown', detail=INTERRUPTED_MESSAGE) if k in in_flight else kept[k] if k in kept else dict(result='failed', detail=INTERRUPTED_MESSAGE))) for k in wanted]
         counts = {}
         for row in rows:

@@ -461,7 +461,7 @@ def step_progress(source, run_id):
     return _render(source, screen='progress', title=LABEL[source], run=run, info=info, unsaved=_unsaved(source), pstages=stages, interrupted=bool(interrupted), unsent=unsent,
                  sent_count=len(sent_rows), send_total=send.get('rows', 0), unknown_count=sum(1 for u in unsent if u['state'] == 'not known'),
                  unsent_count=sum(1 for u in unsent if u['state'] == 'not sent'), lost_interrupted=_interrupted_stage(run['stages'], 'lost_out'),
-                 pull_failed=any((run['stages'].get(n) or {}).get('status') == 'failed' for n in ('pull', 'parts')) and not any((run['stages'].get(n) or {}).get('status') == 'done' for n in ('pull', 'parts')), **_steps(5))
+ **_steps(5))
 
 
 @_route('post', '/run/<run_id>/stop', False)

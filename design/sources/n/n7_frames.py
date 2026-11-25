@@ -236,7 +236,7 @@ def long_applying(ph):
 # did not go out, the Not known row first with a "Send it too" checkbox (off); rows that went out are counted. The app lists the first 20 rows and then
 # "and N more not sent"; the frame draws the first three and counts the rest.
 def interrupted(ph):
-    done = card(f'Pull applied {tag("Done")}', '<p class="n">3,200 changes applied here, in one step. They stay done.</p>')
+    done = card(f'Pull applied {tag("Done")}', '<p class="n">3,200 changes applied here, in one step. They stay done. Undo for this pull is in Last runs, where this run is listed as Interrupted.</p>')
     also = ('<label style="display:flex;align-items:center;gap:8px;min-height:44px;font:500 15px var(--tw-font)">'
             '<span aria-hidden="true" style="width:20px;height:20px;border:2px solid var(--tw-text);border-radius:3px;background:var(--tw-surface);flex:none"></span>Send it too</label>')
     rows = ''
@@ -248,7 +248,7 @@ def interrupted(ph):
     link = 'font:600 15px var(--tw-font);color:var(--tw-accent-text);display:inline-flex;align-items:center;min-height:44px'
     out = card(f'Sending {tag("Interrupted", "hatch")}', f'<p class="mono" style="{small}">640 of 800 sent · 1 not known · 159 not sent</p>' + rows
                + f'<p class="mono" style="{small}">and 157 more not sent</p>'
-               + '<div class="ninfo">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on Rebrickable, then send the rest again.</div>'
+               + '<div class="ninfo">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on Rebrickable. Tick Send it too only if it is not there, then send the rest again.</div>'
                f'<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">{btn("Send again", "sec sm")}<span style="{link}">Open Jobs</span><span style="{link}">Open the result</span></div>')
     return head('Rebrickable', 'Interrupted 19 Nov, 15:31 · the server restarted', ph) + N.steps('Run', ph) + done + out
 

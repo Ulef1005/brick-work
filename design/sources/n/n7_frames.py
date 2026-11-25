@@ -1,4 +1,4 @@
-"""Commission N (Sync and files, #517), round 5 (draft): every frame still missing for milestone N (Ulf, 24.11., via brick-work-product:
+"""Commission N (Sync and files, #517), rounds 5 and 6 (approved 2026-11-24 and 2026-11-25): every frame still missing for milestone N (Ulf, 24.11., via brick-work-product:
 "ask design to write all missing frames"; gap list ~/Workspace/_exports/design-brief-n/frame-gaps-n.md). Folders 78 to 96.
 
 G2/G3 (#551): the added-via chip and filter on loose-stock lots (78) and on wishes (79). G4 (#521): BrickLink's price guide, preview and result

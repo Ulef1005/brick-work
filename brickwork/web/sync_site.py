@@ -92,7 +92,7 @@ def _runs(db, source):
     """The last runs for the page at rest, newest first, from the sync log; Undo only on the newest pull that was not undone."""
     rows = _log(db, limit=5, source=source)
     undo = next((r['id'] for r in rows if r['direction'] == 'Pulled' and r['state'] == 'Done' and r.get('event')), None)
-    return [dict(r, undoable=r['id'] == undo, retry=r['direction'] == 'Sent' and r['state'] != 'Done' and not r.get('lost'), title=('Undo' if r['direction'] == 'Undone' else 'Run')) for r in rows]
+    return [dict(r, undoable=r['id'] == undo, retry=r['direction'] == 'Sent' and r['state'] not in ('Done', 'Interrupted') and not r.get('lost'), title=('Undo' if r['direction'] == 'Undone' else 'Run')) for r in rows]
 
 
 def site_page(source):
@@ -388,6 +388,7 @@ def step_apply(source, run_id):
     from ..core import errors
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
+    from ..core.sync import run_job
     _guard()
     form = MultiDict(request.form)
     if form.get('lot_all'):    # one lot for every loose row ticked, the section's "Put in"
@@ -396,17 +397,79 @@ def step_apply(source, run_id):
     try:
         with _db() as db, audit_origin('app'):
             _same_site(db, run_id, source)
-            run = sync_run.apply(db, run_id, form)
+            run_job.queue(db, run_id, form, via='app')
+            run, _plans = sync_run.load(db, run_id)
     except LOCAL as exc:   # the database or the run file could not be written, possibly after Rebrickable took changes: say so, never a 500
         flash(public(exc, _unsaved(source)), 'warning')
         return redirect(url_for('web.bw_sync_site', source=source))
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, source), 'warning')
         return redirect(_to(source, 'preview', run_id=run_id))
+    if run.get('job'):                 # queued now, or by an earlier post: the page follows the job
+        return redirect(_to(source, 'progress', run_id=run_id))
     if not run.get('applied'):         # claimed by another request that has not finished, or one that was interrupted
         flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
         return redirect(url_for('web.bw_sync_site', source=source))
     return redirect(_to(source, 'result', run_id=run_id))
+
+
+def _is_interrupted(stages):
+    from ..core.sync import run_job
+    return any((stages.get(n) or {}).get('status') == 'failed' and (stages.get(n) or {}).get('message') == run_job.INTERRUPTED_MESSAGE for n in ('send', 'lost_out'))
+
+
+def _unsent_rows(rows, send):
+    """The rows an interrupted send left, from the stage's results: `unknown` is the one that was in flight (it may have gone out), `failed` did not
+    go. Rows that went out are only counted."""
+    items = []
+    for r in send.get('results', ()):
+        if r['result'] in ('sent', 'unchanged'):
+            continue
+        row = rows.get(r['key'], {})
+        items.append(dict(key=r['key'], number=row.get('number'), name=row.get('name') or 'Name not recorded',
+                          what=(row['options'][-1]['label'].lower() if row.get('options') else ''), state='not known' if r['result'] == 'unknown' else 'not sent'))
+    return items
+
+
+@_route('get', '/run/<run_id>/progress', True)
+def step_progress(source, run_id):
+    """Step 5 while a run is a job (#685): the pull as one step, the sends one call at a time, Stop after this one, and the interrupted view."""
+    from ..core.sync import run as sync_run
+    from ..core.sync import run_job
+    with _db() as db:
+        run, plans = _load(db, run_id, source)
+        if run is None:
+            return _gone(source)
+        if not run.get('job'):
+            return redirect(_to(source, 'result' if run.get('applied') else 'preview', run_id=run_id))
+        info = run_job.progress(db, run_id)
+        interrupted = run.get('applied') and _is_interrupted(run['stages'])
+        if run.get('applied') and not interrupted:
+            return redirect(_to(source, 'result', run_id=run_id))
+        rows = {r['key']: r for r in sync_run.rows(db, run, plans)} if interrupted else {}
+    stages = {s['name']: s for s in info['stages']}
+    send = run['stages'].get('send') or {}
+    sent_rows = [r for r in send.get('results', ()) if r['result'] in ('sent', 'unchanged')]
+    unsent = _unsent_rows(rows, send) if interrupted else []
+    return _render(source, screen='progress', title=LABEL[source], run=run, info=info, unsaved=_unsaved(source), pstages=stages, interrupted=bool(interrupted), unsent=unsent,
+                 sent_count=len(sent_rows), send_total=send.get('rows', 0), unknown_count=sum(1 for u in unsent if u['state'] == 'not known'),
+                 unsent_count=sum(1 for u in unsent if u['state'] == 'not sent'), **_steps(5))
+
+
+@_route('post', '/run/<run_id>/stop', False)
+def step_stop(source, run_id):
+    from ..core import errors
+    from ..core.sync import run_job
+    _guard()
+    try:
+        with _db() as db:
+            _same_site(db, run_id, source)
+            run_job.request_stop(db, run_id)
+    except LOCAL as exc:
+        flash(public(exc, _unsaved(source)), 'warning')
+    except errors.BrickWorkError as exc:
+        flash(_message(exc, source), 'warning')
+    return redirect(_to(source, 'progress', run_id=run_id))
 
 
 @_route('get', '/run/<run_id>/result', True)
@@ -418,6 +481,8 @@ def step_result(source, run_id):
         if run is None:
             return _gone(source)
         if not run.get('applied'):
+            if run.get('job'):
+                return redirect(_to(source, 'progress', run_id=run_id))
             if run.get('applying'):
                 flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
                 return redirect(url_for('web.bw_sync_site', source=source))
@@ -480,7 +545,7 @@ def step_retry(source, run_id):
     try:
         with _db() as db, audit_origin('app'):
             _same_site(db, run_id, source)
-            sync_run.retry_send(db, run_id)
+            sync_run.retry_send(db, run_id, also=request.form.getlist('also'))
     except LOCAL as exc:
         flash(public(exc, _unsaved(source)), 'warning')
         return redirect(url_for('web.bw_sync_site', source=source))

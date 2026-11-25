@@ -184,3 +184,15 @@
 #content.bw-admin-page.bw-sync-rb-page .sr-table, #content.bw-admin-page.bw-sync-rb-page .sr-table :is(thead, tbody, tr, th, td) { background: transparent; }
 
 .sr-reason { display: block; color: var(--tw-text-2); font-size: 13px; }
+
+/* #685: the run page while a run is a job (frames 94 to 96). */
+.sr-bar { height: 18px; border: 1px dashed var(--tw-text); background: transparent; }
+.sr-bar > span { display: block; height: 100%; background: var(--tw-accent); }
+.sr-meta { margin: 0; color: var(--tw-text-2); font: 400 15px/24px var(--tw-mono, monospace); }
+.sr-wait { display: flex; align-items: center; gap: 10px; }
+.sr-spin { flex: none; width: 16px; height: 16px; border: 2px solid var(--tw-divider-strong, currentColor); border-top-color: var(--tw-accent); border-radius: 50%; animation: sr-spin 1s linear infinite; }
+@keyframes sr-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sr-spin { animation: none; } }
+[data-sr-live] { display: flex; flex-direction: column; gap: 16px; }
+.sr-also { display: flex; align-items: center; gap: 8px; grid-column: 2 / -1; font: 500 15px var(--tw-font); }
+.sr-also input { width: 20px; height: 20px; }

@@ -48,13 +48,21 @@ def _stage_total(run, plans, form_data, name):
 
 
 def _interrupted(db, plans, form_data, name):
-    """A stage a dead owner left `started`: failed, never run again. For the send stage the rows get the result the send plan kept, and a row
-    with none counts as failed, so `run.retry_send` can send them again once the user has checked what went out."""
+    """A stage a dead owner left `started`: failed, never run again. For the send stage the rows get the result the send plan kept. Sends go in the
+    order of `wanted`, one call at a time (Brickset: one call per set number, so one set's rows together), so the first row with no kept result is
+    the one that was in flight: its result is `unknown`, because Brick Work cannot tell whether the call arrived. The rows after it did not go:
+    `failed`. `run.retry_send` sends again the `failed` ones, and an `unknown` one only when the person asks for that row."""
     stage = {'status': 'failed', 'message': INTERRUPTED_MESSAGE}
     if name == 'send' and plans.get('send'):
-        kept = sync.load_plan(db, plans['send']['id'], 'send').get('results') or {}
+        plan = sync.load_plan(db, plans['send']['id'], 'send')
+        kept = plan.get('results') or {}
         wanted = [k for k, v in form_data['chosen'].items() if v in ('send', 'remove')]
-        rows = [dict(key=k, **(kept[k] if k in kept else dict(result='failed', detail=INTERRUPTED_MESSAGE))) for k in wanted]
+        waiting = [k for k in wanted if k not in kept]
+        in_flight = set(waiting[:1])
+        if in_flight and plan.get('source') == 'brickset':
+            by_key = {r['key']: r for r in plan['rows']}
+            in_flight = {k for k in waiting if by_key[k]['remote_no'] == by_key[waiting[0]]['remote_no']}
+        rows = [dict(key=k, **(kept[k] if k in kept else dict(result='unknown' if k in in_flight else 'failed', detail=INTERRUPTED_MESSAGE))) for k in wanted]
         counts = {}
         for row in rows:
             counts[row['result']] = counts.get(row['result'], 0) + 1
@@ -281,6 +289,10 @@ def _run_one(db, job, http):
         if existing and existing.get('status') == 'started':
             run['stages'][name] = _interrupted(db, plans, form_data, name)
             _refresh_plans(db, run)
+            if name == 'send' and run['stages'][name].get('counts'):    # the sync log shows the run as interrupted, with a way back to its page
+                with transaction(db):
+                    audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None,
+                          dict(plan=plans['send']['id'], counts=run['stages'][name]['counts'], interrupted=True, run=run_id))
             with transaction(db):
                 _set_step(db, job_id, name, 'failed', error=INTERRUPTED_MESSAGE)
             continue
@@ -485,5 +497,7 @@ def progress(db, run_id):
         'seconds_left': seconds_left,
         'budget': sync_run.budget(db, source),
         'stop_requested': bool(payload.get('stop')),
+        'retry_at': job_row['retry_at'] if job_row else None,
+        'error': job_row['error'] if job_row else None,
         'result': run.get('applied'),
     }

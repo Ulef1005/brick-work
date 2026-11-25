@@ -156,7 +156,7 @@ def test_a_stage_that_was_started_is_never_run_again_after_a_takeover_but_can_be
         run = sync_run.load(db, run_id)[0]
         stage = run['stages']['send']
         assert stage['status'] == 'failed' and stage['message'] == run_job.INTERRUPTED_MESSAGE and run['applied']
-        assert {r['key'] for r in stage['results']} == set(sends(db, run_id)) and {r['result'] for r in stage['results']} == {'failed'}
+        assert {r['key'] for r in stage['results']} == set(sends(db, run_id)) and sorted(r['result'] for r in stage['results']) == ['failed'] * (len(stage['results']) - 1) + ['unknown']
         gate['open'] = True
         retried = sync_run.retry_send(db, run_id)
         assert retried['stages']['send']['status'] == 'done'

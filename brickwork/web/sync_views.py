@@ -53,6 +53,7 @@ def _log(db, limit=20, source=None):
     """Sync log rows from the receipts, their undos and the send records, newest first.
     With a source, only that site's rows (an undo counts for the site of the pull it undid), read until `limit` of them are found."""
     rows = []
+    seen_sends = set()
     for r in db.execute("""SELECT e.id, e.entity_id, e.field, e.new_value, e.at, EXISTS(SELECT 1 FROM event_undo u WHERE u.event_id=e.id) AS undone
             FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send', 'parts_receipt') ORDER BY e.id DESC""" + (' LIMIT ?' if source is None else ''),
                         (limit,) if source is None else ()):
@@ -78,12 +79,17 @@ def _log(db, limit=20, source=None):
         elif r['field'] == 'undo':
             rows.append(dict(id=r['id'], at=r['at'], source=site, direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
         else:
+            if (value or {}).get('plan') is not None and (value or {}).get('plan') in seen_sends:      # a long run sends one call at a time and records each: the newest record of a send plan stands for it
+                continue
+            seen_sends.add((value or {}).get('plan'))
             counts = (value or {}).get('counts', {})
             sent = counts.get('sent', 0) + counts.get('unchanged', 0)
             problems = {k: v for k, v in counts.items() if k not in ('sent', 'unchanged')}
             what = ('Lost Parts: ' if (value or {}).get('kind') == 'lost_parts' else '') + f"{sent} {'change' if sent == 1 else 'changes'} sent" + ''.join(f" · {v} {k.replace('_', ' ')}" for k, v in problems.items())
-            state = 'Done' if not problems else 'Waiting for you'
-            rows.append(dict(id=r['id'], at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None, lost=(value or {}).get('kind') == 'lost_parts'))
+            interrupted = bool((value or {}).get('interrupted'))
+            state = 'Interrupted' if interrupted else 'Done' if not problems else 'Waiting for you'
+            rows.append(dict(id=r['id'], at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None, lost=(value or {}).get('kind') == 'lost_parts',
+                             run=(value or {}).get('run')))
     return rows[:limit]
 
 

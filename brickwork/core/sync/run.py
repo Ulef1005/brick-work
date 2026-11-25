@@ -939,9 +939,10 @@ def undo_run(db, event_id):
     return ids
 
 
-def retry_send(db, run_id, *, http=None):
+def retry_send(db, run_id, *, http=None, also=()):
     """Send again the rows of the run's send stage that did not go through (failed, paused or refused). The send plan keeps what was sent. Under
-    the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry."""
+    the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry. A row whose result is `unknown` (a send a
+    restart cut off: it may have gone out) is sent again only when its key is in `also`; by default it is left."""
     with _Claim(db, run_id):
         run, plans = load(db, run_id)
         send = plans['send']
@@ -950,10 +951,17 @@ def retry_send(db, run_id, *, http=None):
             raise errors.ValidationFailed('This run is still running')
         if not send or not stage or not stage.get('results'):
             raise errors.ValidationFailed('This run sent nothing that can be retried')
-        again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged')]
+        again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged') and (r['result'] != 'unknown' or r['key'] in set(also))]
         if not again:
+            if any(r['result'] == 'unknown' for r in stage['results']):
+                raise errors.ValidationFailed('Only a row that may have gone out is left. Check it, then choose Send it too on that row')
             raise errors.ValidationFailed('Everything this run sent went through')
         result = sync.apply_send(db, send['id'], again, http=http)
-        run['stages']['send'] = dict(status='done', counts=result['counts'], rows=len(result['rows']), results=result['rows'])
+        rows = result['rows'] + [r for r in stage['results'] if r['result'] == 'unknown' and r['key'] not in {x['key'] for x in result['rows']}]   # a row left out stays as it was
+        counts = dict(result['counts'])
+        left = len(rows) - len(result['rows'])
+        if left:
+            counts['unknown'] = left
+        run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
         sync._store_plan(db, run)
         return run

@@ -10,7 +10,7 @@ from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401
 ROOT = Path(__file__).resolve().parents[1]
 GROUPS = {
     'Workbench': ['Part Spotter', 'Set Inspector', 'Lot Sorter', 'Part Runner',
-                  'Matchmaker', 'Build Scout', 'Orders', 'Storage'],
+                  'Matchmaker', 'Build Scout', 'Orders', 'Storage', 'Sync'],
     'Planning': ['Wishlist', 'Prices', 'Complete sets', 'Order missing parts'],
 }
 

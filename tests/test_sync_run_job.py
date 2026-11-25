@@ -1,0 +1,346 @@
+"""#685 slice 1: a sync run as a durable `sync_run` job: queue, the drainer, per-call progress, stop, budget wait and takeover."""
+from contextlib import closing
+import json
+import os
+
+import pytest
+from werkzeug.datastructures import MultiDict
+
+from brickwork.core import drainer, errors, sync
+from brickwork.core.connect import connect
+from brickwork.core.sources.base import WaitingForBudget
+from brickwork.core.sync import adapters
+from brickwork.core.sync import run as sync_run
+from brickwork.core.sync import run_job
+from brickwork.store4 import jobs
+from tests.app4 import Coll, app4, client  # noqa: F401
+from tests.test_sync_rebrickable_page import connected, db_of, pair, remote, start  # noqa: F401
+
+
+def sends(db, run_id):
+    """The keys of the rows this run could send, from the preview."""
+    run, plans = sync_run.load(db, run_id)
+    return [r['key'] for r in sync_run.rows(db, run, plans) if any(o['id'] == 'send' for o in r['options'])]
+
+
+def form_for(db, run_id, *, send=True):
+    """What the preview posts by default, with every sendable row set to send (or left on keep)."""
+    run, plans = sync_run.load(db, run_id)
+    fields = []
+    for row in sync_run.rows(db, run, plans):
+        ids = [o['id'] for o in row['options']]
+        if send and 'send' in ids:
+            fields.append(('choice:' + row['key'], 'send'))
+        elif row['default']:
+            fields.append(('choice:' + row['key'], row['default']))
+    return MultiDict(fields)
+
+
+@pytest.fixture
+def three_sends(client, remote, pair):  # noqa: F811
+    """A connected run whose preview has several rows that can be sent: a set only here and two that differ."""
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        for number in ('1000-4', '2070-1', '2070-1', '1000-2', '1000-2'):
+            Coll(db).add_copy(number)
+    run_id = start(client, csrf)
+    with db_of(pair) as db:
+        keys = sends(db, run_id)
+    assert len(keys) >= 3, keys
+    return pair, run_id, keys
+
+
+def test_queue_makes_one_job_with_a_step_per_stage(three_sends, remote):
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        with pytest.raises(errors.ValidationFailed, match='Choose one of the offered changes'):
+            run_job.queue(db, run_id, MultiDict([('choice:' + keys[0], 'bogus')]))
+        form = form_for(db, run_id)
+        job_id = run_job.queue(db, run_id, form, via='unexpected', actor='tester')
+        job = db.execute('SELECT * FROM job WHERE id=?', (job_id,)).fetchone()
+        assert (job['kind'], job['via'], job['actor'], job['state']) == ('sync_run', 'app', 'tester', 'queued')
+        steps = {s['name']: s for s in db.execute('SELECT * FROM job_step WHERE job_id=?', (job_id,))}
+        assert steps['send']['total'] == len(keys) and steps['send']['count'] == 0
+        assert run_job.queue(db, run_id, form) == job_id
+        assert db.execute("SELECT count(*) FROM job WHERE kind='sync_run'").fetchone()[0] == 1
+
+
+def test_the_job_applies_what_run_apply_applies(client, remote, pair):  # noqa: F811
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-4')
+    run_id = start(client, csrf)
+    with db_of(pair) as db:
+        form = form_for(db, run_id, send=False)
+        job_id = run_job.queue(db, run_id, form)
+        assert run_job.drain(db)
+        run = sync_run.load(db, run_id)[0]
+        assert run['applied'] and 'applying' not in run
+        assert db.execute('SELECT state FROM job WHERE id=?', (job_id,)).fetchone()[0] == 'done'
+        assert db.execute('SELECT count(*) FROM job_owner').fetchone()[0] == 0
+        assert len(db.execute("SELECT 1 FROM event WHERE entity_kind='sync' AND field='run'").fetchall()) == 1
+        assert run['stages']['pull']['status'] in ('done', 'none')
+        events = run['applied']['events']
+        assert run_job.progress(db, run_id)['state'] == 'done'
+        if events:
+            sync_run.undo_run(db, events[0])
+
+
+def test_progress_rises_per_send_call(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    seen = []
+    real = adapters.RebrickableUser.send
+
+    def watch(self, row, link, state):
+        with closing(connect(pair)) as probe:
+            seen.append(run_job.progress(probe, run_id))
+        return real(self, row, link, state)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', watch)
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id))
+        first = run_job.progress(db, run_id)
+        assert first['state'] == 'queued' and first['done'] == 0 and first['requests_per_second'] is None
+        run_job.drain(db)
+        last = run_job.progress(db, run_id)
+    sent = [s for s in seen if s['stages'] and any(st['name'] == 'send' for st in st_list(s))]
+    assert [next(st['done'] for st in st_list(s) if st['name'] == 'send') for s in sent] == list(range(len(keys)))
+    assert all(s['now'] for s in sent) and last['state'] == 'done' and last['done'] == last['total']
+
+
+def st_list(snapshot):
+    return snapshot['stages']
+
+
+def test_stop_after_this_one_leaves_the_rest_unsent(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    calls = []
+    real = adapters.RebrickableUser.send
+
+    def first_then_stop(self, row, link, state):
+        calls.append(row['key'])
+        if len(calls) == 1:
+            with closing(connect(pair)) as other:
+                assert run_job.request_stop(other, run_id)
+        return real(self, row, link, state)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', first_then_stop)
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        run = sync_run.load(db, run_id)[0]
+        job = db.execute("SELECT state, error FROM job WHERE kind='sync_run'").fetchone()
+    assert len(calls) == 1
+    assert run['stages']['send']['status'] == 'stopped' and run['applied']
+    assert tuple(job) == ('done', 'Stopped at your request')
+
+
+def test_a_stage_that_was_started_is_never_run_again_after_a_takeover_but_can_be_retried(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    real, gate = adapters.RebrickableUser.send, {'open': False}
+
+    def guarded(self, row, link, state):
+        assert gate['open'], 'a send ran again'
+        return real(self, row, link, state)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', guarded)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run = sync_run.load(db, run_id)[0]
+        run['stages']['send'] = {'status': 'started'}
+        sync._store_plan(db, run)
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
+        db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
+        db.commit()
+        run_job.drain(db)
+        run = sync_run.load(db, run_id)[0]
+        stage = run['stages']['send']
+        assert stage['status'] == 'failed' and stage['message'] == run_job.INTERRUPTED_MESSAGE and run['applied']
+        assert {r['key'] for r in stage['results']} == set(sends(db, run_id)) and {r['result'] for r in stage['results']} == {'failed'}
+        gate['open'] = True
+        retried = sync_run.retry_send(db, run_id)
+        assert retried['stages']['send']['status'] == 'done'
+
+
+def test_the_synchronous_paths_leave_a_queued_run_alone(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', lambda *a, **k: pytest.fail('a send ran'))
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        assert sync_run.apply(db, run_id, form_for(db, run_id))['job'] == job_id
+        with pytest.raises(errors.ValidationFailed, match='already run'):
+            sync_run.save_pick(db, run_id, [])
+        with pytest.raises(errors.ValidationFailed, match='still running'):
+            sync_run.retry_send(db, run_id)
+
+
+def test_stop_reaches_a_job_waiting_for_the_budget(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', lambda *a, **k: (_ for _ in ()).throw(WaitingForBudget('rebrickable', '2099-01-01T00:00:00+00:00')))
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        assert db.execute('SELECT state FROM job WHERE id=?', (job_id,)).fetchone()[0] == 'waiting_for_budget'
+        assert run_job.request_stop(db, run_id)
+        run_job.drain(db)
+        job = db.execute('SELECT state, error FROM job WHERE id=?', (job_id,)).fetchone()
+        assert tuple(job) == ('done', 'Stopped at your request') and sync_run.load(db, run_id)[0]['applied']
+
+
+def test_a_budget_wait_ends_the_job_waiting_and_a_later_drain_resumes_unsent_rows(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    real = adapters.RebrickableUser.send
+    sent, mode = [], {'wait': True}
+
+    def limited(self, row, link, state):
+        if mode['wait'] and len(sent) == 1:
+            raise WaitingForBudget('rebrickable', '2099-01-01T00:00:00+00:00')
+        sent.append(row['key'])
+        return real(self, row, link, state)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', limited)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        job = db.execute('SELECT state, error_code, retry_at FROM job WHERE id=?', (job_id,)).fetchone()
+        assert job['state'] == 'waiting_for_budget' and job['error_code'] == 'budget' and job['retry_at']
+        assert db.execute('SELECT count(*) FROM job_owner').fetchone()[0] == 0
+        assert run_job.drain(db) == []
+        db.execute("UPDATE job SET retry_at='2000-01-01T00:00:00.000Z' WHERE id=?", (job_id,))
+        db.commit()
+        mode['wait'] = False
+        run_job.drain(db)
+        assert db.execute('SELECT state FROM job WHERE id=?', (job_id,)).fetchone()[0] == 'done'
+    assert sorted(sent) == sorted(set(sent)) and len(sent) == len(keys)
+
+
+def test_the_embedded_drainer_runs_a_queued_run_and_the_job_body_names_a_dead_owner(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    from brickwork.api2 import jobs as api_jobs
+    with client.application.app_context(), db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
+        db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
+        db.commit()
+        body = api_jobs.job_body(db, job_id)
+        assert body['kind'] == 'sync_run' and body['interrupted'] is True
+    drainer.drain_once(str(pair))
+    with client.application.app_context(), db_of(pair) as db:
+        assert db.execute('SELECT state FROM job WHERE id=?', (job_id,)).fetchone()[0] == 'done'
+        assert api_jobs.job_body(db, job_id)['interrupted'] is False
+
+
+def test_the_plan_does_not_expire_while_the_job_works(three_sends, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    pair, run_id, keys = three_sends
+    monkeypatch.setattr(sync, 'PLAN_TTL', timedelta(hours=1))
+    old = (datetime.now(timezone.utc) - timedelta(minutes=50)).isoformat()
+    with db_of(pair) as db:
+        run = sync_run.load(db, run_id)[0]
+        run['created_at'] = old
+        sync._store_plan(db, run)
+        run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        assert sync_run.load(db, run_id)[0]['created_at'] > old
+
+
+def test_stop_on_a_waiting_job_keeps_the_rows_for_retry(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    real, state = adapters.RebrickableUser.send, {'sent': 0, 'mode': 'wait'}
+
+    def send(self, row, link, st):
+        if state['sent'] >= 1 and state['mode'] == 'wait':
+            raise WaitingForBudget('rebrickable', '2099-01-01T00:00:00+00:00')
+        state['sent'] += 1
+        return real(self, row, link, st)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', send)
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        assert run_job.request_stop(db, run_id)
+        run_job.drain(db)
+        stage = sync_run.load(db, run_id)[0]['stages']['send']
+        assert stage['status'] == 'stopped' and len(stage['results']) == len(keys)
+        state['mode'] = 'go'
+        state['sent'] = 0
+        assert sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'done'
+
+
+def test_an_unexpected_error_fails_the_job_and_the_run_still_shows_what_happened(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    real, state = adapters.RebrickableUser.send, {'n': 0, 'crash': True}
+
+    def send(self, row, link, st):
+        state['n'] += 1
+        if state['n'] == 2 and state['crash']:
+            raise RuntimeError('boom')
+        return real(self, row, link, st)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', send)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        job = db.execute('SELECT state, error_code FROM job WHERE id=?', (job_id,)).fetchone()
+        assert tuple(job) == ('failed', 'source_error')
+        run = sync_run.load(db, run_id)[0]
+        assert run['applied'] and 'applying' not in run and run['stages']['send']['status'] == 'failed'
+        assert db.execute("SELECT count(*) FROM event WHERE entity_kind='sync' AND field='run'").fetchone()[0] == 1       # undo finds the run
+        state['crash'] = False
+        assert sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'done'
+
+
+
+def test_the_job_sends_lost_parts_out_one_call_with_one_audit_entry(client, remote, pair):  # noqa: F811
+    from brickwork.core.sync import lost_parts_send
+    from tests.test_bw_sync_lost_parts import copy_of, raw
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='add_only')
+    key = lost_parts_send.row_key('1000-1', '3001', 4, False)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, MultiDict([('lostsend', key)]))
+        assert [s['name'] for s in db.execute('SELECT name FROM job_step WHERE job_id=?', (job_id,))] == ['lost_out']
+        run_job.drain(db)
+        stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
+        assert stage['status'] == 'done' and stage['counts'] == dict(sent=1, failed=0, waiting=0)
+        step = db.execute('SELECT count, total, state FROM job_step WHERE job_id=?', (job_id,)).fetchone()
+        assert tuple(step) == (1, 1, 'done')
+        assert len(db.execute("SELECT 1 FROM event WHERE entity_kind='sync' AND field='send'").fetchall()) == 1
+    assert [(m, d) for m, p, d in remote.lost_writes] == [('POST', 'inv_part_id=1&lost_quantity=2')]
+
+
+def test_a_run_that_never_began_is_released_when_the_job_fails_at_once(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    monkeypatch.setattr(run_job, '_run_one', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('boom')))
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        assert db.execute('SELECT state FROM job WHERE id=?', (job_id,)).fetchone()[0] == 'failed'
+        assert {r[0] for r in db.execute('SELECT state FROM job_step WHERE job_id=?', (job_id,))} == {'failed'}
+        run = sync_run.load(db, run_id)[0]
+        assert not run.get('applied') and not run.get('job') and 'applying' not in run
+        assert run_job.queue(db, run_id, form_for(db, run_id)) != job_id
+
+
+def test_a_failing_send_unit_keeps_the_rows_the_plan_holds(three_sends, monkeypatch):
+    import sqlite3
+    pair, run_id, keys = three_sends
+    real, state = adapters.RebrickableUser.send, {'n': 0}
+
+    def send(self, row, link, st):
+        state['n'] += 1
+        if state['n'] == 2:
+            raise sqlite3.OperationalError('database is locked')
+        return real(self, row, link, st)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', send)
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        stage = sync_run.load(db, run_id)[0]['stages']['send']
+        assert stage['status'] == 'failed' and len(stage['results']) == len(keys)
+        assert stage['counts'].get('failed') and sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'done'

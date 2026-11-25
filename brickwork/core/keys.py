@@ -21,6 +21,7 @@ ENV = {
                   'BW_BRICKLINK_TOKEN_VALUE', 'BW_BRICKLINK_TOKEN_SECRET'),
     'rebrickable': ('BW_REBRICKABLE_API_KEY',),
     'brickset': ('BW_BRICKSET_API_KEY',),
+    'brickowl': ('BW_BRICKOWL_API_KEY',),
 }
 # Per-user collection credentials (#10): only the site's token or hash, never a password.
 USER_ENV = {
@@ -28,7 +29,7 @@ USER_ENV = {
     'brickset_user': ('BW_BRICKSET_USER_HASH',),
 }
 KEYLESS = ('brickognize', 'bricklink_catalogue')
-LABELS = {'bricklink': 'BrickLink', 'rebrickable': 'Rebrickable', 'brickset': 'Brickset',
+LABELS = {'bricklink': 'BrickLink', 'rebrickable': 'Rebrickable', 'brickset': 'Brickset', 'brickowl': 'Brick Owl',
           'rebrickable_user': 'Rebrickable user token', 'brickset_user': 'Brickset user hash'}
 
 
@@ -280,6 +281,8 @@ def check(db, source, **options):
         from .sources.bricklink import BrickLink as client
     elif source == 'rebrickable':
         from .sources.rebrickable import Rebrickable as client
+    elif source == 'brickowl':
+        from .sources.brickowl import BrickOwl as client
     else:
         from .sources.brickset import Brickset as client
     client(db, **options).check_key()

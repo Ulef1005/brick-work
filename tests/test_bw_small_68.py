@@ -1,7 +1,7 @@
 """#68: small web defects on the 4.0 store (M.8i part 1: lists print, tokens and the export).
 
-The drainer re-check moved to `test_pipeline_jobs.py` and the not-set-up notice for Add to `test_bw_add.py` (M.8c); the Collection sync pages' notice is
-M.8j's (`test_bw_small_68_sync.py`)."""
+The drainer re-check moved to `test_pipeline_jobs.py` and the not-set-up notice for Add to `test_bw_add.py` (M.8c). The Sync pages' notice is in
+`test_bw_sync_ui.py`."""
 from contextlib import closing
 import re
 

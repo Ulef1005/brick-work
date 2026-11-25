@@ -8,6 +8,7 @@ def test_task_entries_follow_unreleased_title_newest_first():
     assert headings[:15] == [
         '# Changelog',
         '## Unreleased',
+        '## Brick Work 1.2.0 (schema 4.7) · 2026-11-23',
         '## Brick Work 1.1.1 (schema 4.6) · 2026-11-19',
         '## Brick Work 1.1.0 (schema 4.6) · 2026-11-16',
         '## Brick Work 1.0.1 (schema 4.2) · 2026-11-10',
@@ -20,7 +21,6 @@ def test_task_entries_follow_unreleased_title_newest_first():
         '## Brick Work 0.5.0 (first public release) · 2026-10-18',
         '### All changes in this release',
         '## 4.6d-1 · Collection design comparison (partial)',
-        '## 4.5v · list cost and quiet name refresh',
     ]
     assert lines[0] == '# Changelog'
     assert headings.count('# Changelog') == 1

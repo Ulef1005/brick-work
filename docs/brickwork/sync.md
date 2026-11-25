@@ -5,15 +5,15 @@ verified: 1.0
 
 # Collection sync with Rebrickable and Brickset
 
-Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wanted sets only; loose parts, minifigures, missing parts, BrickLink, two-way merge and scheduled sync are out of scope. Code: `brickwork/core/sync/` (service) and `brickwork/core/sync/adapters.py` (remote calls). The routes named below are API v2 (`brickwork/api2/`); API v1 is retired and answers 410, except `/api/v1/health`. The screens (Tools & Admin → Collection sync) and `brickwork sync` run the same service.
+Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wanted sets only; loose parts, minifigures, missing parts, BrickLink, two-way merge and scheduled sync are out of scope. Code: `brickwork/core/sync/` (service) and `brickwork/core/sync/adapters.py` (remote calls). The routes named below are API v2 (`brickwork/api2/`); API v1 is retired and answers 410, except `/api/v1/health`. The screens (Workbench → Sync) and `brickwork sync` run the same service.
 
 ## Credentials
 
 Both sites need their API key (Catalogues & keys) and a per-user credential:
 
-- **Connect** (`POST /api/v2/sources/{source}/user/connect`, `brickwork sync <source> connect --username NAME`): the username and password go straight to the site, once. Rebrickable: `POST https://rebrickable.com/api/v3/users/_token/` (form `username`, `password`, header `Authorization: key <api key>`) returns `user_token`. Brickset: `POST https://brickset.com/api/v3.asmx/login` (`apiKey`, `username`, `password`) returns `hash`. Only the token or hash is stored, encrypted like the API keys (`source_key` rows `rebrickable_user`, `brickset_user`). The password is not recorded: the connect call bypasses the recorded transport, the API replay check stores a keyed fingerprint, and the command-line tool asks for it without echo. At most 10 logins per site per UTC day (counted from the day's `sync` events of that kind: an attempt writes one, with no credential in it).
+- **Connect** (`POST /api/v2/sources/{source}/user/connect`, `brickwork sync <source> connect --username NAME`): the username and password go straight to the site, once. Rebrickable: `POST https://rebrickable.com/api/v3/users/_token/` (form `username`, `password`, header `Authorization: key <api key>`) returns `user_token`. Brickset: `POST https://brickset.com/api/v3.asmx/login` (`apiKey`, `username`, `password`) returns `hash`. Only the token or hash is stored, encrypted like the API keys (`source_key` rows `rebrickable_user`, `brickset_user`). The username you typed (without leading and trailing spaces) is kept too, in the setting `<source>_account_name`, for the page to show. A pasted token or hash, and a removal, clear it. The password is not recorded: the connect call bypasses the recorded transport, the API replay check stores a keyed fingerprint, and the command-line tool asks for it without echo. At most 10 logins per site per UTC day (counted from the day's `sync` events of that kind: an attempt writes one, with no credential in it).
 - **Paste** (`PUT /api/v2/sources/{source}/user`, `brickwork sync <source> paste`): a token or hash generated on the site.
-- **Remove** (`DELETE …/user`, Undo restores it) and **Test** (`POST …/user/test`: Rebrickable `GET /users/{token}/setlists/?page_size=1`, Brickset `checkUserHash`).
+- **Remove** (`DELETE …/user`, Undo restores the credential but not the account name the page shows) and **Test** (`POST …/user/test`: Rebrickable `GET /users/{token}/setlists/?page_size=1`, Brickset `checkUserHash`).
 - Environment overrides: `BW_REBRICKABLE_USER_TOKEN`, `BW_BRICKSET_USER_HASH`.
 
 ## Link
@@ -30,8 +30,9 @@ Both sites need their API key (Catalogues & keys) and a per-user credential:
 | Rebrickable | `PUT …/setlists/{id}/sets/{set_num}/` | `quantity`, `include_spares=true` | counted |
 | Rebrickable | `DELETE …/setlists/{id}/sets/{set_num}/` | | counted |
 | Brickset | `getSets` | `apiKey`, `userHash`, `params={"owned":1 or "wanted":1 or "setNumber":…, "pageSize":500, "pageNumber":n}` | counted against the key (100/day) |
-| Brickset | `setCollection` | `apiKey`, `userHash`, `SetID`, `params={"own":1,"qtyOwned":n}` / `{"own":0}` / `{"want":1}` / `{"want":0}` | not counted by Brickset; local cap 500 per UTC day |
-| Brickset | `checkUserHash` | `apiKey`, `userHash` | not counted |
+| Brickset | `setCollection` | `apiKey`, `userHash`, `SetID`, `params` per set: `{"own":1,"qtyOwned":n}` or `{"own":0}`, with `{"qtyWanted":n}` or `{"want":0}`, in one call | counted against the key |
+| Brickset | `checkUserHash` | `apiKey`, `userHash` | counted against the key |
+| Brickset | `getUserFlagLabels` | `apiKey`, `userHash` | counted against the key |
 
 Recorded jobs and source records name the path template and never the token or hash.
 
@@ -65,16 +66,34 @@ The rule is the setting `rebrickable_lost_parts_rule` (`add_only`, `per_part` (d
 
 ## Send
 
-`POST /sync/{source}/send/plan` lists the remote calls: per set whose count differs, the count to send (live copies here; wishes by quantity on Rebrickable, wanted yes/no on Brickset). Removals (`remove`, here 0) and conflicts are never ticked by default. `POST /sync/{source}/send/apply` (admin scope) performs the ticked rows in order; each row reports `sent`, `unchanged`, `failed` (with the reason), `paused` (daily budget; the rest pause too) or `key_rejected` (the rest stop). Re-applying the same plan retries only rows not yet sent. On Rebrickable, a wish row can't be ticked while no `wishlist` is linked (#514). Its `reason` says *Link a Rebrickable wishlist to send wishes to*. An owned row with no list to send to can't be ticked either. Remote changes are not undone by Brick Work's Undo.
+`POST /sync/{source}/send/plan` lists the remote calls: per set whose count differs, the count to send (live copies here; wishes by quantity on both sites). Removals (`remove`, here 0) and conflicts are never ticked by default. `POST /sync/{source}/send/apply` (admin scope) performs the ticked rows in order; each row reports `sent`, `unchanged`, `failed` (with the reason), `paused` (daily budget; the rest pause too) or `key_rejected` (the rest stop). Re-applying the same plan retries only rows not yet sent. On Rebrickable, a wish row can't be ticked while no `wishlist` is linked (#514). Its `reason` says *Link a Rebrickable wishlist to send wishes to*. An owned row with no list to send to can't be ticked either. Remote changes are not undone by Brick Work's Undo.
 
 Condition, completeness, box, instructions, and storage never leave Brick Work.
 
+## A run as a job
+
+A run of the Rebrickable or Brickset page has five steps: choose, pick, preview, run, and result. A short run is applied in one request. A long run is a durable job (`core.sync.run_job`, #685, [ADR 0042](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0042-sync-run-as-a-job.md)).
+
+`run_job.queue` freezes the validated choices into the run record. It adds one `job` row of kind `sync_run`, with one `job_step` for each stage that has work: `pull`, `parts`, `send` and `lost_out`. The embedded drainer, or `brickwork worker`, runs it. It survives a restart and shows in Jobs. In `GET /jobs`, a step's `count` and `total` are the changes done and chosen.
+
+Runs start from the web page only. The API has no start or stop endpoint. Jobs lists the job, but retry and resume answer `404`, because they are for pipeline jobs. `POST /jobs/drain` does not run it either. The drainer takes it up by itself, and Send again is `run.retry_send`.
+
+- **Progress is what Brick Work knows.** The pull and the part-list stages are one transaction, with one undo event for the whole run. They go from 0 to done. The send and Lost Parts out stages go one call at a time (Brickset: one call per set number). Their count is the rows done, and it advances after each call.
+- **Stop after this one** (`run_job.request_stop`) takes effect between calls and between stages, never halfway through a call. What was done stays done. The unfinished stages are `stopped` in the run's result. Their job steps end `done`, and the job ends `done` with the note *Stopped at your request*. A job that waits for the budget is stopped at once.
+- **A restart never repeats a send.** A stage recorded as started when its worker died is not run again. It becomes `failed` ("Interrupted") with the rows of the send plan. Send again (`run.retry_send`) can then send what did not go out, once the person has checked. The pull, part-list and Lost Parts stages are not retried from the result. A new run offers their rows again.
+- **Budget.** A paused call ends the job `waiting_for_budget` with the retry time of the source. The job resumes by itself and sends only the rows not yet sent. A plan lasts 24 hours from the last write of the job. A job that waits or is down for longer has lost its run, and a new run offers the rows again.
+- **An unexpected error** ends the job `failed` and settles the run as it stands, with its audit entry. Undo of the run is then one step. If the closing write failed as well, the run has no audit entry, and Undo reverts one event at a time. A run that never began is released and can be queued again.
+- The synchronous `run.apply`, `save_pick` and `retry_send` leave a run with an unfinished job alone.
+
 ## State
 
-One `sync_state` row per source: `link_json` (carried by the migration), `baseline_json` (remote and here counts per item id at the last pull or send, for conflict detection), `last_pull_json` and `last_send_json`. Each row of the last send keeps its `result` and its `detail`, the reason a row failed (#514). The baseline and the last pull and send start empty. `GET /sync/{source}` returns them with the credential states (never the values) and the number of rows waiting from the last send.
+One `sync_state` row per source: `link_json` (carried by the migration), `baseline_json` (remote and here counts per item id at the last pull or send, for conflict detection, and a `kept` map, see below), `last_pull_json` and `last_send_json`. Each row of the last send keeps its `result` and its `detail`, the reason a row failed (#514). The baseline and the last pull and send start empty.
+
+A conflict the person chose to Keep is remembered in `baseline_json.kept` (#686): `{kind: {item id: [remote count, here count]}}`, the two counts at the moment of the Keep. The next run shows the conflict again, as the "Changed in both places" card with Take and Send offered, while both counts are still those two numbers. When either side changes, the pair no longer matches and the Keep is forgotten, with no clean-up job. The Keep is written when the run starts, before its stages, so a run that pulls nothing still remembers it. Taking the set or sending it ends its Keep. A run that shows only one kind of rows leaves the Keeps of the other kind as they are. A kept row has no default action, so `POST /sync/{source}/pull/apply` with no ticks never adds it. A pull's Undo restores the baseline, with its `kept` map, as it was. `GET /sync/{source}` returns them with the credential states (never the values) and the number of rows waiting from the last send.
 
 ## Open facts
 
 - Rebrickable user tokens: Rebrickable documents no expiry; a refused token surfaces as `key_rejected`.
-- Brickset `setCollection` and `login` limits are not published; the local caps listed earlier are Brick Work's own.
-- Brickset wanted sets carry no quantity in the API; wishes send as wanted yes/no.
+- Brickset counts every call against the key, not only `getSets` (100 a day to start; the change came in November 2026). Brick Work counts `getSets`, `setCollection`, `checkUserHash` and `getUserFlagLabels`. Brickset also counts key checks and logins, so its own number can be a few higher. `login` has a local cap of 10 a day.
+- Brickset keeps a wanted quantity (`qtyWanted`); a wish sends its quantity.
+- Brickset notes and flags (pull, back end only until the page has its frames): the two `getSets` reads already carry them, and `getUserFlagLabels` names the flags. `sync.set_fields` plans and applies the pull as its own stage with its own receipt and Undo. A note goes to every live copy of the set that has none, or to the set's wish when there is no copy. A different note is a conflict that is kept unless chosen. A note changed after the plan is left alone. Each flag is one tag, named by its label or `Brickset flag N`, kept in the setting `brickset_flag_tags`. A pull only adds links to tags. It also renames a tag that is still named `Brickset flag N` to its label, whatever is ticked, unless another live tag has that name; the plan lists those renames. A copy or wish archived after the plan is skipped.

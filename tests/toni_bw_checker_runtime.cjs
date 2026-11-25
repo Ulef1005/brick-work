@@ -242,6 +242,21 @@ class Element {
  assert(!/[−–-]\d/.test(stage.text+' '+root.querySelector('[data-history]').text));
  click('decrease');assert(stage.text.includes('Found ×3'));click('answer');
  await new Promise(resolve=>setImmediate(resolve));assert.equal(server.rows[0].missing,1);assert.equal(server.rows[0].checked,1);assert(history.text.includes('Missing · larger, so the count stays editable'));assert(history.text.includes('1 missing'));assert.equal(history.querySelectorAll('[data-action]').filter(b=>b.dataset.action==='set_count').length,2);assert(stage.text.includes('Found ×2'));
+ // #649: the stepper of a missing line counts what was found (need 4, 1 missing: "3 found"); − is one fewer found, + one more found, 0 to the need
+ {const steps=()=>history.querySelectorAll('[data-action]').filter(b=>b.dataset.action==='set_count');const [less,more]=steps();
+  assert.deepEqual([less.textContent,less.dataset.delta,less['aria-label'].startsWith('One fewer found'),less.disabled],['−','1',true,false]);
+  assert.deepEqual([more.textContent,more.dataset.delta,more['aria-label'].startsWith('One more found'),more.disabled],['+','-1',true,false]);
+  const mid=history.querySelectorAll('SPAN').find(n=>n.className==='chk-found-n');assert.equal(mid.textContent,'3');assert.equal(mid.children[0].textContent,' found');   // the real DOM reads "3 found", with the space
+ assert.equal(mid.text.replace(/\s+/g,' ').trim(),'3 found');
+  root.handlers.click({target:less});await new Promise(resolve=>setImmediate(resolve));assert.equal(server.rows[0].missing,2);   // one fewer found = one more missing
+  assert.equal(history.querySelectorAll('SPAN').find(n=>n.className==='chk-found-n').text.replace(/\s+/g,' ').trim(),'2 found');
+  root.handlers.click({target:steps()[1]});await new Promise(resolve=>setImmediate(resolve));assert.equal(server.rows[0].missing,1);   // and back
+  assert.equal(history.querySelectorAll('SPAN').find(n=>n.className==='chk-found-n').text.replace(/\s+/g,' ').trim(),'3 found');
+  for(let n=0;n<3;n++){root.handlers.click({target:steps()[0]});await new Promise(resolve=>setImmediate(resolve));}   // down to 0 found: − stops there
+  assert.equal(server.rows[0].missing,4);assert.equal(steps()[0].disabled,true);assert.equal(steps()[1].disabled,false);
+  assert.equal(history.querySelectorAll('SPAN').find(n=>n.className==='chk-found-n').text.replace(/\s+/g,' ').trim(),'0 found');
+  for(let n=0;n<3;n++){root.handlers.click({target:steps()[1]});await new Promise(resolve=>setImmediate(resolve));}
+  assert.equal(server.rows[0].missing,1);}
  assert.equal(undoButton.hidden,false);assert(root.querySelector('[data-save-status]').text.includes('Saved'));
  assert.equal(feedback.querySelector('[data-action]'),undoButton);
  assert.deepEqual([block().children[0].textContent,block().children[1].children.map(n=>n.textContent).join('|')],['98313','Pearl Dark Gray|98313']);

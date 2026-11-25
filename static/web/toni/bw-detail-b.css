@@ -50,3 +50,39 @@
 
 /* Row lists inside a card (consists of, used in sets): hairline rows */
 #bw-collection[data-b-detail]:not(#_):not(#_) .bc-module .bc-row {border-radius:0;box-shadow:none}
+/* #655 (Ulf's check on a phone): the aside cards keep their 10px gap at every width (the aside was a block on a phone, so the gap did not
+   apply and Wish details sat on Prices); a closed disclosure card has no hairline under its summary, so no empty strip; the status row
+   (Wanted · 1) keeps 8px from the links above it when it wraps under them. */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside {display:flex;flex-direction:column}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside>details.bc-module:not([open]) {gap:0}
+/* the aside's own gap (10px) is the space between its cards: the module's inherited margin would stack on it */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside>.bc-module {margin-bottom:0}
+/* the status row keeps 8px from the links above it where the hero text has no gap of its own (the S hero text has one, except on a phone) */
+#bw-collection[data-b-detail]:not(#_):not(#_):not([data-type=S]) .bc-hero-heading+.bc-hero-status {margin-top:8px}
+@media(max-width:767.98px) {
+  #bw-collection[data-b-detail]:not(#_):not(#_)[data-type=S] .bc-hero-heading+.bc-hero-status {margin-top:8px}
+}
+
+/* The wish page (#655, frame 62): the answer first, then Your wish and Prices. */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-answer {display:block;margin:0 0 14px;padding:12px 0 0;border-top:1.5px solid var(--tw-rule)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-answer h2 {margin:0;font:600 18px/24px var(--tw-font);letter-spacing:0;text-transform:none;color:var(--tw-text)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-answer p {margin:3px 0 0;font:400 12.5px/18px var(--tw-mono);color:var(--tw-text-2)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv {display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 24px;margin:0}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dt {margin:0;color:var(--tw-text-2);font:400 14px/20px var(--tw-font)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dd {margin:0;color:var(--tw-text);font:500 14px/20px var(--tw-font)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dd strong {font:600 15px/20px var(--tw-mono)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-facts {margin:0}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-no-sales {display:flex;justify-content:space-between;align-items:baseline;margin:0;padding:8px 0;border-bottom:1px solid var(--tw-divider);color:var(--tw-text-2)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-no-sales small {font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-price-single {margin:8px 0 0;font:400 13px/18px var(--tw-font);color:var(--tw-text-2)}
+/* The tags of the Wishlist (state is shape and a word): the hero tag and the answer share the tile's look */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bp-state-under {background:var(--tw-text);color:var(--tw-bg)}
+#bw-collection[data-b-detail]:not(#_):not(#_) :is(.bp-state-nomax,.bp-state-differs,.bp-state-noprice) {border-style:dashed}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dt .bc-wish-limit {all:unset;box-sizing:border-box;cursor:pointer;color:var(--tw-text-2);font:400 14px/20px var(--tw-font);text-decoration:underline dotted;text-underline-offset:3px}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dt .bc-wish-limit:focus-visible {outline:2px solid var(--tw-accent);outline-offset:2px}
+/* A wish on a phone (product, 23.11.): the picture is 110px beside the title, as on Set detail, so the answer stays on the first screen */
+@media(max-width:1023.98px) {
+  #bw-collection[data-b-detail][data-b-wish]:not(#_):not(#_) .bc-detail-hero {grid-template-columns:110px minmax(0,1fr);column-gap:16px;align-items:start}
+  #bw-collection[data-b-detail][data-b-wish]:not(#_):not(#_) .bc-hero-picture {width:110px;height:84px;min-height:0;aspect-ratio:auto;padding:4px;box-sizing:border-box}
+}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-conversion {margin:2px 0 0;font:400 12px/18px var(--tw-mono);color:var(--tw-text-2)}

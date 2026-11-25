@@ -166,7 +166,7 @@ def identity_undo_offer(text):
     return identifier if found else None
 
 
-SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'sync')
+SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness')
 
 
 def settings_undo_offer(db, text):
@@ -348,8 +348,7 @@ def bw_admin_write(page):
                 moves = {k.removeprefix('group_of:'): v for k, v in request.form.items() if k.startswith('group_of:')}
             saved = admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness,
                                           part_list_grouping=request.form.get('part_list_grouping'), part_group_overrides=moves,
-                                          official_download_limit_mb=request.form.get('official_download_limit_mb'),
-                                          rebrickable_lost_parts_rule=request.form.get('rebrickable_lost_parts_rule') or None)
+                                          official_download_limit_mb=request.form.get('official_download_limit_mb'))
         elif page == 'refresh':
             admin_ops.tools_write('refresh')
             bw_start_worker()
@@ -958,7 +957,7 @@ def bw_add_review():
     kind, where, mode = data.get('type', 'set'), data.get('where', 'owned'), data.get('mode', 'paste')
     if kind not in add.KIND_NAMES:
         abort(400, 'Choose an item type')
-    photo = None
+    photo, file_origin = None, None
     try:
         with _add_database() as db, audit_origin('app'):
             if mode == 'paste':
@@ -971,6 +970,7 @@ def bw_add_review():
                 if len(raw) > 2 * 1024 * 1024:
                     raise ValueError('Choose a file smaller than 2 MB')
                 rows = add.file_rows(raw, upload.filename or '', kind, where)
+                file_origin = add.file_origin(raw, upload.filename or '')
             elif mode == 'search':
                 rows = data.get('items', [])
                 if not isinstance(rows, list):
@@ -994,7 +994,8 @@ def bw_add_review():
                     row['score'] = scores.get(row['item_id'])
                 proposal['unresolved'] += [dict(number=m['item_no'], reason=m['reason']) for m in missed]
             token = bw_add_signer().dumps(dict(**proposal, batch=uuid.uuid4().hex, owner=bw_add_token(), mode=mode,
-                                               photo=base64.b64encode(photo).decode() if photo else None))
+                                               photo=base64.b64encode(photo).decode() if photo else None,
+                                               **({'origin': file_origin} if mode == 'file' else {})))
         return jsonify(**proposal, token=token, candidates=mode == 'photo')
     except (ValueError, SourceError, sqlite3.Error, OSError, UnicodeError, json.JSONDecodeError, ET.ParseError) as error:
         return jsonify(error=public(error, 'Could not read this input')), 400
@@ -1047,7 +1048,8 @@ def bw_add_confirm():
         with _add_database() as db, audit_origin('app'):
             rows = add.validate_edits(db, original, data.get('items'), batch=proposal['batch'])
             receipts = add.confirm(db, rows, batch=proposal['batch'], photo=base64.b64decode(proposal['photo']) if proposal.get('photo') else None,
-                                   keep_photo=data.get('keep_photo') is True, find_instructions=data.get('find_instructions') is True)
+                                   keep_photo=data.get('keep_photo') is True, find_instructions=data.get('find_instructions') is True,
+                                   origin=proposal.get('origin'))
         if receipts:
             bw_start_worker()
         return jsonify(receipts=[_add_receipt_view(r) for r in receipts], batch=proposal['batch'])
@@ -1259,7 +1261,10 @@ def bw_build_scout_page(item_id):
     try:
         with database(brickwork_path(), read_only=True) as db:
             if item_id is None:
-                shown = scout_page.context(db, params, int(request.args['set']) if request.args.get('set', '').isdigit() else None)
+                if params['scan']:
+                    shown = scout_page.context(db, params, int(request.args['set']) if request.args.get('set', '').isdigit() else None)
+                else:
+                    shown = scout_page.idle(db, params)      # opening Build Scout starts nothing; the Scan button does (#668)
             else:
                 panel = scout_page.detail(db, params, item_id)
                 if panel is None:
@@ -2798,6 +2803,8 @@ def bw_wishlists_export(identifier,format):
         return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
 
 from . import sync_views  # noqa: E402,F401 — 12n Collection sync pages
+from . import sync_site  # noqa: E402,F401 — the Rebrickable and Brickset sync pages and their steps (#519, #520)
+from . import sync_bricklink_steps  # noqa: E402,F401 — the BrickLink sync page and its steps (#521); registers the routes of sync_bricklink too
 
 from . import import_views  # noqa: E402,F401 — Import from BrickTracker (#11)
 

@@ -28,6 +28,7 @@ The backup is also the way back. An upgrade that changes the schema is one-way.
 | 1.0.0 | 1.0.1 | none (stays 4.2) | Nothing. | Start the older version on the same file. |
 | 1.0.x | 1.1.0 | 4.2 to 4.6 | In place, at the first read/write start, one step per version. It is one way: an older version refuses a 4.6 file. | Restore the backup. 1.0.1 and older cannot open a 4.6 file. |
 | 1.1.0 | 1.1.1 | none (stays 4.6) | Nothing. | Start the older version on the same file. |
+| 1.1.1 | 1.2.0 | 4.6 to 4.7 | In place, at the first read/write start. It is one way: an older version refuses a 4.7 file, so back up first. | Restore the backup. 1.1.1 and older cannot open a 4.7 file. |
 
 You can skip versions from 0.6.0 on. Starting 0.9.0 on a 4.0 file runs both in-place steps one after the other, each in its own transaction. A step that fails leaves the file at the version before it. From 0.5.x you always run `brickwork migrate4` first, and it writes the schema of the version you are moving to.
 
@@ -48,7 +49,7 @@ With the Docker install, check out the release you want by its tag, then pull it
 
 ```sh
 git fetch
-git checkout v1.1.1
+git checkout v1.2.0
 docker compose pull         # 0.9.0 and older: docker compose build
 docker compose up -d
 ```
@@ -67,7 +68,7 @@ The first command checks the build provenance: the image was built by this repos
 
 ## Check the result
 
-1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "1.1.1"` and `"schema": "4.6"`. `/api/v1/health` answers the same.
+1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "1.2.0"` and `"schema": "4.7"`. `/api/v1/health` answers the same.
 2. Run `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`), or press **Run integrity check** under **Manage → Tools & Admin → Maintenance → Backup and database check**. Both must pass.
 3. Open **Sets** and compare what you see with your last export if you kept a note of the counts.
 

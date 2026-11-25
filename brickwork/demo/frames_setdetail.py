@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from ..core import stock
 from ..core.transaction import transaction
+from ..store4 import origins
 from . import clock, dataset, frames, real
 from .showcase import seeded_uuids
 
@@ -123,3 +124,20 @@ class SetDetailLayer(frames.Layer):
 
 def setdetail_layer(folder=real.FOLDER, pictures=False):
     return SetDetailLayer(folder, pictures)
+
+
+class SourceLayer(SetDetailLayer):
+    """Frame 44 (#551): the same copy, as a pull from Rebrickable made it: Added via Rebrickable sync, last synced from the list "Main collection" on 18 Nov at 21:40."""
+    def fill(self, db, ids):
+        super().fill(db, ids)
+        with transaction(db):
+            fixed = db.execute("SELECT sql FROM sqlite_master WHERE type='trigger' AND name='copy_added_via_fixed'").fetchone()[0]
+            db.execute('DROP TRIGGER copy_added_via_fixed')                      # the demo makes the copy by hand; frame 44 draws it as a pull made it
+            db.execute("UPDATE copy SET added_via='rebrickable' WHERE id=?", (COPY,))
+            db.execute(fixed)
+            origins.touch(db, 'copy', COPY, 'rebrickable', at='2026-11-18T21:40:00Z', list_key='main', list_name='Main collection')
+            db.execute("UPDATE copy SET checked_by='rebrickable' WHERE id=?", (COPY,))
+
+
+def source_layer(folder=real.FOLDER, pictures=False):
+    return SourceLayer(folder, pictures)

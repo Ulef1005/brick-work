@@ -151,7 +151,7 @@ def test_a_screen_that_is_not_ported_says_so_and_every_screen_is_ported_since_m8
     with monkeypatch.context() as patch:
         patch.setattr(ported, 'PORTED', ported.PORTED - {'web.bw_sync'})                    # the hold still works for a screen a later piece adds
         assert client.get('/manage/sync').status_code == 503
-    for served in ('/manage/sync', '/manage/import-legacy', '/', '/collection/sets', f'/collection/item/{world.keep}', '/collection/jump?q=a', '/workbench/matcher', '/workbench/storage', '/planning/wishlist',
+    for served in ('/manage/sync', '/workbench/sync', '/workbench/sync/rebrickable', '/manage/import-legacy', '/', '/collection/sets', f'/collection/item/{world.keep}', '/collection/jump?q=a', '/workbench/matcher', '/workbench/storage', '/planning/wishlist',
                    '/planning/prices', '/planning/complete-sets', '/workbench/orders', '/workbench/what-is-this', '/manage/tools', '/manage/unresolved', '/manage/catalogues', '/manage/settings',
                    '/manage/tokens', '/manage/database'):
         assert client.get(served).status_code != 503, served

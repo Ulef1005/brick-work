@@ -1,0 +1,176 @@
+/* Workbench Sync hub layout and cards; colours inherit from app theme tokens. */
+/* The page is capped at 1180px like every B′ frame (.page), as bw-admin.css does for the Tools & Admin hub. */
+.bw-admin-page.bw-sync-hub-page {
+  box-sizing: border-box;
+  max-width: 1180px;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.sh-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sh-sites {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.sh-site {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sh-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sh-name {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+.sh-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sh-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sh-tag-dash {
+  border-style: dashed;
+  color: var(--tw-text-2);
+  opacity: 0.85;
+}
+
+.sh-site-desc {
+  margin: 0;
+}
+
+.sh-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.sh-meta > div {
+  display: contents;
+}
+
+.sh-meta dt,
+.sh-import-meta dt {
+  color: var(--tw-text-2);
+}
+
+.sh-meta dd,
+.sh-import-meta dd {
+  margin: 0;
+  font-weight: 500;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sh-site .bk-actions {
+  margin-top: auto;
+}
+
+.bw-sync-hub-page .sh-import {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "name meta desc action";
+  align-items: center;
+  gap: 16px 32px;
+}
+
+.bw-sync-hub-page .sh-import-body {
+  display: contents;
+}
+
+.bw-sync-hub-page .sh-import .sh-name { grid-area: name; }
+.bw-sync-hub-page .sh-import .sh-site-desc { grid-area: desc; }
+
+.bw-sync-hub-page .sh-import-meta {
+  grid-area: meta;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.bw-sync-hub-page .sh-import-meta > div {
+  display: contents;
+}
+
+.bw-sync-hub-page .sh-import-actions {
+  grid-area: action;
+  margin: 0;
+}
+
+.bw-sync-hub-page .sy-log {
+  margin: 0;
+  padding: 20px;
+  background: var(--tw-surface, var(--bk-surface, transparent));
+  border: 1px solid var(--tw-divider, currentColor);
+  border-radius: 4px;
+}
+
+.bw-sync-hub-page .sy-log .bk-eyebrow,
+.bw-sync-hub-page .sy-how .bk-eyebrow {
+  margin: 0 0 12px;
+  color: inherit;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.bw-sync-hub-page .sy-how {
+  max-width: none;
+  width: 100%;
+}
+
+.bw-sync-hub-page .sy-how .bk-text {
+  max-width: none;
+}
+
+@media (max-width: 1080px) {
+  .sh-sites {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .sh-sites {
+    grid-template-columns: 1fr;
+  }
+
+  .bw-sync-hub-page .sh-import {
+    grid-template-columns: 1fr;
+    grid-template-areas: "name" "meta" "desc" "action";
+  }
+}

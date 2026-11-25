@@ -33,6 +33,7 @@ def test_a_copy_is_the_copy_body_with_words_prices_as_text_and_the_item_body(v2,
     assert copy['item']['id'] == world.keep and copy['item']['rebrickable'] == {'key': '1000-1'} and copy['name'] == 'Syn Castle Keep'
     assert (copy['condition'], copy['completeness'], copy['completeness_source']) == ('used', 'incomplete', 'manual')
     assert copy['checked_by'] is None                                            # #489: read only; NULL when Brick Work (or nobody) checked it
+    assert copy['source'] == {'added_via': 'hand', 'added_via_label': 'By hand', 'last_synced_from': []}   # #551: read only
     assert (copy['storage_id'], copy['purchase_location_id'], copy['purchase_price'], copy['purchase_currency'], copy['purchase_date'], copy['note']) == (
         world.shelf, world.shop, '12.50', 'EUR', '2024-05-01', 'Flea market')
     assert (copy['missing'], copy['damaged'], copy['pinned'], copy['archived_at']) == (1, 0, False, None)
@@ -393,3 +394,15 @@ def test_a_booklet_or_box_number_finds_the_gaps_and_matches_of_its_set(v2, coll,
         found = data(call(v2, f'/gaps?kind={kind}&number=1000-1'))
         assert found and {g['target'] for g in found} == {kind} and {g['copy_id'] for g in found} == {world.copy_a, world.copy_b}
     assert {m['target'] for m in data(call(v2, '/matches?kind=instructions&number=1000-1'))} == {'instructions'}
+
+
+def test_copies_are_filtered_by_the_site_list_they_were_synced_from(v2, coll, world):
+    """#531: `list` keeps the copies synced from the named set list; a copy synced from two lists answers to both; no copy answers to a made-up name."""
+    from brickwork.store4 import origins
+    origins.touch(coll.db, 'copy', world.copy_a, 'rebrickable', at=fresh(), list_key='101', list_name='Castles')
+    origins.touch(coll.db, 'copy', world.copy_a, 'rebrickable', at=fresh(), list_key='102', list_name='Wishful')
+    origins.touch(coll.db, 'copy', world.copy_b, 'rebrickable', at=fresh(), list_key='102', list_name='Wishful')
+    coll.db.commit()
+    assert ids(call(v2, '/copies?' + urlencode({'list': 'Castles'}))) == [world.copy_a]
+    assert sorted(ids(call(v2, '/copies?' + urlencode({'list': 'Wishful'})))) == sorted([world.copy_a, world.copy_b])
+    assert ids(call(v2, '/copies?' + urlencode({'list': 'Made up'}))) == []

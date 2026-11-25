@@ -501,3 +501,10 @@ Gap list: `~/Workspace/_exports/design-brief-n/frame-gaps-n.md`. Requested by br
 - **F-03 (`48-sets-pulled-copy`):** the phone frame carries "Checked on Rebrickable" on the first tile (7213-1, copy 1).
 - **F-04 (all Sync frames, phone):** the phone sub row is the full Workbench row, as on the U frames, Sync first. Replaces the three-entry row of round 5.
 
+## Commission N round 6 (approved by Ulf 2026-11-25, "All approved"): the interrupted run (#685, built in #707)
+
+- **Copy, `95-sync-long-run-applying` and `57-sync-long-run`:** "If the server restarts, the run stops safely and shows what went out. Finished steps stay done." replaces "goes on from the last saved step / last sent change" (brick-work-product, 2026-11-24, from brick-work-n's build): after a restart finished stages stay done and a send in flight is never repeated, because a send is not safe to repeat.
+- **`96-sync-run-interrupted`:** the run after a restart: Pull applied (Done, stays done); Sending (Interrupted) with the rows that went out (Sent), the row that was in flight (Not known) and the count (640 of 800 sent, 1 not known, 159 not sent); a note that a send is never repeated by itself; Send again and Open Jobs. The wording on the frame is design's and was approved with it.
+- **Budget:** frames 57 and 95 show the same run with the Rebrickable budget of 1,000 (product, from the code), already on main with #705.
+- **`96-sync-run-interrupted`, changed (brick-work-product, 2026-11-25):** the Not known row has its own choice, "Send it too" or "Leave it" (the person checks the row at the site first); Send again sends only the 159 not sent, and the Not known row stays out of it until the person chooses. The Pull applied card says "Undo for this pull is in Last runs, where this run is listed as Interrupted"; so the frame has no Undo of its own. Approved by Ulf 2026-11-25 ("approved"). The two buttons belong to the Not known row (one pair per row that is not known); the frame draws them directly under that row. This version replaces the round 6 one above.
+

@@ -88,3 +88,8 @@ def test_a_list_recorded_without_its_name_takes_the_name_another_row_has():
 def test_the_script_combines_the_two_rows_and_a_pressed_chip_clears_its_row():
     js = (ROOT / 'static/web/toni/bw-collection.js').read_text()
     assert "data-bc-src" in js and "control.value=on?'':v" in js
+
+
+def test_the_source_rows_sit_above_the_storage_row():
+    html = (ROOT / 'templates/web/toni/web/bw_sets.html').read_text()
+    assert html.index('data-bp-source>') < html.index('data-bp-storage-row>')       # frame 45, 390 wide

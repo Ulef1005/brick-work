@@ -139,6 +139,8 @@ def read_body(spec):
             raise errors.UnsupportedMediaType()
         if spec['endpoint'] == 'post_imports_bricktracker':
             return upload_database(spec)
+        if spec['endpoint'] == 'post_imports_brickwork_plan':
+            return upload_zip(spec)
         kind = 'identification' if 'identifications' in spec['endpoint'] else 'photos' if 'photos' in spec['endpoint'] else 'instruction'
         limit = UPLOAD_LIMITS[kind] * 1024 * 1024
         file = request.files.get('file')
@@ -211,6 +213,20 @@ def upload_database(spec):
         target.unlink(missing_ok=True)
         raise
     return form, Upload(target, digest.hexdigest(), file.filename or 'app.db')
+
+
+def upload_zip(spec):
+    """One Brick Work export zip from a multipart request, read into memory, up to `own_import.MAX_ZIP_BYTES`."""
+    from ..core import own_import
+    file = request.files.get('file')
+    if file is None or set(request.files) != {'file'}:
+        raise errors.ValidationFailed('Choose a Brick Work export file (a zip)')
+    content = file.read(own_import.MAX_ZIP_BYTES + 1)
+    if len(content) > own_import.MAX_ZIP_BYTES:
+        raise errors.PayloadTooLarge()
+    form = request.form.to_dict()
+    validate(dict(form, file='upload'), spec['schema'])
+    return form, content
 
 
 # ---------- items in a request ----------

@@ -16,6 +16,7 @@ from xml.etree import ElementTree as ET
 from . import collection, errors, items
 from .currency import configured_currency
 from .transaction import transaction
+from ..store4 import origins
 from ..store4.connect import now as stamp_now
 
 DEFAULT = 'default'
@@ -110,7 +111,7 @@ def transfer(db, ids, target, *, copy=False):
             new_ids = []
             for r in before:
                 values = {k: v for k, v in r.items() if k != 'id'}
-                values.update(id=uuid4().hex, wishlist_id=target, added_at=stamp, updated_at=stamp)
+                values.update(id=uuid4().hex, wishlist_id=target, added_at=stamp, updated_at=stamp, added_via=origins.current())
                 db.execute('INSERT INTO wish(' + ','.join(values) + ') VALUES(' + ','.join('?' for _ in values) + ')', tuple(values.values()))
                 new_ids.append(values['id'])
             changes = [('wish', [], collection.snapshot(db, 'wish', new_ids))]

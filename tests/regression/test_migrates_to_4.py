@@ -68,6 +68,12 @@ def test_migrates_to_4(fixture, tmp_path, world):
             ALTER TABLE instruction_file DROP COLUMN thumbnail_path;
             ALTER TABLE instruction_file DROP COLUMN thumbnail_state;
             ALTER TABLE copy DROP COLUMN checked_by;
+            ALTER TABLE copy DROP COLUMN rating; ALTER TABLE wish DROP COLUMN priority;
+            DROP TABLE synced_from;
+            DROP TRIGGER copy_added_via_fixed; DROP TRIGGER stock_added_via_fixed; DROP TRIGGER wish_added_via_fixed;
+            DROP INDEX copy_added_via; DROP INDEX stock_added_via; DROP INDEX wish_added_via;
+            ALTER TABLE copy DROP COLUMN added_via; ALTER TABLE stock DROP COLUMN added_via; ALTER TABLE wish DROP COLUMN added_via;
+            DROP TABLE origin;
             UPDATE meta SET value='4.2' WHERE key='schema_version';""")
     assert upgrade(older) == SCHEMA_VERSION
     with closing(sqlite3.connect(older)) as db:

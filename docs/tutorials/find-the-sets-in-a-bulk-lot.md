@@ -5,6 +5,8 @@ verified: 1.0
 
 # Find the sets in a bulk lot
 
+**Try it first:** [the flea-market lot in the demo](https://brick-work.app/demo/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c/_detect-1/) shows Set detection with two candidate sets and a pull list.
+
 You bought a bag of mixed loose bricks and suspect that several sets were thrown into it. In this tutorial you let Brick Work rank the sets the bag may hold and tell it about a sticker you cannot read. Then you tick off the parts of one set as you dig them out, and end with an owned copy of that set.
 
 It takes about 15 minutes. You need a Brick Work install with the catalogue loaded and a [lot](../concepts/collection-model.md) of loose parts: filed one piece at a time with Part Spotter or entered some other way. Every picture comes from an invented collection, so your own numbers and names will differ.

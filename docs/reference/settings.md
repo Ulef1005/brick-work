@@ -87,8 +87,10 @@ Stored paths are relative, so moving the media means moving the four folders. Th
 | `BW_BRICKLINK_TOKEN_SECRET` | none | BrickLink API token secret. All four together override the BrickLink key stored in the app. |
 | `BW_REBRICKABLE_API_KEY` | none | Rebrickable API key; overrides the stored one. |
 | `BW_BRICKSET_API_KEY` | none | Brickset API key; overrides the stored one. |
+| `BW_BRICKOWL_API_KEY` | none | Brick Owl API key; overrides the stored one. Give it the collection, wishlist and orders permissions. |
 | `BW_REBRICKABLE_USER_TOKEN` | none | Your Rebrickable account token for collection sync, instead of connecting it in the app. |
 | `BW_BRICKSET_USER_HASH` | none | Your Brickset account hash for collection sync, instead of connecting it in the app. |
+| `BW_BRICKOWL_DAILY_BUDGET` | `2000` | Brick Owl API calls per day. Brick Owl allows 2,000 reads a day on each collection, wishlist and order list; this can only lower it. Must be a positive whole number. |
 | `BW_BRICKLINK_DAILY_BUDGET` | `4400` | BrickLink API calls per day. BrickLink allows 5,000; the rest is a margin for other tools on the same key. Must be a positive whole number. |
 | `BW_REBRICKABLE_DAILY_BUDGET` | `1000` | Rebrickable API calls per day. Must be a positive whole number. |
 | `BW_BRICKOGNIZE_DAILY_BUDGET` | `100` | Photo identifications per day. |

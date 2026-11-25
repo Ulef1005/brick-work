@@ -94,6 +94,8 @@ KEY_HELP = {
                       where='Get a BrickLink key', url='https://www.bricklink.com/v2/api/register_consumer.page'),
     'brickset': dict(gives='Set data such as retail prices, and set pictures.', where='Get a Brickset key',
                      url='https://brickset.com/tools/webservices/requestkey'),
+    'brickowl': dict(gives='Your Brick Owl collection and wishlists, for the Brick Owl sync.', where='Get a Brick Owl key',
+                     url='https://www.brickowl.com/api_docs'),
 }
 
 
@@ -117,4 +119,4 @@ def collection_summary():
 
 
 # The pages a step-3 choice opens: while the flow sent the user there, they offer the way back to it.
-RETURN_ENDPOINTS = {'web.bw_sync', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_import_legacy', 'web.bw_import_plan', 'web.bw_add'}
+RETURN_ENDPOINTS = {'web.bw_sync', 'web.bw_sync_hub', 'web.bw_sync_site', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_import_legacy', 'web.bw_import_plan', 'web.bw_add'}

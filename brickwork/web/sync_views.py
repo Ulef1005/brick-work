@@ -1,6 +1,7 @@
 """12n Collection sync pages (#10): sources, link, pull preview, send review. Services live in core.sync."""
 from contextlib import closing
 import json
+import re
 import sqlite3
 
 from flask import abort, flash, get_flashed_messages, redirect, render_template, request, url_for
@@ -48,13 +49,24 @@ def _budget(db, source):
         return None
 
 
-def _log(db, limit=20):
-    """Sync log rows from the receipts, their undos and the send records, newest first."""
+def _log(db, limit=20, source=None):
+    """Sync log rows from the receipts, their undos and the send records, newest first.
+    With a source, only that site's rows (an undo counts for the site of the pull it undid), read until `limit` of them are found."""
     rows = []
     for r in db.execute("""SELECT e.id, e.entity_id, e.field, e.new_value, e.at, EXISTS(SELECT 1 FROM event_undo u WHERE u.event_id=e.id) AS undone
-            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send') ORDER BY e.id DESC LIMIT ?""", (limit,)):
+            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send', 'parts_receipt') ORDER BY e.id DESC""" + (' LIMIT ?' if source is None else ''),
+                        (limit,) if source is None else ()):
+        if source is not None and len(rows) >= limit:
+            break
         value = json.loads(r['new_value']) if r['new_value'] else None
-        if r['field'] == 'receipt':
+        site = _row_source(db, r, value)
+        if source is not None and site != source:
+            continue
+        if r['field'] == 'parts_receipt':
+            c = value.get('counts', {})
+            rows.append(dict(id=r['id'], at=r['at'], source='rebrickable', direction='Pulled', event=r['id'], state='Undone' if r['undone'] else 'Done',
+                             what=f"{c.get('pieces', 0)} loose {'piece' if c.get('pieces') == 1 else 'pieces'} added from {c.get('rows', 0)} part list {'row' if c.get('rows') == 1 else 'rows'}"))
+        elif r['field'] == 'receipt':
             c = value.get('counts', {})
             what = ' · '.join(p for p in (
                 f"{c.get('copies', 0)} {'copy' if c.get('copies') == 1 else 'copies'} added" if c.get('copies') else '',
@@ -62,17 +74,43 @@ def _log(db, limit=20):
                 f"{c.get('wishes_added', 0)} {'wish' if c.get('wishes_added') == 1 else 'wishes'} added" if c.get('wishes_added') else '',
                 f"{c.get('wishes_changed', 0)} wish quantities raised" if c.get('wishes_changed') else '',
                 _lost_words(c)) if p) or 'Nothing new'
-            rows.append(dict(at=r['at'], source=value['source'], direction='Pulled', what=what, state='Undone' if r['undone'] else 'Done', event=r['id']))
+            rows.append(dict(id=r['id'], at=r['at'], source=value['source'], direction='Pulled', what=what, state='Undone' if r['undone'] else 'Done', event=r['id']))
         elif r['field'] == 'undo':
-            rows.append(dict(at=r['at'], source='', direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
+            rows.append(dict(id=r['id'], at=r['at'], source=site, direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
         else:
             counts = (value or {}).get('counts', {})
             sent = counts.get('sent', 0) + counts.get('unchanged', 0)
             problems = {k: v for k, v in counts.items() if k not in ('sent', 'unchanged')}
-            what = f"{sent} {'change' if sent == 1 else 'changes'} sent" + ''.join(f" · {v} {k.replace('_', ' ')}" for k, v in problems.items())
+            what = ('Lost Parts: ' if (value or {}).get('kind') == 'lost_parts' else '') + f"{sent} {'change' if sent == 1 else 'changes'} sent" + ''.join(f" · {v} {k.replace('_', ' ')}" for k, v in problems.items())
             state = 'Done' if not problems else 'Waiting for you'
-            rows.append(dict(at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None))
-    return rows
+            rows.append(dict(id=r['id'], at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None, lost=(value or {}).get('kind') == 'lost_parts'))
+    return rows[:limit]
+
+
+def _event_id(value):
+    """An event id from a query or form value: ASCII digits that fit SQLite's integer, else None (never a 500 on '²' or a 30-digit id)."""
+    text = str(value or '')
+    return int(text) if re.fullmatch(r'[0-9]{1,18}', text) else None
+
+
+def _receipt_source(db, event_id):
+    """The site of one pull receipt ('' when the id names no receipt)."""
+    event_id = _event_id(event_id)
+    if event_id is None:
+        return ''
+    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field IN ('receipt', 'parts_receipt')", (event_id,)).fetchone()
+    return ((json.loads(row['new_value']) if row and row['new_value'] else {}) or {}).get('source', '') or ('rebrickable' if row else '')
+
+
+def _row_source(db, r, value):
+    """The site a log event belongs to: a receipt names it, a send keeps it as its entity id, an undo takes it from the pull it undid."""
+    if r['field'] == 'receipt':
+        return (value or {}).get('source', '')
+    if r['field'] == 'parts_receipt':
+        return 'rebrickable'
+    if r['field'] == 'undo':
+        return _receipt_source(db, (value or {}).get('undoes'))
+    return r['entity_id']
 
 
 def _lost_words(c):
@@ -86,9 +124,10 @@ def _lost_words(c):
 
 def lost_result(db, event_id):
     """The Lost Parts step of one pull as its receipt kept it (None: that pull had none), for the result card."""
-    if not str(event_id).isdigit():
+    event_id = _event_id(event_id)
+    if event_id is None:
         return None
-    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (int(event_id),)).fetchone()
+    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (event_id,)).fetchone()
     return (json.loads(row['new_value']) if row and row['new_value'] else {}).get('lost')
 
 
@@ -111,46 +150,124 @@ def _page(template, **context):
     return response
 
 
+_SITE_DESCRIPTIONS = {
+    'rebrickable': 'Set lists, wishlist, part lists and Lost Parts; minifigures as a check',
+    'brickset': 'Owned and wanted sets with their counts',
+    'bricklink': 'Orders into Orders, the price guide; store inventory and wanted lists by file follow',
+    'brickowl': 'Collection lots, wishlists, inventory, orders; a daily budget per kind',
+}
+
+
+def _last_sync(status):
+    """Newest pull or send time formatted with stamp, or 'Never'. Compared as instants: a pull is stamped '…Z', a send '…+00:00'."""
+    from datetime import datetime
+
+    from datetime import timezone
+
+    def instant(value):   # as a UTC instant (a stamp without an offset counts as UTC, as stored)
+        try:
+            moment = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        except ValueError:
+            return datetime.min
+        return moment.astimezone(timezone.utc).replace(tzinfo=None) if moment.tzinfo else moment
+    times = [t for t in ((status.get('last_pull') or {}).get('at'), (status.get('last_send') or {}).get('at')) if t]
+    return stamp(max(times, key=instant)) if times else 'Never'
+
+
+def _state_tag(status, connected):
+    """Second tag for a connected site when status carries a waiting count."""
+    if not connected or 'waiting' not in status or status['waiting'] is None:
+        return None
+    waiting = status['waiting']
+    if waiting:
+        return dict(text=f"{waiting} {'change' if waiting == 1 else 'changes'} waiting", dashed=True)
+    if status.get('last_pull') or status.get('last_send'):
+        return dict(text='In sync', dashed=False)
+    return None
+
+
+def _last_import(db):
+    """Newest file-import receipt time formatted with stamp, or 'Never'."""
+    row = db.execute("SELECT at FROM event WHERE field='receipt' AND entity_kind IN ('import', 'add') ORDER BY id DESC LIMIT 1").fetchone()
+    return stamp(row['at']) if row and row['at'] else 'Never'
+
+
+def _last_bricklink_sync(db):
+    """Newest BrickLink run time formatted with stamp, or 'Never'."""
+    row = db.execute("SELECT at FROM main.event WHERE entity_kind='sync' AND entity_id='bricklink' AND field='run' ORDER BY id DESC LIMIT 1").fetchone()
+    return stamp(row['at']) if row and row['at'] else 'Never'
+
+
+@web_page.get('/workbench/sync')
+@login_required
+@_unavailable
+def bw_sync_hub():
+    from flask import current_app
+    from ..core import sync
+    with _db() as db:
+        sites = []
+        for source in ('rebrickable', 'brickset'):
+            status = sync.status(db, source)
+            connected = bool(status['credentials']['user']['configured'])
+            sites.append(dict(
+                key=source, label=sync.LABELS[source], description=_SITE_DESCRIPTIONS[source],
+                connected=connected, state_tag=_state_tag(status, connected),
+                account=(status.get('account') or 'Linked') if connected else 'none', last_sync=_last_sync(status),      # #686: the account name when it is known
+                action_label='Open' if connected else 'Connect',
+                url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect'),
+            ))
+        from ..core import keys
+        bl_connected = bool(keys.state(db, 'bricklink')['configured'])
+        sites.append(dict(
+            key='bricklink', label='BrickLink', description=_SITE_DESCRIPTIONS['bricklink'],
+            connected=bl_connected, state_tag=None,
+            account='Linked' if bl_connected else 'none', last_sync=_last_bricklink_sync(db),
+            action_label='Open' if bl_connected else 'Connect',
+            url=url_for('web.bw_sync_bl_site') if bl_connected else url_for('web.bw_sync_bl_connect'),
+        ))
+        keys_url = url_for('web.bw_admin', page='catalogues')
+        sites.append(dict(
+            key='brickowl', label='Brick Owl', description=_SITE_DESCRIPTIONS['brickowl'],
+            connected=False, state_tag=None, account='none', last_sync='Never',
+            action_label='Connect', url=keys_url,
+        ))
+        import_url = url_for('web.bw_import_legacy') if 'web.bw_import_legacy' in current_app.view_functions else url_for('web.bw_add', mode='file')
+        import_export = dict(last_import=_last_import(db), last_export='Never', url=import_url)
+        log = _log(db)
+    return _page('web/toni/web/bw_sync_hub.html', title='Sync', sites=sites, import_export=import_export, log=log)
+
+
+@web_page.get('/workbench/sync/<source>')
+@login_required
+@_unavailable
+def bw_sync_site(source):
+    from .sync_site import site_page
+    _source(source)
+    return site_page(source)   # both sites have the six-step pages of web/sync_site.py (#519, #520)
+
+
 @web_page.get('/manage/sync')
 @login_required
 @_unavailable
 def bw_sync():
-    from ..core import sync
-    from ..core.sync import lost_parts
-    from .setup_state import key_missing
-    with _db() as db:
-        cards = []
-        for source in SOURCES:
-            status = sync.status(db, source)
-            cards.append(dict(status, key_gap=key_missing(source), user=status['credentials']['user']['configured'],
-                              lost_on=sync.lost_parts_on(db, source)))
-        rule = lost_parts.rule(db)
-        log = _log(db)
-        result = lost_result(db, request.args.get('pulled', ''))
-    return _page('web/toni/web/bw_sync.html', screen='sources', title='Collection sync', cards=cards, log=log, lost_result=result, rule_labels=lost_parts.RULE_LABELS,
-                 lost_rule=dict(value=rule, label=lost_parts.RULE_LABELS[rule], note=lost_parts.RULE_NOTES[rule]))
+    pulled = request.args.get('pulled')
+    if pulled:
+        source = 'rebrickable'
+        with _db() as db:
+            row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (_event_id(pulled) or 0,)).fetchone()
+        if row and row['new_value']:
+            found = json.loads(row['new_value']).get('source')
+            source = found if found in SOURCES else source
+        return redirect(url_for('web.bw_sync_site', source=source, pulled=pulled))
+    return redirect(url_for('web.bw_sync_hub'))
 
 
 @web_page.get('/manage/sync/<source>/link')
 @login_required
 @_unavailable
 def bw_sync_link(source):
-    from ..core import sync, wishlists
-    from .setup_state import key_missing
     _source(source)
-    lists, list_error = [], None
-    with _db() as db:
-        status = sync.status(db, source)
-        user = status['credentials']['user']['configured']
-        if user and source == 'rebrickable' and not key_missing(source):
-            try:
-                lists = sync.lists(db, source)
-            except Exception as exc:  # shown on the page; the key or token may be refused
-                list_error = _message(exc, source)
-        wish_lists = wishlists.listing(db)
-    return _page('web/toni/web/bw_sync.html', screen='link', title='Link ' + sync.LABELS[source], source=source,
-                 label=sync.LABELS[source], status=status, user=user, key_gap=key_missing(source), lists=lists,
-                 list_error=list_error, wish_lists=wish_lists)
+    return redirect(url_for('web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect'))   # the account and the choices are steps 1 and 2 of the site's page (#519, #520)
 
 
 @web_page.get('/manage/sync/<source>/plan/<plan_id>')
@@ -164,7 +281,7 @@ def bw_sync_plan(source, plan_id):
             plan = sync.load_plan(db, plan_id)
         except Exception as exc:
             flash(_message(exc, source), 'warning')
-            return redirect(url_for('web.bw_sync'))
+            return redirect(url_for('web.bw_sync_site', source=source))
         if plan['source'] != source:
             abort(404)
         budget = _budget(db, source)
@@ -201,11 +318,14 @@ def bw_sync_write(source, action):
         abort(403, 'Changes are switched off on this instance')
     form = request.form
     back = url_for('web.bw_sync_link', source=source)
+    if form.get('next') in ('site', 'connect'):   # a site's page and its connect step keep their own account buttons (#519, #520)
+        back = url_for('web.bw_sync_site' if form['next'] == 'site' else 'web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect',
+                       **({} if form['next'] == 'connect' else {'source': source}))
     try:
         with _db() as db, audit_origin('app'):
             if action == 'connect':
                 sync.connect(db, source, form.get('username', ''), form.get('password', ''))
-                flash('Connected to ' + sync.LABELS[source] + ' · only the token is kept.', 'success')
+                flash('Connected to ' + sync.LABELS[source] + ' · only the token and your username are kept.', 'success')
             elif action == 'paste':
                 sync.paste(db, source, form.get('value', '').strip())
                 flash('Saved · the value is not shown again.', 'success')
@@ -239,22 +359,24 @@ def bw_sync_write(source, action):
                 c = result['counts']
                 if result.get('already_applied'):
                     flash('This plan was already pulled; nothing was added again.', 'info')
-                    return redirect(url_for('web.bw_sync', pulled=result['event_id']))
+                    return redirect(url_for('web.bw_sync_site', source=source, pulled=result['event_id']))
                 flash(f"Pulled · {c['copies']} {'copy' if c['copies'] == 1 else 'copies'}"
                       + (f", {c['stock']} loose" if c.get('stock') else '') + f" and {c['wishes_added'] + c['wishes_changed']} "
                       f"{'wish' if c['wishes_added'] + c['wishes_changed'] == 1 else 'wishes'} added here." + (' ' + _lost_words(c) + '.' if c.get('lost_sets') else ''), 'success')
-                return redirect(url_for('web.bw_sync', pulled=result['event_id']))
+                return redirect(url_for('web.bw_sync_site', source=source, pulled=result['event_id']))
             elif action == 'send_apply':
                 plan_id = form.get('plan_id', '')
                 sync.apply_send(db, plan_id, form.getlist('tick'))
                 return redirect(url_for('web.bw_sync_plan', source=source, plan_id=plan_id))
             elif action == 'undo':
-                event = form.get('event', '')
-                if not event.isdigit():
+                event = _event_id(form.get('event', ''))
+                if event is None:
                     abort(400)
-                sync.undo(db, int(event))
+                if _receipt_source(db, event) != source:   # a pull of another site is undone from its own page
+                    abort(404)
+                sync.undo(db, event)
                 flash('Pull undone.', 'success')
-                return redirect(url_for('web.bw_sync'))
+                return redirect(url_for('web.bw_sync_site', source=source))
             else:
                 abort(404)
     except (ValueError, sqlite3.Error) as exc:
@@ -262,5 +384,5 @@ def bw_sync_write(source, action):
         if action in ('apply', 'send_apply') and form.get('plan_id'):
             return redirect(url_for('web.bw_sync_plan', source=source, plan_id=form['plan_id']))
         if action == 'undo':
-            return redirect(url_for('web.bw_sync'))
+            return redirect(url_for('web.bw_sync_site', source=source))
     return redirect(back)

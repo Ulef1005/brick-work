@@ -46,6 +46,7 @@ One pull request, "Release X.Y.Z", that changes only version pins and release te
 ## 6. After the tag
 
 - [ ] **Pages:** the `pages` workflow ran on the tag push (stable tags only; a pre-release tag does not deploy). A fix to the site between releases goes on a branch off the release tag, never on what `main` has since: run the workflow by hand from `main` (the environment allows only `main` and release tags) with `ref` set to that branch. Check the live site: the version on the landing page, the changelog page, the new docs and tutorials, the demo.
+- [ ] **MCP Registry:** after the image check, the maintainer publishes the new version: from a folder that holds the release's `server.json` (the repository root at the tag), `mcp-publisher login github`, then `mcp-publisher publish`. `mcp-publisher validate` checks the file first and needs no login. A published version cannot be overwritten: a fix is a new version. Check the listing: `https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Ulef1005/brick-work` shows the new version as active.
 - [ ] **Unraid template:** if the template's requirements changed (the minimum version, a new setting or path), update the Community Applications template repository and its README; the image tag it pulls is `latest`.
 - [ ] **Announce:** the release notes page, and where the project is discussed, link the changelog section.
 - [ ] **Issues:** each issue the release closes has an implemented note: what changed, its tests, the version, screenshots for screens.

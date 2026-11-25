@@ -21,7 +21,7 @@ from .currency import configured_currency, display_currency
 from .admin import SYSTEM_FLAGS, audit, origin
 from .completeness import derived_state
 from .sources.base import now
-from ..store4 import copies as store_copies, identity, part_list_read
+from ..store4 import copies as store_copies, identity, origins, part_list_read
 from ..store4.connect import as_current, has_catalogue, now as stamp_now
 
 TYPES = {'S': 'Sets', 'M': 'Minifigures', 'P': 'Parts', 'I': 'Instructions',
@@ -704,6 +704,13 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     row.update(instances=all_instances, selected=selected, wish=wish, properties=props, prices=prices(db, item_id, colour))
     row['theme'] = row.get('theme') or props.get('theme', {}).get('value', '')
     row['external_links'] = external_links(db, row)
+    row['source'] = None                                                  # #551: where the shown copy, stock row or wish came from
+    if selected and selected.get('entity') in origins.TABLES:
+        from ..web.formatting import short_date
+        row['source'] = origins.body(selected.get('added_via'), origins.sources_of(db, selected['entity'], [selected['id']])[selected['id']])
+        row['source']['chip'] = origins.chip(selected.get('added_via'))
+        row['source']['lines'] = ['Last synced from ' + origins.SITE_NAMES.get(l['site'], l['site']) + (': ' + l['list_name'] if l['list_name'] else '')
+                                  + ' · ' + short_date(l['synced_at'], True) for l in row['source']['last_synced_from']]
     price_priority = collection_prices.priority(db)
     observations = [dict(r, item_type=letter) for r in db.execute('''SELECT o.*,f.max_age_days FROM price_observation o
         LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices'
@@ -714,6 +721,19 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     estimate = collection_prices.choose([p for p in row['price_records'] if p['guide'] in ('valuation', 'manual') and p.get('slot') != 'boxed'],
                                         kind, price_priority)
     row['valuation_prices'] = [p for p in (collection_prices.with_box(row['price_records'], kind, price_priority), estimate) if p]
+    if wish:
+        # #655: the answer the wish page opens with, the price shown against the max exactly as the Wishlist tile does it (planning.wishes).
+        from . import currency, planning, wish_progress
+        condition = wish.get('condition') if wish.get('condition') in ('new', 'used') else None
+        shown = collection_prices.choose(row['condition_prices'], kind, price_priority, condition) or collection_prices.choose(
+            [p for p in row['prices'] if p['guide'] in ('sold', 'stock') and p.get('slot') != 'boxed'], kind, price_priority, condition)
+        probe = dict(wish, display_price=shown)
+        probe['max_state'], probe['max_margin'] = planning.max_comparison(probe, currency.rates(db))
+        wish_progress.annotate(db, [probe])
+        wish.update({k: probe[k] for k in ('qty_filled', 'qty_filled_source', 'filled')})
+        row['wish_verdict'] = dict(state=planning.wish_state(probe), margin=probe['max_margin'], price=shown, conversion=probe.get('max_conversion'))
+        found = db.execute('SELECT name FROM wishlist WHERE id=?', (wish['list_id'],)).fetchone()
+        wish['list_name'] = found[0] if found else None
     row['retail'] = retail(db, item_id) if kind == 'set' else None
     row['retail_saving'] = None
     if row['retail'] and selected and selected['entity'] == 'copy':
@@ -1132,10 +1152,10 @@ INTEGER_IDS = {'instruction_file', 'copy_part', 'copy_figure', 'stock_part'}
 RESTORABLE = {'copy', 'stock', 'wish', 'lot', 'wishlist', 'flag', 'storage', 'place', 'instruction_file', 'photo'}
 FIELDS = {
     'copy': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'completeness',
-             'completeness_source', 'current_value', 'current_value_currency'},
+             'completeness_source', 'current_value', 'current_value_currency', 'rating'},
     'stock': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'lot_id'},
     'wish': {'quantity', 'color_id', 'condition', 'max_price', 'max_price_currency', 'max_price_boxed', 'max_price_boxed_currency', 'note',
-             'wishlist_id', 'qty_filled_manual'},
+             'wishlist_id', 'qty_filled_manual', 'priority'},
     'lot': {'name', 'note', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency'},
 }
 CONDITIONS = {'copy': (None, 'new', 'used'), 'stock': (None, 'new', 'used', 'damaged'), 'wish': (None, 'new', 'used', 'any'), 'lot': (None,)}
@@ -1253,6 +1273,10 @@ def save(db, entity, ids, data, *, archive=False, create_system_flags=False):
             if not 0 <= filled <= 99999:
                 raise ValueError('Enter how many you have as a whole number')
             edits['qty_filled_manual'] = filled
+        if edits.get('rating') is not None and (type(edits['rating']) is not int or not 1 <= edits['rating'] <= 5):
+            raise ValueError('Choose a rating from 1 to 5')
+        if edits.get('priority') is not None and (type(edits['priority']) is not int or not 1 <= edits['priority'] <= 999):
+            raise ValueError('Choose a priority from 1 to 999')
         if 'purchase_date' in edits and edits['purchase_date'] and any(r['purchase_date'] != edits['purchase_date'] for r in old):
             try:
                 datetime.fromisoformat(edits['purchase_date'].replace('Z', '+00:00'))
@@ -1680,8 +1704,8 @@ def want(db, item_id, colour=None):
             raise errors.Conflict('Already on the wishlist')
         stamp = stamp_now()
         identifier = uuid4().hex
-        db.execute('''INSERT INTO main.wish(id,wishlist_id,kind,item_id,color_id,quantity,condition,added_at,updated_at) VALUES(?,?,?,?,?,1,'any',?,?)''',
-                   (identifier, 'default', item['kind'], item['id'], colour, stamp, stamp))
+        db.execute('''INSERT INTO main.wish(id,wishlist_id,kind,item_id,color_id,quantity,condition,added_at,updated_at,added_via) VALUES(?,?,?,?,?,1,'any',?,?,?)''',
+                   (identifier, 'default', item['kind'], item['id'], colour, stamp, stamp, origins.current()))
         return receipt(db, [('wish', [], snapshot(db, 'wish', [identifier]))], 'save')
 
 

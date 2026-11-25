@@ -440,6 +440,12 @@ def listing(db, type_letter, *, wishes=False):
             bars = _copy_bars(db, [i['id'] for r in rows for i in r['instances']])
             for row in rows:
                 row['bars'] = [bars.get(i['id']) for i in row['instances']]
+            sources = origins.sources_of(db, 'copy', [i['id'] for r in rows for i in r['instances']])   # #551: the Source filter of the Sets page
+            for row in rows:
+                row['via'] = sorted({i.get('added_via') or 'before' for i in row['instances']})
+                found = {origins.list_value(s): origins.list_label(s) for i in row['instances'] for s in sources[i['id']]}
+                row['list'] = sorted(found)
+                row['list_labels'] = found
         in_sets = []
         if kind == 'part':
             in_sets = [dict(r) for r in db.execute('''SELECT p.item_id,p.color_id,sum(p.quantity) AS quantity,sum(p.missing) AS missing,sum(p.damaged) AS damaged
@@ -1730,3 +1736,16 @@ def defects(missing=0, damaged=0):
     """One unsigned defect label for server-rendered and materialized rows."""
     return ' · '.join(f'{count} {label}' for count, label in
                       ((missing, 'missing'), (damaged, 'damaged')) if count)
+
+
+def source_chips(rows):
+    """The two chip rows of the Sets page (#551, frame 45): `(value, label, sets)` for Added via and for Last synced from, counted in sets."""
+    via, lists = {}, {}
+    for row in rows:
+        for value in row.get('via') or []:
+            via[value] = via.get(value, 0) + 1
+        for value in row.get('list') or []:
+            lists.setdefault(value, [row['list_labels'][value], 0])[1] += 1
+    order = [o for o in origins.ORIGINS] + ['before']
+    return ([(v, 'Before this release' if v == 'before' else origins.label(v), via[v]) for v in order if v in via],
+            [(v, label, n) for v, (label, n) in sorted(lists.items(), key=lambda kv: kv[1][0].casefold())])

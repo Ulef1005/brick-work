@@ -1222,3 +1222,10 @@ body:has(#bw-collection[data-bp-sets]) .layout>main.bp-flush,body:has(#bw-collec
 @media(max-width:599px) {
   .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-tiles,.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-bp-flow=sections] .bp-tiles,.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-bp-flow=flat] .bp-tiles { grid-template-columns:1fr 1fr; }
 }
+/* #551, frame 45: the Source chip rows of the Sets page (Added via, Last synced from). */
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-source { display:flex;flex-direction:column;gap:10px; }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchips { display:flex;flex-wrap:wrap;align-items:center;gap:8px; }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchips-label { margin-right:4px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted); }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchip { display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1.5px solid var(--tw-divider);border-radius:3px;background:transparent;font:500 13.5px var(--tw-font);color:var(--tw-text-2);cursor:pointer;max-width:100%;text-align:left; }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchip .mono { font-size:12px;padding:0;border:0;color:inherit; }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchip[aria-pressed="true"] { border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent); }

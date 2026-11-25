@@ -68,6 +68,9 @@ def _interrupted(db, run, plans, form_data, name):
         for row in rows:
             counts[row['result']] = counts.get(row['result'], 0) + 1
         stage.update(counts=counts, rows=len(rows), results=rows)
+        if not counts.get('unknown') and not counts.get('failed') and all(r['result'] in ('sent', 'unchanged') for r in rows):
+            stage = dict(stage, status='done')           # the restart came after the last result was saved: nothing is left to check
+            stage.pop('message')
     return stage
 
 

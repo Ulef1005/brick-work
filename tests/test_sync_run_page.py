@@ -293,4 +293,21 @@ def test_an_interrupt_between_two_sends_says_every_row_did_not_go(three_sends, c
         db.commit()
         run_job.drain(db)
     send = soup(page_of(client, run_id)).select_one('[data-rb-send]')
-    assert 'between two sends' in text(send) and 'Not known' not in text(send) and not send.select('input[name=also]')
+    assert 'No send was cut off' in text(send) and 'Not known' not in text(send) and not send.select('input[name=also]')
+
+
+def test_a_run_whose_last_send_was_saved_before_the_restart_is_not_left_interrupted(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run = sync_run.load(db, run_id)[0]
+        wanted = [k for k, v in run['job_form']['chosen'].items() if v in ('send', 'remove')]
+        plan_id = sync_run.load(db, run_id)[1]['send']['id']
+        plan = sync.load_plan(db, plan_id, 'send')
+        plan['results'] = {k: dict(result='sent', detail=None) for k in wanted}
+        sync._store_plan(db, plan)
+    order, results = _interrupt(pair, run_id, in_flight=wanted[-1])
+    assert set(results) == {'sent'}
+    with db_of(pair) as db:
+        assert sync_run.load(db, run_id)[0]['stages']['send']['status'] == 'done'
+    assert page_of(client, run_id).location.endswith('/result')

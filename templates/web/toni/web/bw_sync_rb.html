@@ -272,7 +272,7 @@
 {% elif pull_done and pull_bad %}<h2>The pull was applied in part {{ tag('Failed', true, true) }}</h2>
 <p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes were applied here. One part was not. The result page says which and why.</p>
 {% elif pull_done %}<h2>Pull applied {{ tag('Done') }}</h2>
-<p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes applied here, in one step. {{ 'They stay done.' if interrupted else 'Undo for the run stays on the result page.' }}</p>
+<p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes applied here, in one step. {% if interrupted %}They stay done.{% if send_interrupted %} Undo for this pull is in Last runs, where this run is listed as Interrupted.{% endif %}{% else %}Undo for the run stays on the result page.{% endif %}</p>
 {% else %}<h2>Applying the pull</h2>
 <p class="sr-lede sr-wait">{% if info.state == 'queued' %}Waiting to start.{% else %}<span class="sr-spin" aria-hidden="true"></span>Sets, wishes, loose stock and part lists are applied together, so there is no count for this part. If it fails, nothing here changed.{% endif %}</p>
 {% endif %}</section>{% endif %}
@@ -283,7 +283,7 @@
 {% for u in unsent[:20] %}<div class="sr-prow"><div class="sr-rowid">{{ tile(u.number) }}<span><b>{{ u.name }}</b><span>{{ u.number }}{% if u.what %} · {{ u.what }}{% endif %}</span></span></div>{{ tag(u.state|capitalize, true, u.state == 'not known') }}
 {% if u.state == 'not known' and can_edit %}<label class="sr-also"><input type="checkbox" name="also" value="{{ u.key }}" form="sr-again"> Send it too</label>{% endif %}</div>{% endfor %}
 {% if unsent|length > 20 %}<p class="sr-note">and {{ unsent|length - 20 }} more not sent</p>{% endif %}
-{% if unknown_count %}<p class="sr-info">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on {{ label }}, then send the rest again.</p>{% elif unsent %}<p class="sr-info">{% if not lost_interrupted %}No send was cut off by the restart. {% endif %}Send again sends every row that is not sent.</p>{% endif %}
+{% if unknown_count %}<p class="sr-info">A send is never repeated by itself, because sending twice can change a list twice. Check the {{ 'row' if unknown_count == 1 else 'rows' }} marked Not known on {{ label }}. Tick Send it too only {{ send_it_when }}, then send the rest again.</p>{% elif unsent %}<p class="sr-info">{% if not lost_interrupted %}No send was cut off by the restart. {% endif %}Send again sends every row that is not sent.</p>{% endif %}
 <div class="sr-actions">{% if can_edit and unsent %}<form id="sr-again" method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_retry', run_id=run.id) }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-outline" data-busy-label="Sending">Send again</button></form>{% endif %}<a class="sr-link" href="{{ url_for('web.bw_admin', page='jobs') }}">Open Jobs</a><a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_result', run_id=run.id) }}">Open the result</a></div>
 {% else %}
 {% set pct = (100 * sent_done / sent_all)|round|int if sent_all else 0 %}

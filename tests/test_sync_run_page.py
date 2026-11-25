@@ -2,6 +2,7 @@
 import re
 
 from bs4 import BeautifulSoup
+import pytest
 
 from brickwork.core import sync
 from brickwork.core.sync import run as sync_run
@@ -293,7 +294,8 @@ def test_an_interrupt_between_two_sends_says_no_send_was_cut_off(three_sends, cl
         db.commit()
         run_job.drain(db)
     send = soup(page_of(client, run_id)).select_one('[data-rb-send]')
-    assert 'No send was cut off' in text(send) and 'Not known' not in text(send) and not send.select('input[name=also]')
+    assert 'Undo for this pull is in Last runs' not in text(send)
+    assert 'No send was cut off' in text(send) and 'Send again sends every row that is not sent' in text(send) and 'Not known' not in text(send) and not send.select('input[name=also]')
 
 
 def test_a_run_whose_last_send_was_saved_before_the_restart_is_not_left_interrupted(three_sends, client):  # noqa: F811
@@ -332,6 +334,25 @@ def test_last_runs_keeps_an_interrupted_run_and_its_pull_until_the_pull_is_undon
         listed = _runs(db, 'rebrickable')
         assert [r['state'] for r in listed].count('Interrupted') == 1 and len(listed) > 5
         assert [r['event'] for r in listed if r['undoable']] and all(r['event'] in pulls for r in listed if r['undoable'])
+        with transaction(db):       # a newer live pull that falls out of the five newest keeps the Undo: it never moves back to the older, listed one
+            audit(db, 'sync:rebrickable', 'receipt', None, dict(source='rebrickable', counts={}, plan='newer'))
+            for n in range(6):
+                audit(db, 'sync:rebrickable', 'send', None, dict(plan=f'after-{n}', counts={'sent': 1}))
+        assert not [r for r in _runs(db, 'rebrickable') if r['undoable']]
         sync_run.undo_run(db, pulls[0])
         listed = _runs(db, 'rebrickable')
         assert len(listed) == 5 and not [r for r in listed if r['state'] == 'Interrupted']
+
+
+@pytest.mark.parametrize('choice, words', [('send', 'Tick Send it too only if it is not there'), ('remove', 'Tick Send it too only if it is still there')])
+def test_the_note_says_when_to_tick_send_it_too(three_sends, client, choice, words):  # noqa: F811
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        first = next(k.removeprefix('choice:') for k, v in form_for(db, run_id).items(multi=True) if v in ('send', 'remove'))
+    _interrupt(pair, run_id, in_flight=first)
+    with db_of(pair) as db:
+        run = sync_run.load(db, run_id)[0]
+        run['job_form']['chosen'][first] = choice
+        sync._store_plan(db, run)
+    page = text(soup(page_of(client, run_id)).select_one('main'))
+    assert words in page and 'They stay done. Undo for this pull is in Last runs, where this run is listed as Interrupted.' in page

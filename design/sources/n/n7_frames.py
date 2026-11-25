@@ -1,4 +1,4 @@
-"""Commission N (Sync and files, #517), rounds 5 and 6 (approved 2026-11-24 and 2026-11-25): every frame still missing for milestone N (Ulf, 24.11., via brick-work-product:
+"""Commission N (Sync and files, #517), rounds 5 to 7 (approved 2026-11-24 and 2026-11-25): every frame still missing for milestone N (Ulf, 24.11., via brick-work-product:
 "ask design to write all missing frames"; gap list ~/Workspace/_exports/design-brief-n/frame-gaps-n.md). Folders 78 to 96.
 
 G2/G3 (#551): the added-via chip and filter on loose-stock lots (78) and on wishes (79). G4 (#521): BrickLink's price guide, preview and result
@@ -233,7 +233,7 @@ def long_applying(ph):
 
 # ---- 96 an interrupted run (#685, brick-work-n's build, 24.11.) ----------------------------------------------------------
 # After a restart, finished stages stay done and a send in flight is never repeated (a send is not safe to repeat). The run shows as interrupted with
-# the rows that went out; Send again resends only after the person has checked.
+# the rows that went out; Send again sends only the rows not sent, and a Not known row stays out until the person chooses Send it too or Leave it.
 def interrupted(ph):
     done = card(f'Pull applied {tag("Done")}', '<p class="n">3,200 changes applied here, in one step. They stay done. Undo for this pull is in Last runs, where this run is listed as Interrupted.</p>')
     sent = ''.join(f'<div class="nrow"><div class="id"><b>{a}</b><span>{b}</span></div>{"" if ph else tag(c, k)}</div>' if not ph else

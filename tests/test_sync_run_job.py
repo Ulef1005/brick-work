@@ -148,6 +148,7 @@ def test_a_stage_that_was_started_is_never_run_again_after_a_takeover_but_can_be
         job_id = run_job.queue(db, run_id, form_for(db, run_id))
         run = sync_run.load(db, run_id)[0]
         run['stages']['send'] = {'status': 'started'}
+        run.setdefault('job_progress', {})['in_flight'] = next(k for k, v in run['job_form']['chosen'].items() if v in ('send', 'remove'))
         sync._store_plan(db, run)
         db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
         db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))

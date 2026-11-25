@@ -958,11 +958,13 @@ def retry_send(db, run_id, *, http=None, also=()):
                 raise errors.ValidationFailed('Only a row that may have gone out is left. Check it, then choose Send it too on that row')
             raise errors.ValidationFailed('Everything this run sent went through')
         result = sync.apply_send(db, send['id'], again, http=http)
-        rows = result['rows'] + [r for r in stage['results'] if r['result'] == 'unknown' and r['key'] not in {x['key'] for x in result['rows']}]   # a row left out stays as it was
-        counts = dict(result['counts'])
-        left = len(rows) - len(result['rows'])
-        if left:
-            counts['unknown'] = left
+        kept_unknown = [r for r in stage['results'] if r['result'] == 'unknown' and r['key'] not in again]    # a row left out stays as it was, whatever the send plan says of it
+        left_keys = {r['key'] for r in kept_unknown}
+        rows = [r for r in result['rows'] if r['key'] not in left_keys] + kept_unknown
+        counts = {}
+        for r in rows:
+            counts[r['result']] = counts.get(r['result'], 0) + 1
+        left = len(kept_unknown)
         if left:     # a row that may have gone out is still unchecked: the run stays interrupted, here and in the sync log
             run['stages']['send'] = dict(status='failed', message=INTERRUPTED_MESSAGE, counts=counts, rows=len(rows), results=rows)
             with transaction(db):

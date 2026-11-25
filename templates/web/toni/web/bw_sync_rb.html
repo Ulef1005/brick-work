@@ -281,7 +281,7 @@
 {% for u in unsent[:20] %}<div class="sr-prow"><div class="sr-rowid">{{ tile(u.number) }}<span><b>{{ u.name }}</b><span>{{ u.number }}{% if u.what %} · {{ u.what }}{% endif %}</span></span></div>{{ tag(u.state|capitalize, true, u.state == 'not known') }}
 {% if u.state == 'not known' and can_edit %}<label class="sr-also"><input type="checkbox" name="also" value="{{ u.key }}" form="sr-again"> Send it too</label>{% endif %}</div>{% endfor %}
 {% if unsent|length > 20 %}<p class="sr-note">and {{ unsent|length - 20 }} more not sent</p>{% endif %}
-{% if send_total %}<p class="sr-info">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on {{ label }}, then send the rest again.</p>{% endif %}
+{% if unsent %}<p class="sr-info">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on {{ label }}, then send the rest again.</p>{% endif %}
 <div class="sr-actions">{% if can_edit and unsent %}<form id="sr-again" method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_retry', run_id=run.id) }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-outline" data-busy-label="Sending">Send again</button></form>{% endif %}<a class="sr-link" href="{{ url_for('web.bw_admin', page='jobs') }}">Open Jobs</a><a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_result', run_id=run.id) }}">Open the result</a></div>
 {% else %}
 {% set pct = (100 * sent_done / sent_all)|round|int if sent_all else 0 %}

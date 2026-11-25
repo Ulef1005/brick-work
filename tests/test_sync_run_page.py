@@ -86,15 +86,7 @@ def test_a_run_that_is_done_leaves_the_run_page_for_the_result(three_sends, clie
 
 def test_an_interrupted_send_shows_what_went_out_and_offers_send_again(three_sends, client):  # noqa: F811
     pair, run_id, keys = three_sends
-    with db_of(pair) as db:
-        job_id = run_job.queue(db, run_id, form_for(db, run_id))
-        run = sync_run.load(db, run_id)[0]
-        run['stages'] = {'send': {'status': 'started'}}
-        sync._store_plan(db, run)
-        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
-        db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
-        db.commit()
-        run_job.drain(db)
+    _interrupt(pair, run_id)
     page = soup(page_of(client, run_id))
     send = page.select_one('[data-rb-send]')
     assert 'Interrupted' in text(send) and 'not known' in text(send) and 'never repeated by itself' in text(send)
@@ -110,12 +102,13 @@ def test_a_run_of_the_other_site_or_one_that_never_started_opens_nothing(three_s
     assert client.get(f'/workbench/sync/brickset/run/{run_id}/progress').status_code in (302, 404)
 
 
-def _interrupt(pair, run_id, keep_first=0):
+def _interrupt(pair, run_id, in_flight=None):
     """A run whose send stage a restart cut off: the stage was `started`, the job's owner is dead; the drainer settles it."""
     with db_of(pair) as db:
         job_id = run_job.queue(db, run_id, form_for(db, run_id))
         run = sync_run.load(db, run_id)[0]
         run['stages'] = {'send': {'status': 'started'}}
+        run.setdefault('job_progress', {})['in_flight'] = in_flight or next(k for k, v in run['job_form']['chosen'].items() if v in ('send', 'remove'))     # the worker wrote it before its call
         sync._store_plan(db, run)
         db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
         db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
@@ -205,8 +198,12 @@ def test_a_row_a_budget_pause_left_is_still_the_one_in_flight_after_a_restart(th
         plan = sync.load_plan(db, plan_id, 'send')
         plan['results'] = {wanted[0]: dict(result='sent', detail=None), wanted[1]: dict(result='paused', detail=None), wanted[2]: dict(result='paused', detail=None)}
         sync._store_plan(db, plan)
-    order, results = _interrupt(pair, run_id)
+    order, results = _interrupt(pair, run_id, in_flight=wanted[1])
     assert dict(zip(order, results)) == {wanted[0]: 'sent', wanted[1]: 'unknown', wanted[2]: 'paused'}
+    with db_of(pair) as db:       # Send again without the choice sends the rest and leaves the row in flight, whatever the send plan kept of it
+        sync_run.retry_send(db, run_id)
+        left = {r['key']: r['result'] for r in sync_run.load(db, run_id)[0]['stages']['send']['results']}
+        assert left[wanted[1]] == 'unknown' and sync_run.load(db, run_id)[0]['stages']['send']['status'] == 'failed'
 
 
 def test_the_hub_log_shows_one_row_for_a_long_send_and_keeps_the_pull_in_its_limit(three_sends):  # noqa: F811
@@ -224,3 +221,33 @@ def test_the_preview_of_a_run_with_a_job_opens_its_run_page(three_sends, client)
     with db_of(pair) as db:
         run_job.queue(db, run_id, form_for(db, run_id))
     assert client.get(f'/workbench/sync/rebrickable/run/{run_id}/preview').location.endswith('/progress')
+
+
+def test_with_no_send_in_flight_no_row_is_unknown(three_sends):  # noqa: F811
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run = sync_run.load(db, run_id)[0]
+        run['stages'] = {'send': {'status': 'started'}}
+        sync._store_plan(db, run)
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
+        db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
+        db.commit()
+        run_job.drain(db)
+        assert {r['result'] for r in sync_run.load(db, run_id)[0]['stages']['send']['results']} == {'failed'}      # died between calls: nothing may have gone out
+
+
+def test_a_call_is_written_down_before_it_is_made(three_sends, monkeypatch):  # noqa: F811
+    from brickwork.core.sync import adapters
+    pair, run_id, keys = three_sends
+    seen, real = [], adapters.RebrickableUser.send
+
+    def record(self, row, link, state):
+        with db_of(pair) as other:
+            seen.append((row['key'], sync_run.load(other, run_id)[0]['job_progress'].get('in_flight')))
+        return real(self, row, link, state)
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', record)
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        assert seen and all(key == flight for key, flight in seen) and sync_run.load(db, run_id)[0]['job_progress']['in_flight'] is None

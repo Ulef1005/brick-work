@@ -607,7 +607,7 @@
    "section": "3a",
    "state": "build-scout-empty",
    "world": "demo",
-   "path": "/workbench/build-scout",
+   "path": "/workbench/build-scout?scan=1",
    "built": true,
    "approved": true
   },

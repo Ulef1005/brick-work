@@ -14,6 +14,7 @@ from werkzeug.exceptions import HTTPException
 from ..core import errors, tokens
 from ..core.connect import connect
 from ..core.sources.base import WaitingForBudget, audit_origin, redact
+from ..store4 import origins
 
 
 def read_only():
@@ -65,6 +66,8 @@ def authorize(*, health, open_endpoints, scope_of):
 def audited():
     """Enter the audit origin of an authenticated request (events carry via=api and the token name)."""
     g.api_stack.enter_context(audit_origin('api', actor=g.api_identity['name']))
+    if request.headers.get('X-Brickwork-Channel') == 'mcp':
+        g.api_stack.enter_context(origins.channel('mcp'))
 
 
 def private_response(response):

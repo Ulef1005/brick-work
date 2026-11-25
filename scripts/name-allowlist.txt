@@ -65,5 +65,15 @@ design/screens-b/08-sets-empty/*	Rebrickable, Brickset, BrickTracker or a BrickL
 design/sources/b/b_frames.py	Rebrickable, Brickset, BrickTracker or a BrickLink file	Frame source of the approved empty-Sets copy.
 design/screens-b/BUILD-NOTES.md	Rebrickable, Brickset, BrickTracker and a BrickLink file	Build notes of the empty-Sets screen.
 design/website/*	inspired by BrickTracker|coming-from/bricktracker/|<b>BrickTracker</b>	The approved #526 site frames (W-01 home, W-02 install) carry the shipped site's footer credit and its coming-from link.
+design/screens-b/34-import-export/*.html	BrickTracker	Import & export frame (N2-10, #523): the retained BrickTracker importer is one of the formats it lists.
+design/sources/n/n2_frames.py	BrickTracker	Source of the Import & export frame (N2-10, #523): the retained BrickTracker importer.
 CHANGELOG.md	BrickTracker or a BrickLink file	Changelog entry of the empty Sets page (#497): names the retained importer source, as the page does.
 templates/web/toni/web/bw_sets_empty.html	BrickTracker	Empty Sets page (frame 08): lists the sources the import reaches, BrickTracker among them.
+brickwork/store4/origins.py	\bbricktracker\b|BrickTracker	Added via value and label of the retained importer (#551).
+brickwork/store4/added_via.sql	\bbricktracker\b	Added via value of the retained importer (#551).
+brickwork/store4/brickwork.sql	\bbricktracker\b	Added via value of the retained importer (#551).
+docs/data-model-4.0/schema-4.0.sql	\bbricktracker\b	Added via value of the retained importer (#551).
+design/screens-b/85-import-bricktracker/*.html	BrickTracker	Import frame (#523): the retained BrickTracker importer's name, approved copy.
+design/sources/n/n7_frames.py	BrickTracker|bricktracker	Source of the frame 85 import, the retained importer's name and its file name.
+design/screens-b/BUILD-NOTES.md	BrickTracker|bricktracker	Build notes of frames 82 to 86 and the F-fixes name the retained importer.
+design/APPROVALS.md	BrickTracker|bricktracker	Approval row of frame 85, folder 85-import-bricktracker.

@@ -176,7 +176,7 @@ def test_history_eligibility(coll, client, monkeypatch, dates, condition, curren
         # #32: one usable date shows the single-point state as text; nothing usable shows nothing.
         single = soup.select_one('[data-bc-price-single]')
         if single:
-            assert condition == 'used' and 'Single price point' in single.get_text() and not single.select('svg')
+            assert condition == 'used' and single.get_text().startswith('One price so far') and not single.select('svg')
         else:
             assert 'Used average over six months' not in soup.get_text()
 

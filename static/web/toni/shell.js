@@ -3,6 +3,16 @@
    The navigation (top bar, sub row, tab bar) is plain links since #492: nothing here opens a group sheet. */
 (() => {
  const selectors = [...document.querySelectorAll('[data-theme-selector]')];
+ // The Appearance segments first (#674), so nothing later in this file can leave them without a handler
+ const segments = [...document.querySelectorAll('[data-theme-mode]')];
+ const syncTheme = () => {
+  selectors.forEach(selector => { selector.value = window.adminTheme.mode; });
+  segments.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.themeMode === window.adminTheme.mode)));
+ };
+ if (window.adminTheme) {      // theme.js runs in the head; without it the shell below must still work
+  segments.forEach(button => button.addEventListener('click', () => { window.adminTheme.apply(button.dataset.themeMode, true); syncTheme(); }));
+  document.addEventListener('admin-theme', syncTheme); syncTheme();
+ }
  selectors.forEach(selector => {
   selector.value = window.adminTheme.mode;
   selector.addEventListener('change', () => {
@@ -36,13 +46,6 @@
  document.querySelectorAll('details[data-disclosure-parent]').forEach(details => {
   details.addEventListener('toggle', () => details.querySelector('summary').setAttribute('aria-expanded', String(details.open)));
  });
- const segments = [...document.querySelectorAll('[data-theme-mode]')];
- const syncTheme = () => {
-  selectors.forEach(selector => { selector.value = window.adminTheme.mode; });
-  segments.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.themeMode === window.adminTheme.mode)));
- };
- segments.forEach(button => button.addEventListener('click', () => { window.adminTheme.apply(button.dataset.themeMode, true); syncTheme(); }));
- document.addEventListener('admin-theme', syncTheme); syncTheme();
  // The sub row (a phone's strip, a narrow desktop's row): bring the active entry into view so Gear, Books and Catalogs do not sit off the edge (#153).
  // Only the strip scrolls (never the page) and only when the entry is not already fully visible; the jump is instant, so no motion at all
  // for prefers-reduced-motion users.

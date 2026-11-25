@@ -42,13 +42,13 @@ def test_a_height_difference_is_cropped_to_the_shorter_shot(tmp_path):
 
 
 def test_a_crop_limit_leaves_the_rows_below_it_uncompared(tmp_path):
-    """Design's rule for an excerpt frame (04-sets at 390): compare down to the drawn tile row, not the tile the frame cuts (#494)."""
+    """Design's rule for an excerpt frame (45-sets-source-filter at 390): compare down to the drawn tile row, not the tile the frame cuts (#494)."""
     a = shot(tmp_path / 'a.png', 1000)
     b = shot(tmp_path / 'b.png', 1000, [(10, 300)])        # a mark at 150 CSS px (scale 2), far above the tab bar at the foot
     assert fc.compare(a, b, 390, band=False)['ratio'] > 0
     assert fc.compare(a, b, 390, band=False, limit=100)['ratio'] == 0   # the limit is 100 CSS px: the mark lies below it
     assert fc.compare(a, b, 390, band=False, limit=200)['ratio'] > 0
-    assert fc.CROP_BELOW == {('01-tools-and-admin', 390): 757, ('02-settings', 390): 714, ('02-settings', 1440): 732, ('04-sets', 390): 731, ('05-sets-without-storage', 390): 657, ('09-matchmaker', 390): 710, ('48-sets-pulled-copy', 390): 731} and {'04-sets', '05-sets-without-storage'} <= fc.BODY_BUILT
+    assert fc.CROP_BELOW == {('01-tools-and-admin', 390): 757, ('02-settings', 390): 714, ('02-settings', 1440): 732, ('45-sets-source-filter', 390): 975, ('05-sets-without-storage', 390): 657, ('09-matchmaker', 390): 710, ('48-sets-pulled-copy', 390): 731} and {'45-sets-source-filter', '05-sets-without-storage'} <= fc.BODY_BUILT
     assert fc.compare(a, b, 390, band=False, limit=-5)['ratio'] > 0     # a non-positive limit means no limit
 
 

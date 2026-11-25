@@ -81,6 +81,8 @@ Open a copy and look under its tags: the **Source** row says how it got here and
 - **Added via** is one fixed value that never changes. It reads *By hand*, *Via the API*, *Via the CLI* or *Via MCP*. It can also name a site (*Rebrickable sync*, *Brickset sync*, *BrickLink sync* or *Brick Owl sync*). It can name a file (*BrickLink file*, *Rebrickable file*, *Brickset file*, *Brick Owl file* or *Brick Work export*). A row can also come from an import of the earlier app this one grew out of. Rows that exist from before this release read *Before this release*.
 - **Last synced from** is a separate line per site and list, such as *Last synced from Rebrickable: Main collection · 18 Nov, 21:40*. It changes with every sync that matches the row. A set you added by hand can show it too: a later sync matched it to a set on the site, which does not change how it was added. A set in two Rebrickable lists shows one line for each.
 
+On the Sets page, two chip rows under the status tabs filter by the same records: **Added via** and **Last synced from**, each chip with its count of sets. Press a chip to filter and press it again to clear it. The two rows combine with each other and with the status tabs. A set with several copies counts under every value its copies have.
+
 Undo of a sync run uses these records to take back exactly what the run did.
 
 ## Rebrickable list names

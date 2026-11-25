@@ -11,15 +11,15 @@ from urllib.parse import urlencode, quote
 from urllib.request import Request
 
 from .. import errors, keys, secrets
-from ..sources.base import KeyRejected, SourceError, WaitingForBudget, now, transport, USER_AGENT
+from ..sources.base import KeyRejected, RemoteBudgetExceeded, SourceError, WaitingForBudget, now, transport, USER_AGENT
 from ..sources.brickset import Brickset, BASE as BRICKSET
 from ..sources.rebrickable import Rebrickable
+from .brickowl_run import BrickOwlUser
 
 REBRICKABLE_USERS = 'https://rebrickable.com/api/v3/users'
 NUMBER = re.compile(r'[A-Za-z0-9][A-Za-z0-9.-]{0,63}')
 # Local ceilings for calls the sites do not count against the key.
 LOGIN_PER_DAY = 10
-BRICKSET_WRITES_PER_DAY = 500
 
 
 class ConnectRefused(errors.ValidationFailed):
@@ -49,8 +49,16 @@ def _number(value):
     return value
 
 
+def _optional_id(value):
+    if value is None:
+        return None
+    if type(value) is str and value.isdecimal():
+        value = int(value)
+    return value if type(value) is int and value >= 1 else None
+
+
 def parse_lost_part(row):
-    """One row of `GET /users/{token}/lost_parts/` as `dict(set_no, part_no, color_id, quantity, is_spare)`, or None when it cannot be read.
+    """One row of `GET /users/{token}/lost_parts/` as `dict(set_no, part_no, color_id, quantity, is_spare, lost_part_id, inv_part_id)`, or None when it cannot be read.
 
     ASSUMED SHAPE (Rebrickable's documentation; the OpenAPI file does not describe the items and the test instance has no user token, so it
     was not checked live): `{lost_part_id, lost_quantity, inv_part: {id, inv_part_id, part: {part_num, ...}, color: {id, ...}, set_num,
@@ -72,21 +80,45 @@ def parse_lost_part(row):
             color_id = int(color_id)
         if type(quantity) is not int or quantity < 1 or type(color_id) is not int or not isinstance(spare, bool):
             return None
-        return dict(set_no=_number(found), part_no=_number(part_no), color_id=color_id, quantity=quantity, is_spare=spare)
+        return dict(set_no=_number(found), part_no=_number(part_no), color_id=color_id, quantity=quantity, is_spare=spare,
+                    lost_part_id=_optional_id(row.get('lost_part_id')),
+                    inv_part_id=_optional_id(inv.get('inv_part_id')))
     except (KeyError, TypeError, AttributeError, SourceError):
+        return None
+
+
+def parse_part_list_row(row):
+    """One row of `GET /users/{token}/partlists/{id}/parts/` as `dict(part_no, color_id, quantity)`, or None when it cannot be read (#471).
+
+    ASSUMED SHAPE (Rebrickable's documentation, not checked live): `{quantity, part: {part_num, ...}, color: {id, ...}, element_id}`."""
+    try:
+        quantity, colour, part_no = row['quantity'], row['color']['id'], row['part']['part_num']
+        if type(part_no) is int:
+            part_no = str(part_no)
+        if type(quantity) is str and quantity.isdecimal():
+            quantity = int(quantity)
+        if type(colour) is str and re.fullmatch(r'-?\d+', colour):
+            colour = int(colour)
+        if type(quantity) is not int or quantity < 1 or type(colour) is not int or not isinstance(part_no, str) or not part_no:
+            return None
+        return dict(part_no=_number(part_no), color_id=colour, quantity=quantity)
+    except (KeyError, TypeError, AttributeError, ValueError, SourceError):
         return None
 
 
 class RebrickableUser(Rebrickable):
     """User endpoints under /api/v3/users/ (set lists and their sets)."""
-    TEMPLATES = re.compile(r'/(?:setlists/|setlists/[0-9]+/sets/|setlists/[0-9]+/sets/[A-Za-z0-9.-]+/|sets/|lost_parts/)')
+    TEMPLATES = re.compile(r'/(?:setlists/|setlists/[0-9]+/sets/|setlists/[0-9]+/sets/[A-Za-z0-9.-]+/|sets/|lost_parts/|lost_parts/[0-9]+/|partlists/|partlists/[0-9]+/parts/)')
 
     def __init__(self, db, **kwargs):
         super().__init__(db, **kwargs)
         self.token = None
         send = self.http
         # DELETE answers 204 with an empty body; the recorded transport expects JSON.
-        self.http = lambda request: send(request) or '{}'
+        def wrapped(request):
+            reply = send(request)
+            return '{}' if reply in ('', b'', None) else reply
+        self.http = wrapped
 
     def user_token(self):
         if self.token is None:
@@ -95,7 +127,7 @@ class RebrickableUser(Rebrickable):
         return self.token
 
     def user_call(self, path, params=None, *, method='GET', data=None):
-        if not self.TEMPLATES.fullmatch(path):
+        if not self.TEMPLATES.fullmatch(path) or (method != 'DELETE' and re.fullmatch(r'/lost_parts/[0-9]+/', path)):
             raise ValueError('unsupported Rebrickable user endpoint')
         self.ready()
         token = self.user_token()
@@ -150,9 +182,45 @@ class RebrickableUser(Rebrickable):
             key = (row['set_no'], row['part_no'], row['color_id'], row['is_spare'])
             if key in merged:
                 merged[key]['quantity'] += row['quantity']
+                if row['lost_part_id'] is not None:
+                    merged[key]['ids'].append(row['lost_part_id'])
+                else:
+                    merged[key]['ids_complete'] = False
+                if merged[key]['inv_part_id'] is None and row['inv_part_id'] is not None:
+                    merged[key]['inv_part_id'] = row['inv_part_id']
             else:
+                has_id = row['lost_part_id'] is not None
+                row['ids'] = [row['lost_part_id']] if has_id else []
+                row['ids_complete'] = has_id
                 merged[key] = row
         return dict(rows=list(merged.values()), unreadable=unreadable)
+
+    def lost_part_add(self, inv_part_id, quantity):
+        """Add one Lost Parts row on Rebrickable.
+
+        ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
+        `POST /users/{token}/lost_parts/` with form fields `inv_part_id` and `lost_quantity`.
+        After a 2xx the write is done, so only an error body fails; `lost_part_id` in the reply is optional."""
+        reply = self.user_call('/lost_parts/', method='POST',
+                               data={'inv_part_id': int(inv_part_id), 'lost_quantity': int(quantity)})
+        if isinstance(reply, dict) and (
+            'detail' in reply
+            or 'non_field_errors' in reply
+            or any(k in reply and not (type(reply[k]) is int and reply[k] >= 1) for k in ('inv_part_id', 'lost_quantity'))
+        ):
+            raise SourceError('Rebrickable refused the Lost Part')
+        return reply
+
+    def lost_part_remove(self, lost_part_id):
+        """Remove one Lost Parts row on Rebrickable.
+
+        ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
+        `DELETE /users/{token}/lost_parts/{id}/`. An empty reply is treated as success because 204 has no body, so it cannot be told from
+        an empty-bodied error; live behaviour of POST and DELETE must be tried with a real user token before sending is offered."""
+        reply = self.user_call(f'/lost_parts/{int(lost_part_id)}/', method='DELETE')
+        if reply is not True:
+            raise SourceError('Rebrickable refused the Lost Part removal')
+        return True
 
     # The adapter surface used by the sync service.
     def connect(self, username, password):
@@ -186,6 +254,14 @@ class RebrickableUser(Rebrickable):
         return [dict(id=int(r['id']), name=r.get('name') or '', sets=r.get('num_sets'))
                 for r in self.pages('/setlists/')]
 
+    def part_lists(self):
+        """The user's part lists (#471): `[{id, name, parts}]`."""
+        return [dict(id=int(r['id']), name=r.get('name') or '', parts=r.get('num_parts')) for r in self.pages('/partlists/')]
+
+    def part_list_parts(self, list_id):
+        """The rows of one part list, each `parse_part_list_row` (None for a row that cannot be read)."""
+        return [parse_part_list_row(r) if isinstance(r, dict) else None for r in self.pages(f'/partlists/{int(list_id)}/parts/')]
+
     def fetch(self, link):
         """Remote counts: owned = the linked owned lists (all but the wishlist list when unset)."""
         lists = self.lists()
@@ -203,7 +279,9 @@ class RebrickableUser(Rebrickable):
                 target = wanted if list_id == wish else owned
                 target[number] = target.get(number, 0) + quantity
                 per_list.setdefault(str(list_id), {})[number] = quantity
-        return dict(owned=owned, wanted=wanted, per_list=per_list, owned_lists=owned_ids, names={})
+        names = {str(r['id']): r['name'] for r in lists if r['id'] in owned_ids or r['id'] == wish}   # #531: each linked list's name as read now
+        all_list_ids = [str(r['id']) for r in lists]
+        return dict(owned=owned, wanted=wanted, per_list=per_list, owned_lists=owned_ids, names=names, all_list_ids=all_list_ids)
 
     def send(self, row, link, state):
         """Set the count of one set on the target list: POST (new), PUT (count) or DELETE (0)."""
@@ -231,9 +309,21 @@ class RebrickableUser(Rebrickable):
         return 'sent'
 
 
+def _flag_number(value):
+    """A Brickset flag number (1 to 8) from whatever a reply holds, else None: never an exception, however odd the value."""
+    text = str(value).strip()
+    return int(text) if text.isdecimal() and len(text) <= 2 and 1 <= int(text) <= 8 else None
+
+
+def _whole(value, low, high):
+    """A whole number from low to high out of whatever a reply holds, else None (0 for \"none\" is below `low`, so it reads as None): never an exception."""
+    text = str(value).strip()
+    return int(text) if text.isdecimal() and len(text) <= 4 and low <= int(text) <= high else None
+
+
 class BricksetUser(Brickset):
     """Brickset collection methods: login, checkUserHash, getSets (owned/wanted), setCollection."""
-    USER_METHODS = ('login', 'checkUserHash', 'getSets', 'setCollection')
+    USER_METHODS = ('login', 'checkUserHash', 'getSets', 'setCollection', 'getUserFlagLabels')
 
     def __init__(self, db, **kwargs):
         super().__init__(db, **kwargs)
@@ -285,7 +375,7 @@ class BricksetUser(Brickset):
         raise ConnectRefused('Brickset did not accept that username and password')
 
     def check_user(self):
-        self.user_call('checkUserHash', {}, payload={}, charged=False)
+        self.user_call('checkUserHash', {}, payload={}, charged=True)
         return True
 
     def lists(self):
@@ -305,16 +395,41 @@ class BricksetUser(Brickset):
                 raise SourceError('Brickset collection is too long')
 
     def fetch(self, link):
-        owned, wanted, ids = {}, {}, {}
+        """The owned and wanted sets with their counts, and `fields`: what else Brickset keeps per set (notes, the flags that are on), read from
+        the same two calls, so it costs nothing extra."""
+        owned, wanted, ids, fields = {}, {}, {}, {}
+
+        def note(number, collection, wanted=False):
+            # `flags` is a list of {flagNo, value} (documented, and an empty list on the live account checked 24.11.); anything else reads as no flags
+            listed = collection.get('flags')
+            on = [_flag_number(f.get('flagNo')) for f in (listed if isinstance(listed, list) else ())
+                  if isinstance(f, dict) and str(f.get('value')).lower() in ('true', '1') and _flag_number(f.get('flagNo'))]
+            # `rating` (0 = none) and `wantedPriority` (1 = Brickset's default) are ints in `collection`, checked live 24.11.; Brickset keeps a
+            # wantedPriority on every set, so it counts only for a set that is wanted
+            entry = fields.setdefault(number, dict(notes=str(collection.get('notes') or ''), flags=sorted(on),
+                                                   rating=_whole(collection.get('rating'), 1, 5), priority=None))
+            if wanted:
+                entry['priority'] = _whole(collection.get('wantedPriority'), 1, 999)
         for row in self._sets({'owned': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
-            owned[number] = int((row.get('collection') or {}).get('qtyOwned') or 1)
+            collection = row.get('collection') or {}
+            owned[number] = int(collection.get('qtyOwned') or 1)
             ids[number] = int(row['setID'])
+            note(number, collection)
         for row in self._sets({'wanted': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
-            wanted[number] = 1
+            collection = row.get('collection') or {}
+            wanted[number] = int(collection.get('qtyWanted') or 1)
             ids[number] = int(row['setID'])
-        return dict(owned=owned, wanted=wanted, ids=ids, names={})
+            note(number, collection, wanted=True)
+        return dict(owned=owned, wanted=wanted, ids=ids, names={}, fields=fields)
+
+    def flag_labels(self):
+        """The names the person gave the eight flags at Brickset, `{flag number: label}`; a flag without a name is missing. One charged call."""
+        reply = self.user_call('getUserFlagLabels', {}, payload={}, charged=True)
+        listed = reply.get('flags')
+        return {_flag_number(f.get('flagNo')): str(f['label']).strip() for f in (listed if isinstance(listed, list) else ())
+                if isinstance(f, dict) and f.get('label') and str(f['label']).strip() and _flag_number(f.get('flagNo'))}
 
     def set_ids(self, numbers):
         """Brickset setIDs for set numbers, one charged getSets per 500 numbers."""
@@ -328,21 +443,27 @@ class BricksetUser(Brickset):
                 found[_number(f"{row['number']}-{row['numberVariant']}")] = int(row['setID'])
         return found
 
-    def send(self, row, link, state):
-        set_id = state['ids'].get(row['remote_no'])
+    def send_set(self, rows, link, state):
+        """Write all rows of one set (owned and wanted) in a single setCollection call."""
+        set_id = state['ids'].get(rows[0]['remote_no'])
         if set_id is None:
             raise errors.ValidationFailed('Brickset does not know this set number')
-        _day_counter(self.db, 'brickset', 'write', BRICKSET_WRITES_PER_DAY)
-        if row['kind'] == 'wanted':
-            params = {'want': 1 if row['send'] else 0}
-        else:
-            params = {'own': 1, 'qtyOwned': row['send']} if row['send'] else {'own': 0}
+        params = {}
+        for row in rows:
+            n = row['send']
+            if row['kind'] == 'wanted':
+                params.update({'qtyWanted': n} if n > 0 else {'want': 0})
+            else:
+                params.update({'own': 1, 'qtyOwned': n} if n > 0 else {'own': 0})
         self.user_call('setCollection', {'SetID': set_id, 'params': json.dumps(params)},
-                       payload=dict(SetID=set_id, **params), charged=False)
+                       payload=dict(SetID=set_id, **params), charged=True)
         return 'sent'
 
+    def send(self, row, link, state):
+        return self.send_set([row], link, state)
 
-ADAPTERS = {'rebrickable': RebrickableUser, 'brickset': BricksetUser}
+
+ADAPTERS = {'rebrickable': RebrickableUser, 'brickset': BricksetUser, 'brickowl': BrickOwlUser}
 
 
 def adapter(db, source, http=None):

@@ -23,7 +23,7 @@ def job_bodies(db, rows):
     packed = json.dumps(ids)
     steps = {}
     for s in db.execute('SELECT * FROM main.job_step WHERE job_id IN (SELECT value FROM json_each(?)) ORDER BY job_id, position', (packed,)):
-        steps.setdefault(s['job_id'], []).append({'name': s['name'], 'position': s['position'], 'state': s['state'], 'source': s['source'], 'error': s['error'],
+        steps.setdefault(s['job_id'], []).append({'name': s['name'], 'position': s['position'], 'state': s['state'], 'source': s['source'], 'count': s['count'], 'total': s['total'], 'error': s['error'],
                                                   'error_code': s['error_code'], 'retry_at': s['retry_at']})
     owners = {o['job_id']: (o['pid'], o['boot_id'], o['start_ticks']) for o in db.execute('SELECT job_id, pid, boot_id, start_ticks FROM main.job_owner WHERE job_id IN (SELECT value FROM json_each(?))', (packed,))}
     path = db.execute('PRAGMA database_list').fetchone()['file']

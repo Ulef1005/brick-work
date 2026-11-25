@@ -7,7 +7,7 @@ import json
 
 from flask import Response, request
 
-from ..core import build_scout, candidate_sets, collection, errors, list_exports, planning, set_scoring
+from ..core import build_scout, candidate_sets, collection, collection_export, errors, list_exports, planning, set_scoring
 from . import route
 from .read import (arguments, bodies, flag, page, reading, record, respond)
 
@@ -56,7 +56,7 @@ def get_planning_ranking(db):
                 'completeness_source': r['completeness_source'], 'storage_id': r['storage_id'], 'purchase_location_id': r['place_id'],
                 'purchase_date': r['purchase_date'], 'purchase_price': r['purchase_price'], 'purchase_currency': r['purchase_currency'], 'note': r['note'],
                 'current_value': plain(r.get('current_value')), 'current_value_currency': r['current_value_currency'], 'pinned': bool(r['pinned']),
-                'missing': missing, 'damaged': damaged, 'updated_at': r['updated_at'], 'archived_at': r['archived_at'],
+                'rating': r['rating'], 'missing': missing, 'damaged': damaged, 'updated_at': r['updated_at'], 'archived_at': r['archived_at'],
                 'value_when_complete': plain(r.get('value_when_complete')), 'valuation_basis': r.get('valuation_basis'), 'breakdown': plain(r.get('breakdown', {})),
                 'repair_cost': plain(r.get('repair_cost')), 'gross_gain': plain(r.get('gross_gain')), 'net_gain': plain(r.get('net_gain')),
                 'ratio': plain(r.get('ratio')), 'ratio_width': r.get('ratio_width', 0.0), 'ratio_overflow': bool(r.get('ratio_overflow', False))}
@@ -79,8 +79,8 @@ def chosen_copies():
     return ids
 
 
-def attachment(content, mimetype, name):
-    return Response(content, mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={name}'})
+def attachment(content, mimetype, name, extra=None):
+    return Response(content, mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename={name}', **(extra or {})})
 
 
 @route('/export/missing.csv')
@@ -132,6 +132,36 @@ def get_export_missing_json(db):
 def get_export_missing_xml(db):
     arguments()
     return attachment(planning.export(db, chosen_copies())['xml'], 'application/xml', 'brickwork-missing.xml')
+
+
+def _collection_args(args):
+    return args.get('kind'), request.args.getlist('id') or None
+
+
+def _collection_response(result, mimetype, name):
+    extra = {'X-Brickwork-Exported': str(result['rows']), 'X-Brickwork-Skipped': str(len(result['skipped']))}
+    return attachment(result['content'], mimetype, name, extra)
+
+
+@route('/export/collection.csv')
+@reading
+def get_export_collection_csv(db):
+    kind, ids = _collection_args(arguments())
+    return _collection_response(collection_export.to_csv(db, kind, ids), 'text/csv', 'brickwork-collection.csv')
+
+
+@route('/export/collection.xml')
+@reading
+def get_export_collection_xml(db):
+    kind, ids = _collection_args(arguments())
+    return _collection_response(collection_export.to_xml(db, kind, ids), 'application/xml', 'brickwork-collection.xml')
+
+
+@route('/export/collection.rebrickable.csv')
+@reading
+def get_export_collection_rebrickable_csv(db):
+    kind, ids = _collection_args(arguments())
+    return _collection_response(collection_export.to_rebrickable_csv(db, kind, ids), 'text/csv', 'brickwork-collection.rebrickable.csv')
 
 
 # ---------- sets versus a pile of parts (#199) ----------

@@ -24,12 +24,14 @@ def seed(coll, last='2026-12-31', price='79.99'):
     return keep
 
 
-def test_wishlist_retail_line(coll, client):
+def test_wishlist_tile_has_no_retail_line(coll, client):
+    """#654: the Wishlist tile answers "can I buy this now at a price I accept"; the retail line left it (the set page keeps it)."""
     keep = seed(coll)
-    coll.add_wish(keep, quantity=1, condition='any')
-    wish = BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser').select_one('.bp-retail')
-    assert 'Retail DE' in wish.get_text() and 'Retiring' in wish.get_text() and '€79.99' in wish.get_text()
-    assert wish.select_one('[data-retail-status=retiring]')
+    wish = coll.add_wish(keep, quantity=1, condition='any')
+    page = client.get('/planning/wishlist').data.decode()
+    assert 'bp-retail' not in page and 'Retail DE' not in page
+    detail = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    assert 'Retail' in detail.select_one('[data-bc-retail]').text and 'Retiring' in detail.select_one('[data-bc-retail]').text
 
 
 def test_only_a_set_has_a_retail_line_and_a_missing_price_says_so(coll, read):

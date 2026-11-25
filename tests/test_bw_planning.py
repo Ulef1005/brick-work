@@ -91,7 +91,7 @@ def test_screen(world, client, screen):
     assert not s.select_one('a[href="/complete-sets"]')
     assert 'alerts unavailable' not in s.get_text() and 'Wanted watch' not in s.get_text()
     if screen == 'wishlist':
-        assert [b.text for b in s.select('.bp-price-filter [data-bp-pick=under]')] == ['Under max', 'Over max', 'No max set', 'Not comparable']
+        assert [b.get_text(strip=True)[:-1] if b.select_one('.bp-chip-count') else b.text for b in s.select('.bp-price-filter [data-bp-pick=under]')] == ['All', 'Buy now', 'Wait', 'No max', 'Not comparable', 'No price']
     assert client.get('/planning/nothing').status_code == 404
 
 
@@ -516,21 +516,23 @@ def test_run3_wishlist_count_conditions_and_records(coll, world, client, read):
         rows = planning.wishes(db)
     quantity = sum(r['quantity'] for r in rows)
     soup = BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser')
-    assert soup.h1.get_text(strip=True) == f'{quantity} items wanted'                    # a set and a part
+    assert soup.h1.get_text(strip=True) == f'{sum(r["max_state"] == "under" for r in rows)} of {len(rows)} wanted items {"is" if sum(r["max_state"] == "under" for r in rows) == 1 else "are"} under your max'   # a set and a part
+    assert soup.select_one('.bp-subtitle').text.startswith(f'{len(rows)} wanted · prices are used or new averages from ')   # wishes, never pieces (3 each here)
     # 4.9d w2/w3 + 12k: condition chips All, Used, New (All carries the count), then the Price filter row.
     chips = soup.select('.bp-visible-chips button')
     unfilled = sum(1 for r in rows if not r['filled'])  # #35: the Not yet filled chip follows the conditions
-    assert [b.get_text(strip=True) for b in chips] == ['All' + str(len(rows_of(soup))), 'Used', 'New', 'Not yet filled' + str(unfilled), 'Under max', 'Over max', 'No max set', 'Not comparable']
+    assert [b.get_text(strip=True) for b in chips] == ['All' + str(len(rows_of(soup))), 'Used', 'New', 'Not yet filled' + str(unfilled), 'All' + str(len(rows)), 'Buy now' + str(sum(r['wish_state'] == 'under' for r in rows)), 'Wait' + str(sum(r['wish_state'] == 'over' for r in rows)), 'No max' + str(sum(r['wish_state'] == 'nomax' for r in rows)), 'Not comparable' + str(sum(r['wish_state'] == 'differs' for r in rows)), 'No price' + str(sum(r['wish_state'] == 'noprice' for r in rows))]
     assert chips[0].select_one('.bp-chip-count').text == str(len(rows_of(soup)))
     assert soup.select_one('[data-bp-search]')['placeholder'] == 'Number or name'
     for row in rows_of(soup):
         assert not row.select('.bp-records, [data-bp-archive], input:not([data-wl-selected])')
         assert row.select_one('[data-wl-selected]')
         detail = BeautifulSoup(client.get(row.select_one('a[href*=wishes]')['href']).data, 'html.parser')
-        assert '3 wanted' in detail.select_one('.bc-wish-facts').text
+        assert '3 wanted' in detail.select_one('.bc-wish-facts').text and detail.select_one('.bc-wanted h2').text == 'Your wish'
         assert detail.select_one('#bc-delete form[data-bc-action=archive]')
     coll.sql('UPDATE wish SET archived_at=? WHERE kind=?', ('2026-10-27T00:00:00.000Z', 'part'))
-    assert BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser').h1.get_text(strip=True) == '3 sets wanted'
+    assert BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser').h1.get_text(strip=True) == '0 of 1 wanted set are under your max'
+    assert BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser').select_one('.bp-subtitle').text.startswith('1 set wanted · ')
 
 
 def test_run3_prices_priority_history_lookup_and_chips(coll, world, client, read):
@@ -631,14 +633,13 @@ def test_run4_wishlist_hierarchy_and_details(coll, world, client):
         assert 'Age not recorded' in facts.text
         assert 'Keep this wish note' in facts.text and '3 wanted' in facts.text
         assert detail.select_one('#bc-edit form[data-bc-action=save]')
-        assert row.select_one('.bp-max-label').text == 'Your max price'
-        assert row.select_one('.bp-max strong.mono')
-        assert row.select_one('.bp-wish-number .bc-status').text == 'Wants unknown'
+        assert row.select_one('.bp-wl-max .bp-max-none').text == 'No max set'   # #653, #654: body text, not the mono of an amount
+        assert row.select_one('.bp-wl-want span').text == 'Wants unknown'
+        assert row.select_one('.bp-wish-number .bp-state').text == 'No max'
         assert 'Currency not recorded' not in row.text and '3 wanted' not in row.text
         assert 'Keep this wish note' not in row.text
     assert soup.select_one('[data-bp-pick=condition][data-value=""]')['aria-pressed'] == 'true'
     css = (ROOT / 'static/web/toni/bw-planning.css').read_text()
-    assert 'font:600 20px/26px var(--tw-mono)' in css
     assert '.bp-visible-chips { display:flex;gap:8px;' in css
     assert '[aria-pressed=true] { background:var(--tw-accent-soft)' in css
 
@@ -735,13 +736,13 @@ def test_compact_prices_market_only_and_recorded_labels(coll, world, client, rea
     detail = BeautifulSoup(client.get(row.select_one('a[href*=wishes]')['href']).data, 'html.parser')
     assert len(detail.select('.bc-price-records .bc-price')) == len(quotes)
     if expected:
-        compact = row.select_one('.bp-card-price')
+        compact = row.select_one('.bp-wl-price')
         assert {'new': 'New', 'used': 'Used'}.get(quotes[-1][0], 'Price') in compact.text and ' · ' not in compact.text
         assert ('listings' in compact.text) == (quotes[-1][1] == 'stock')
         if expected == '-5.9':
             assert '€5.90 below' in compact.text
     else:
-        assert 'no sales' in row.select_one('.bp-values').text and not row.select('.bp-card-price')
+        assert 'No sales yet' in row.select_one('.bp-wl-price').text
 
 
 def test_repair_summary_wraps_above_details_css_contract(coll, client):
@@ -814,7 +815,7 @@ def test_wishlist_uses_collection_save_archive_undo(coll, world, client):
 
 def test_47c_wishlist_copy_structure_and_add_path(world, client):
     soup = BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser')
-    assert soup.select_one('.bp-subtitle').text == 'Price now against your max, used average'
+    assert soup.select_one('.bp-subtitle').text.endswith('prices are used or new averages from BrickLink for the condition you want')   # the source named once, under the title (#654)
     assert not soup.select('.bc-detail-back, .breadcrumb')
     assert 'Add a wish' not in soup.text
     switch = soup.select_one('#bw-planning > .bc-list-options')
@@ -832,15 +833,9 @@ def test_47c_wishlist_exact_css_values():
     contracts = {
         '#bw-planning[data-screen=wishlist] h1': ['letter-spacing:-.2px'],
         '#bw-planning[data-screen=wishlist] .bp-subtitle': ['font:400 14px/20px var(--tw-font)', 'color:var(--tw-text-muted)'],
-        '.bp-max strong': ['font:600 20px/26px var(--tw-mono)'],
         '.bp-wishlist .bp-row .bc-identity > .secondary': ['font:400 13px/18px var(--tw-font)', 'color:var(--tw-text-muted)'],
-        '.bp-wishlist .bp-card-price': ['font:400 12px/16px var(--tw-mono)', 'color:var(--tw-text-2)'],
         '#bw-planning .bc-view-switch button': ['width:44px', 'height:36px'],
         '.bp-wishlist[data-view=list] .bc-picture': ['width:56px', 'height:56px'],
-        '.bp-wish-track': ['height:18px'],
-        '.bp-wish-track::before': ['top:6px', 'height:6px', 'border-radius:3px'],
-        '.bp-wish-track i': ['top:1px', 'width:2px', 'height:16px'],
-        '.bp-wish-range-labels': ['font:400 11px/14px var(--tw-mono)', 'color:var(--tw-text-2)'],
     }
     for selector, values in contracts.items():
         rule = re.search(re.escape(selector) + r'\s*\{([^}]+)', css).group(1)
@@ -856,22 +851,18 @@ def test_47c_wanted_card_and_existing_condition_save_undo(coll, world, client, c
     assert soup.select_one('[data-web-ui=toni]')
     assert not soup.select('.breadcrumb')
     card = soup.select_one('[data-module=wanted]')
-    assert card.h2.text == 'Wanted'
-    assert card.select_one('.bc-wanted-max strong').text == '€82.39'  # 4.8b: the limit takes the configured currency
-    assert card.select_one('.bc-wanted-segments').has_attr('data-bc-save-group')
-    assert [b.text for b in card.select('.bc-wanted-segments button')] == ['New', 'Used', 'Any']
-    assert not card.select('dt') and 'Tags' not in card.text
-    selected = card.select('[aria-pressed=true]')
-    assert len(selected) == (0 if condition is None else 1)
-    if selected:
-        assert selected[0].parent.select_one('input')['value'] == condition
+    assert card.h2.text == 'Your wish'                                                          # #655, frame 62
+    facts = {dt.text: dd for dt, dd in zip(card.select('dl.bc-wish-kv dt'), card.select('dl.bc-wish-kv dd'))}
+    assert list(facts) == ['Wants', 'Filled', 'List', 'Your max']                                # a part wish has no max with box: the edit sheet has no such field there
+    assert facts['Your max'].text == '€82.39'  # 4.8b: the limit takes the configured currency
+    assert facts['Wants'].text == {'new': 'New', 'used': 'Used', 'any': 'Any', None: 'Not recorded'}[condition]
+    assert 'Max with box' not in facts and 'Tags' not in card.text
     assert 'Keep every wish fact' in soup.select_one('.bc-wish-facts').text
     assert 'Max in EUR' in soup.select_one('.bc-wish-facts').text
-    form = card.select_one('form')
+    form = soup.select_one('#bc-edit form[data-bc-action=save]')
     identity = json.loads(form['data-identity'])
-    assert form['data-bc-action'] == 'save'
     token = csrf(client)
-    response = client.post('/collection/save/save', json=dict(csrf_token=token, **identity, values={'condition': form.input['value']}))
+    response = client.post('/collection/save/save', json=dict(csrf_token=token, **identity, values={'condition': 'new'}))
     assert response.status_code == 200
     event = coll.db.execute('SELECT * FROM event WHERE id=?', (response.json['event_id'],)).fetchone()
     assert event['via'] == 'app'
@@ -887,12 +878,6 @@ def test_47c_wanted_exact_css_values():
     contracts = {
         '#bw-collection .bc-wanted': ['padding:16px', 'gap:14px', 'border-radius:16px', 'background:var(--tw-surface)'],
         '#bw-collection .bc-wanted h2,.bc-wanted-label': ['font:500 11px/14px var(--tw-font)', 'letter-spacing:.1em', 'color:var(--tw-text-muted)'],
-        '.bc-wanted-max strong': ['font:600 24px/30px var(--tw-mono)'],
-        '.bc-wanted-max': ['gap:2px'],
-        '.bc-wanted-condition': ['gap:6px'],
-        '.bc-wanted-segments': ['padding:2px', 'gap:2px', 'border-radius:10px'],
-        '#bw-collection .bc-wanted-segments button': ['height:44px', 'border-radius:8px', 'font:500 13px var(--tw-font)', 'color:var(--tw-text-2)'],
-        '#bw-collection .bc-wanted-segments button[aria-pressed=true]': ['background:var(--tw-accent-soft)', 'color:var(--tw-accent-text)'],
     }
     for selector, values in contracts.items():
         rule = re.search(re.escape(selector) + r'\s*\{([^}]+)', css).group(1)
@@ -905,9 +890,9 @@ def test_47c_compact_range_and_provenance_on_detail(coll, world, client):
     price(coll, world.plate, '82.39', colour=world.white, minimum='70', maximum='99', sold=3)
     soup = BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser')
     row = next(r for r in rows_of(soup) if json.loads(r['data-record'])['id'] == world.wish_part)
-    assert row.select_one('.bp-card-price').text == 'Used avg €82.39'
-    assert [s.text for s in row.select('.bp-wish-range-labels span')] == ['min €70.00', 'avg €82.39', 'max €99.00']
-    assert row.select_one('.bp-values').find_all(recursive=False)[-1]['class'] == ['bp-wish-range']
+    assert [s.text for s in row.select('.bp-wl-price span, .bp-wl-price strong')] == ['Used avg', '€82.39']   # the guide only: no min / avg / max strip on the tile (#654)
+    assert not row.select('.bp-wish-range, .bp-wish-track')
+    assert row.select_one('.bp-values').find_all(recursive=False)[-1]['class'] == ['bp-gap']
     assert not row.select('details') and 'bricklink' not in row.text
     detail = BeautifulSoup(client.get(row.select_one('a[href*=wishes]')['href']).data, 'html.parser')
     # 4.7e moved provenance from visible text into the caption title.
@@ -940,14 +925,13 @@ def test_49d_prices_order_update_and_wishlist_range(coll, world, client):
     assert soup.select_one('[data-bp-lookup]').find_next(class_='bp-visible-chips') is chips
     assert chips.find_next(class_='bc-toolbar') is controls
     assert not any(b.text == 'Refresh' for b in soup.select('.bp-ages button'))
-    css = (ROOT / 'static/web/toni/bw-planning.css').read_text().replace(' ', '')
-    assert '.bp-wish-trackb{position:absolute;left:0;width:100%;top:6px;height:6px;border-radius:3px;background:var(--tw-viz-2)' in css
-    assert '.bp-wish-range-labels{gap:0;flex-wrap:nowrap;}' in css
     coll.sql("UPDATE wish SET condition='used' WHERE id=?", (world.wish_part,))
     price(coll, world.plate, '70', colour=world.white, minimum='60', maximum='100', sold=3)
     wish = BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser')
-    track = next(r for r in rows_of(wish) if json.loads(r['data-record'])['id'] == world.wish_part).select_one('.bp-wish-track')
-    assert track.select_one('b') and track.select_one('i')['style'] == 'left:25.0%'
+    row = next(r for r in rows_of(wish) if json.loads(r['data-record'])['id'] == world.wish_part)
+    assert not row.select('.bp-wish-track')                                                  # #654: the range strip moved to the wish page
+    detail = BeautifulSoup(client.get(row.select_one('a[href*=wishes]')['href']).data, 'html.parser')
+    assert detail.select_one('[data-module=prices] .bc-range i')['style'] == 'left:25.0%'    # one strip, to scale
 
 
 def test_49d_collection_wishes_show_recorded_max(coll, world, client, read):

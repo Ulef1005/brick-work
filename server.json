@@ -8,11 +8,11 @@
     "source": "github"
   },
   "websiteUrl": "https://brick-work.app",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/ulef1005/brick-work:1.1.1",
+      "identifier": "ghcr.io/ulef1005/brick-work:1.2.0",
       "transport": {
         "type": "stdio"
       },

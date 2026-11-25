@@ -36,7 +36,7 @@ def test_a_46_store_migrates_with_every_copy_null_and_matches_a_fresh_one(tmp_pa
         db.execute("INSERT INTO meta(key,value) VALUES('schema_version','4.6')")
         assert 'checked_by' not in {r[1] for r in db.execute('PRAGMA table_info(copy)')}
         db.commit()
-    assert upgrade(old) == upgrade(old) == SCHEMA_VERSION == '4.7'
+    assert upgrade(old) == upgrade(old) == SCHEMA_VERSION == '4.9'
     with closing(connect(old, tmp_path / 'catalogue.db')) as upgraded, closing(connect(tmp_path / 'new.db', tmp_path / 'catalogue.db')) as fresh:
         assert dict(upgraded.execute('SELECT key,value FROM meta'))['upgraded_to_4.7'].endswith('Z')
         defs = [db.execute("SELECT sql FROM sqlite_master WHERE name='copy'").fetchone()[0] for db in (upgraded, fresh)]

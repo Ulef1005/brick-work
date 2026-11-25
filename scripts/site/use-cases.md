@@ -2,7 +2,7 @@
 <section class="layout-115">
 <span class="layout-19">Use cases</span>
 <h1 class="layout-116">Nine moments a collector knows.</h1>
-<p class="layout-117">Each case says what you have in front of you, what you do, and which part of the app does it.</p>
+<p class="layout-117">Each case says what you have in front of you, what you do, and which part of the app does it. Looking for an answer to one question? See the <a href="../questions/">questions collectors ask</a>.</p>
 <div class="layout-118">
 <a class="layout-119" href="#uc-table">At the table<span class="layout-120">3</span></a>
 <a class="layout-119" href="#uc-plan">Planning and keeping<span class="layout-120">4</span></a>

@@ -32,6 +32,8 @@ Each line cost a review round or a red run once. Newest at the bottom of its gro
 - A pull request sets `BW_NO_CHROME=1` and runs no Chrome test. Only the push run on `main` renders in Chrome, so a rendered test is not proved by a green PR check: run `scripts/check.sh` locally first. Pixel and geometry tolerances must hold on the Ubuntu runner's fallback font (the phone sub row is 38 px there, 40 with the shipped fonts).
 - `tests/bench_reference.json` changes only when the intended entry changes; a changed hash elsewhere is a regression, not a baseline to refresh.
 - Do not run the same gate twice for one tree: run targeted tests while you work, the full `scripts/check.sh` once at the end, and the read-only review in the background on the first commit.
+- A change to a write in `docs/brickwork/openapi-v2.yaml` needs `python -m scripts.generate_api_writes --write` (`brickwork/api2/write_contract.json`), or the `api-writes` step fails in CI.
+- A Python whose sqlite has URI filenames off (the cloud container) fails `tests/test_upgrade_path.py` on its `ATTACH 'file:…?mode=ro'`; that hides a real failure, so run it with `sqlite3.connect(..., uri=True)` patched in before calling it pre-existing.
 
 **Commits**
 - Commit path-limited with the message in a file: `git commit -F <file> -- <paths>`. A commit that changes app source needs a change under `docs/` or a `Docs: none, <reason>` trailer; a CHANGELOG entry is not a docs change.

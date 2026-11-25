@@ -43,7 +43,6 @@
 .bp-wishlist .bc-picture a { display:flex;width:100%;height:100%; }
 .bp-wishlist .bc-picture img { width:100%;height:100%; }
 .bp-wishlist .bp-values { font-size:12px;line-height:18px; }
-.bp-wishlist .bp-card-price { margin:0;font:400 12px/16px var(--tw-mono);color:var(--tw-text-2); }
 .bp-wishlist .bp-settings { grid-template-columns:minmax(0,1fr); }
 .bp-wishlist .bp-settings .bp-row-actions { flex-direction:column;align-items:stretch; }
 .bp-price-columns,.bp-prices .bp-row { display:grid;grid-template-columns:minmax(0,1.5fr) minmax(100px,.7fr) minmax(0,1.2fr) minmax(160px,.4fr);gap:12px 20px;padding-block:10px;align-items:center; }
@@ -84,21 +83,8 @@
 /* 4.6m · Wishlist hierarchy and separated condition chips. */
  .bp-wish-number { display:flex;justify-content:space-between;gap:6px;align-items:center;font-size:12px;color:var(--tw-text-muted); }
 .bp-wish-number .bc-status { font:500 12px/16px var(--tw-font); }
-.bp-max { display:flex;flex-direction:column;gap:2px; }
-.bp-max-label { font:500 10px/12px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted); }
-.bp-max strong { font:600 20px/26px var(--tw-mono); }
-.bp-max-line { display:flex;align-items:baseline;gap:8px;flex-wrap:wrap; }
-.bp-max-diff { display:inline-flex;align-items:center;gap:5px;font:500 12px/16px var(--tw-mono);color:var(--tw-text-2); }
-.bp-max-dot { width:7px;height:7px;border-radius:50%;background:var(--tw-success);display:inline-block; }
-.bp-max-dot.over { background:var(--tw-warning); }
-.bp-max-dot.differs { background:var(--tw-text-muted); }
 .bp-price-filter { display:flex;flex-direction:column;gap:8px;margin-top:12px; }
 .bp-price-filter-label { margin:0;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted); }
-.bp-verdict { display:inline-flex;align-items:center;gap:6px; }
-.bp-verdict.under { background:var(--tw-success-soft); }
-.bp-verdict.over,.bp-verdict.differs { background:var(--tw-surface); }
-.bp-price-note { margin:16px 0 0;font:400 13px/18px var(--tw-font);color:var(--tw-text-2); }
-.bp-max-note { font:400 12px/16px var(--tw-mono); }
 #bw-planning .bp-wishlist summary { min-height:16px;padding:0;font-size:12px;line-height:16px; }
 #bw-planning .bp-wishlist .bp-edit summary { padding-block:8px; }
 #bw-planning .bp-visible-chips { display:flex;gap:8px; }
@@ -164,17 +150,10 @@
 .bp-wishlist[data-view=list] .bp-identity { flex-direction:row; }
 .bp-wishlist[data-view=list] .bc-picture { width:56px;height:56px;aspect-ratio:1; }
 
-.bp-wish-range { display:flex;flex-direction:column;gap:4px; }
-.bp-wish-track { position:relative;height:18px; }
-.bp-wish-track::before { content:"";position:absolute;left:0;right:0;top:6px;height:6px;border-radius:3px;background:var(--tw-viz-n1); }
-.bp-wish-track i { position:absolute;top:1px;width:2px;height:16px;border-radius:1px;background:var(--tw-text); }
-.bp-wish-range-labels { display:flex;justify-content:space-between;gap:4px;font:400 11px/14px var(--tw-mono);color:var(--tw-text-2);flex-wrap:wrap; }
 
 /* 4.9d · Planning review fixes (w2-w5): All chip count, coloured min-to-max interval, stacked range labels. */
 #bw-planning .bp-visible-chips button { display:inline-flex;align-items:center;gap:8px; }
 .bp-chip-count { font:400 13px var(--tw-mono);opacity:.75; }
-.bp-wish-track b { position:absolute;left:0;width:100%;top:6px;height:6px;border-radius:3px;background:var(--tw-viz-2); }
-.bp-wish-range-labels { gap:0;flex-wrap:nowrap; }
 /* Prices load their rows after the page: on phones the list holds its space until then, so the footer does not jump. */
 @media(max-width:1023.98px) { #bw-planning [data-bp-rows][aria-busy=true] { min-height:100dvh; } }
 [data-bp-print][aria-disabled=true] { opacity:.4;pointer-events:none; }
@@ -186,7 +165,6 @@
 .bp-filled-done { font:500 12px var(--tw-font);color:var(--tw-success-text,var(--tw-text)); }
 .bp-filled-track { display:block;height:4px;border-radius:2px;background:var(--tw-viz-n1);overflow:hidden;max-width:160px; }
 .bp-filled-track i { display:block;height:100%;background:var(--tw-viz-4); }
-.bp-retail { margin:0;font:400 13px var(--tw-font);color:var(--tw-text-2); }
 
 /* #225 · Order missing parts: sets with gaps on the left, the combined order list on the right (one column on a phone, in two steps).
    Everything is scoped to the page; the switch, the toolbar, the colour chip, the status pill and the selection bar are the shared ones. */

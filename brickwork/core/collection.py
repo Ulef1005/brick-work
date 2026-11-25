@@ -704,6 +704,13 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     row.update(instances=all_instances, selected=selected, wish=wish, properties=props, prices=prices(db, item_id, colour))
     row['theme'] = row.get('theme') or props.get('theme', {}).get('value', '')
     row['external_links'] = external_links(db, row)
+    row['source'] = None                                                  # #551: where the shown copy, stock row or wish came from
+    if selected and selected.get('entity') in origins.TABLES:
+        from ..web.formatting import short_date
+        row['source'] = origins.body(selected.get('added_via'), origins.sources_of(db, selected['entity'], [selected['id']])[selected['id']])
+        row['source']['chip'] = origins.chip(selected.get('added_via'))
+        row['source']['lines'] = ['Last synced from ' + origins.SITE_NAMES.get(l['site'], l['site']) + (': ' + l['list_name'] if l['list_name'] else '')
+                                  + ' · ' + short_date(l['synced_at'], True) for l in row['source']['last_synced_from']]
     price_priority = collection_prices.priority(db)
     observations = [dict(r, item_type=letter) for r in db.execute('''SELECT o.*,f.max_age_days FROM price_observation o
         LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices'

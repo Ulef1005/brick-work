@@ -89,8 +89,12 @@ def _key_checked_day(key, last_success):
 
 
 def _runs(db, source):
-    """The last runs for the page at rest, newest first, from the sync log; Undo only on the newest pull that was not undone."""
-    rows = _log(db, limit=5, source=source)
+    """The last runs for the page at rest, newest first, from the sync log; Undo only on the newest pull that was not undone. An interrupted run
+    stays listed, with the rows of its pull, for as long as that pull is not undone (looked for in the last 200 rows of the site)."""
+    found = _log(db, limit=200, source=source)
+    live = {r['event'] for r in found if r['direction'] == 'Pulled' and r['state'] == 'Done'}
+    kept = {e for r in found if r['state'] == 'Interrupted' for e in r.get('pulls', ()) if e in live}
+    rows = [r for i, r in enumerate(found) if i < 5 or r.get('event') in kept or (r['state'] == 'Interrupted' and kept.intersection(r.get('pulls', ())))]
     undo = next((r['id'] for r in rows if r['direction'] == 'Pulled' and r['state'] == 'Done' and r.get('event')), None)
     return [dict(r, undoable=r['id'] == undo, retry=r['direction'] == 'Sent' and r['state'] not in ('Done', 'Interrupted') and not r.get('lost'), title=('Undo' if r['direction'] == 'Undone' else 'Run')) for r in rows]
 

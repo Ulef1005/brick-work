@@ -48,7 +48,7 @@ def _stage_total(run, plans, form_data, name):
 
 
 def _interrupted(db, run, plans, form_data, name):
-    """A stage a dead owner left `started`: failed, never run again. For the send stage the rows get the result the send plan kept. The row in
+    """A stage a dead owner left `started`: failed (`done` when every send's result was already saved), never run again. For the send stage the rows get the result the send plan kept. The row in
     flight is the one the worker recorded before its call (`job_progress.in_flight`, cleared after the call; Brickset: one call per set number, so
     that set's rows together): its result is `unknown`, because Brick Work cannot tell whether the call arrived. Rows with no kept result are
     `failed`, they did not go. `run.retry_send` sends again the `failed` ones, and an `unknown` one only when the person asks for that row."""
@@ -229,7 +229,7 @@ def _finish_stopped(db, job, run, plans, form_data, start_idx):
 
 
 def _settle_done(db, job, run, *, error=None):
-    events = [run['stages'][s]['event'] for s in ('pull', 'parts') if (run['stages'].get(s) or {}).get('event') is not None]
+    events = sync_run.pull_events(run)
     t = now()
     stamp = jobs._stamp(t)
     source = run.get('source', sync_run.SOURCE)
@@ -293,12 +293,19 @@ def _run_one(db, job, http):
         if existing and existing.get('status') == 'started':
             run['stages'][name] = _interrupted(db, run, plans, form_data, name)
             _refresh_plans(db, run)
-            if name == 'send' and run['stages'][name].get('counts'):    # the sync log shows the run as interrupted, with a way back to its page
+            finished = run['stages'][name].get('status') == 'done'
+            if name == 'send' and run['stages'][name].get('counts'):    # the send's record in the sync log; an interrupted one keeps a way back to its page
+                record = dict(plan=plans['send']['id'], counts=run['stages'][name]['counts'])
+                if not finished:
+                    record.update(interrupted=True, run=run_id, pulls=sync_run.pull_events(run))
                 with transaction(db):
-                    audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None,
-                          dict(plan=plans['send']['id'], counts=run['stages'][name]['counts'], interrupted=True, run=run_id))
+                    audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None, record)
             with transaction(db):
-                _set_step(db, job_id, name, 'failed', error=INTERRUPTED_MESSAGE)
+                if finished:
+                    _set_step(db, job_id, name, 'done')
+                    db.execute('UPDATE job_step SET count=total WHERE job_id=? AND name=?', (job_id, name))
+                else:
+                    _set_step(db, job_id, name, 'failed', error=INTERRUPTED_MESSAGE)
             continue
         if not _has_plan(run, plans, name):
             continue

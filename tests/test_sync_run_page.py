@@ -281,7 +281,7 @@ def test_a_pull_that_succeeded_in_part_is_not_reported_as_applied_or_as_nothing_
     assert 'applied in part' in text(pull) and 'Nothing here changed' not in text(pull) and 'Pull applied' not in text(pull)
 
 
-def test_an_interrupt_between_two_sends_says_every_row_did_not_go(three_sends, client):  # noqa: F811
+def test_an_interrupt_between_two_sends_says_no_send_was_cut_off(three_sends, client):  # noqa: F811
     pair, run_id, keys = three_sends
     with db_of(pair) as db:
         job_id = run_job.queue(db, run_id, form_for(db, run_id))
@@ -310,4 +310,28 @@ def test_a_run_whose_last_send_was_saved_before_the_restart_is_not_left_interrup
     assert set(results) == {'sent'}
     with db_of(pair) as db:
         assert sync_run.load(db, run_id)[0]['stages']['send']['status'] == 'done'
+        step = db.execute("SELECT s.state, s.error, s.count, s.total FROM job_step s JOIN job j ON j.id=s.job_id WHERE s.name='send' ORDER BY j.id DESC").fetchone()
+        assert (step['state'], step['error']) == ('done', None) and step['count'] == step['total']
+        from brickwork.web.sync_views import _log
+        assert [r['state'] for r in _log(db, source='rebrickable') if r['direction'] == 'Sent'] == ['Done']
     assert page_of(client, run_id).location.endswith('/result')
+
+
+def test_last_runs_keeps_an_interrupted_run_and_its_pull_until_the_pull_is_undone(three_sends):  # noqa: F811
+    from brickwork.core.admin import audit
+    from brickwork.core.transaction import transaction
+    from brickwork.web.sync_site import _runs
+    pair, run_id, keys = three_sends
+    _interrupt(pair, run_id)
+    with db_of(pair) as db:
+        pulls = sync_run.pull_events(sync_run.load(db, run_id)[0])
+        assert pulls
+        for n in range(6):          # six newer sends push both rows past the five newest
+            with transaction(db):
+                audit(db, 'sync:rebrickable', 'send', None, dict(plan=f'later-{n}', counts={'sent': 1}))
+        listed = _runs(db, 'rebrickable')
+        assert [r['state'] for r in listed].count('Interrupted') == 1 and len(listed) > 5
+        assert [r['event'] for r in listed if r['undoable']] and all(r['event'] in pulls for r in listed if r['undoable'])
+        sync_run.undo_run(db, pulls[0])
+        listed = _runs(db, 'rebrickable')
+        assert len(listed) == 5 and not [r for r in listed if r['state'] == 'Interrupted']

@@ -88,7 +88,7 @@ def _log(db, limit=20, source=None):
             interrupted = bool((value or {}).get('interrupted'))
             state = 'Interrupted' if interrupted else 'Done' if not problems else 'Waiting for you'
             rows.append(dict(id=r['id'], at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None, lost=(value or {}).get('kind') == 'lost_parts',
-                             run=(value or {}).get('run')))
+                             run=(value or {}).get('run'), pulls=(value or {}).get('pulls') or []))
     return rows[:limit]
 
 

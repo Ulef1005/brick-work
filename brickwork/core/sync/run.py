@@ -924,6 +924,11 @@ def _apply_lost_out(db, run, wanted, http):
     return result
 
 
+def pull_events(run):
+    """The pull events of a run (the pull and the part-list pull), the ones its Undo takes back."""
+    return [run['stages'][s]['event'] for s in ('pull', 'parts') if (run['stages'].get(s) or {}).get('event') is not None]
+
+
 def undo_run(db, event_id):
     """Undo a pull and the part-list pull of the same run in one step (the run is found by either event). Raises UndoBlocked, and undoes
     nothing, when something it wrote changed since."""
@@ -968,7 +973,7 @@ def retry_send(db, run_id, *, http=None, also=()):
         if left:     # a row that may have gone out is still unchecked: the run stays interrupted, here and in the sync log
             run['stages']['send'] = dict(status='failed', message=INTERRUPTED_MESSAGE, counts=counts, rows=len(rows), results=rows)
             with transaction(db):
-                audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id))
+                audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id, pulls=pull_events(run)))
         else:
             run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
         sync._store_plan(db, run)

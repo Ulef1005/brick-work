@@ -89,10 +89,14 @@ def _key_checked_day(key, last_success):
 
 
 def _runs(db, source):
-    """The last runs for the page at rest, newest first, from the sync log; Undo only on the newest pull that was not undone."""
-    rows = _log(db, limit=5, source=source)
-    undo = next((r['id'] for r in rows if r['direction'] == 'Pulled' and r['state'] == 'Done' and r.get('event')), None)
-    return [dict(r, undoable=r['id'] == undo, retry=r['direction'] == 'Sent' and r['state'] != 'Done' and not r.get('lost'), title=('Undo' if r['direction'] == 'Undone' else 'Run')) for r in rows]
+    """The last runs for the page at rest, newest first, from the sync log; Undo only on the newest pull that was not undone. An interrupted run
+    stays listed, with the rows of its pull, while that pull is not undone and is among the site's newest 200 log rows."""
+    found = _log(db, limit=200, source=source)
+    live = {r['event'] for r in found if r['direction'] == 'Pulled' and r['state'] == 'Done'}
+    kept = {e for r in found if r['state'] == 'Interrupted' for e in r.get('pulls', ()) if e in live}
+    rows = [r for i, r in enumerate(found) if i < 5 or r.get('event') in kept or (r['state'] == 'Interrupted' and kept.intersection(r.get('pulls', ())))]
+    undo = next((r['id'] for r in found if r['direction'] == 'Pulled' and r['state'] == 'Done' and r.get('event')), None)
+    return [dict(r, undoable=r['id'] == undo, retry=r['direction'] == 'Sent' and r['state'] not in ('Done', 'Interrupted') and not r.get('lost'), title=('Undo' if r['direction'] == 'Undone' else 'Run')) for r in rows]
 
 
 def site_page(source):
@@ -350,6 +354,8 @@ def step_preview(source, run_id):
             return _gone(source)
         if run.get('applied'):
             return redirect(_to(source, 'result', run_id=run_id))
+        if run.get('job'):
+            return redirect(_to(source, 'progress', run_id=run_id))
         if run.get('applying'):
             flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
             return redirect(url_for('web.bw_sync_site', source=source))
@@ -388,6 +394,7 @@ def step_apply(source, run_id):
     from ..core import errors
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
+    from ..core.sync import run_job
     _guard()
     form = MultiDict(request.form)
     if form.get('lot_all'):    # one lot for every loose row ticked, the section's "Put in"
@@ -396,17 +403,111 @@ def step_apply(source, run_id):
     try:
         with _db() as db, audit_origin('app'):
             _same_site(db, run_id, source)
-            run = sync_run.apply(db, run_id, form)
+            run_job.queue(db, run_id, form, via='app')
+            run, _plans = sync_run.load(db, run_id)
     except LOCAL as exc:   # the database or the run file could not be written, possibly after Rebrickable took changes: say so, never a 500
         flash(public(exc, _unsaved(source)), 'warning')
         return redirect(url_for('web.bw_sync_site', source=source))
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, source), 'warning')
         return redirect(_to(source, 'preview', run_id=run_id))
+    if run.get('job'):                 # queued now, or by an earlier post: the page follows the job
+        return redirect(_to(source, 'progress', run_id=run_id))
     if not run.get('applied'):         # claimed by another request that has not finished, or one that was interrupted
         flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
         return redirect(url_for('web.bw_sync_site', source=source))
     return redirect(_to(source, 'result', run_id=run_id))
+
+
+def _interrupted_stage(stages, name):
+    from ..core.sync import run as sync_run
+    stage = stages.get(name) or {}
+    return stage.get('status') == 'failed' and stage.get('message') == sync_run.INTERRUPTED_MESSAGE
+
+
+def _is_interrupted(stages):
+    return _interrupted_stage(stages, 'send') or _interrupted_stage(stages, 'lost_out')
+
+
+def _send_it_when(site, unknown):
+    """When to tick Send it too, for the rows in flight as (chosen action, run row): how the person sees on the site that the call did not arrive.
+    A removal did not arrive when the row is still there, an add when it is not there, a changed row stays there either way."""
+    if len(unknown) != 1:
+        return 'where the change did not arrive'
+    action, row = unknown[0]
+    if action == 'remove':
+        return 'if it is still there'
+    label = next((o['label'] for o in row.get('options', ()) if o['id'] == 'send'), '')
+    if label.startswith('Add '):
+        return 'if it is not there'
+    if label.startswith('Quantity ') or label.removeprefix('Send ').split(' ', 1)[0].isdigit():
+        return f'if {site} does not show the new count'
+    return f'if {site} does not show the new value'
+
+
+def _undo_listed(runs, run_id):
+    """Whether Last runs lists this run as Interrupted and offers the Undo of its pull (a newer pull takes the Undo over)."""
+    pulls = {e for r in runs if r.get('run') == run_id and r['state'] == 'Interrupted' for e in r.get('pulls', ())}
+    return any(r['undoable'] and r.get('event') in pulls for r in runs)
+
+
+def _unsent_rows(rows, send):
+    """The rows an interrupted send left, from the stage's results: `unknown` is the one that was in flight (it may have gone out), `failed` did not
+    go. Rows that went out are only counted."""
+    items = []
+    for r in send.get('results', ()):
+        if r['result'] in ('sent', 'unchanged'):
+            continue
+        row = rows.get(r['key'], {})
+        items.append(dict(key=r['key'], number=row.get('number'), name=row.get('name') or 'Name not recorded',
+                          what=(row['options'][-1]['label'].lower() if row.get('options') else ''), state='not known' if r['result'] == 'unknown' else 'not sent'))
+    return sorted(items, key=lambda i: i['state'] != 'not known')       # the rows that may have gone out come first: the list shows only the first few
+
+
+@_route('get', '/run/<run_id>/progress', True)
+def step_progress(source, run_id):
+    """Step 5 while a run is a job (#685): the pull as one step, the sends one call at a time, Stop after this one, and the interrupted view."""
+    from ..core.sync import run as sync_run
+    from ..core.sync import run_job
+    with _db() as db:
+        run, plans = _load(db, run_id, source)
+        if run is None:
+            return _gone(source)
+        if not run.get('job'):
+            return redirect(_to(source, 'result' if run.get('applied') else 'preview', run_id=run_id))
+        info = run_job.progress(db, run_id)
+        interrupted = run.get('applied') and _is_interrupted(run['stages'])
+        if run.get('applied') and not interrupted:
+            return redirect(_to(source, 'result', run_id=run_id))
+        rows = {r['key']: r for r in sync_run.rows(db, run, plans)} if interrupted else {}
+        undo_listed = bool(interrupted) and _undo_listed(_runs(db, source), run_id)
+    stages = {s['name']: s for s in info['stages']}
+    send = run['stages'].get('send') or {}
+    sent_rows = [r for r in send.get('results', ()) if r['result'] in ('sent', 'unchanged')]
+    unsent = _unsent_rows(rows, send) if interrupted else []
+    chosen = (run.get('job_form') or {}).get('chosen', {})
+    send_it_when = _send_it_when(LABEL[source], [(chosen.get(u['key']), rows.get(u['key'], {})) for u in unsent if u['state'] == 'not known'])
+    return _render(source, screen='progress', title=LABEL[source], run=run, info=info, unsaved=_unsaved(source), pstages=stages, interrupted=bool(interrupted), unsent=unsent,
+                 sent_count=len(sent_rows), send_total=send.get('rows', 0), unknown_count=sum(1 for u in unsent if u['state'] == 'not known'),
+                 unsent_count=sum(1 for u in unsent if u['state'] == 'not sent'), lost_interrupted=_interrupted_stage(run['stages'], 'lost_out'),
+                 undo_in_last_runs=undo_listed, send_it_when=send_it_when,
+ **_steps(5))
+
+
+@_route('post', '/run/<run_id>/stop', False)
+def step_stop(source, run_id):
+    from ..core import errors
+    from ..core.sync import run_job
+    _guard()
+    try:
+        with _db() as db:
+            _same_site(db, run_id, source)
+            run_job.request_stop(db, run_id)
+    except LOCAL as exc:
+        flash(public(exc, _unsaved(source)), 'warning')
+    except errors.BrickWorkError as exc:
+        flash(_message(exc, source), 'warning')
+    return redirect(_to(source, 'progress', run_id=run_id))
 
 
 @_route('get', '/run/<run_id>/result', True)
@@ -418,6 +519,8 @@ def step_result(source, run_id):
         if run is None:
             return _gone(source)
         if not run.get('applied'):
+            if run.get('job'):
+                return redirect(_to(source, 'progress', run_id=run_id))
             if run.get('applying'):
                 flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
                 return redirect(url_for('web.bw_sync_site', source=source))
@@ -480,13 +583,18 @@ def step_retry(source, run_id):
     try:
         with _db() as db, audit_origin('app'):
             _same_site(db, run_id, source)
-            sync_run.retry_send(db, run_id)
+            sync_run.retry_send(db, run_id, also=request.form.getlist('also'))
     except LOCAL as exc:
         flash(public(exc, _unsaved(source)), 'warning')
         return redirect(url_for('web.bw_sync_site', source=source))
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, source), 'warning')
-    return redirect(_to(source, 'result', run_id=run_id))
+    try:
+        with _db() as db:
+            stages = sync_run.load(db, run_id)[0].get('stages') or {}
+    except (errors.BrickWorkError, *LOCAL):
+        stages = {}
+    return redirect(_to(source, 'progress' if _is_interrupted(stages) else 'result', run_id=run_id))
 
 
 def _register():

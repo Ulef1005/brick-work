@@ -2,13 +2,15 @@
 
 ## Unreleased
 
+- **The Rebrickable and Brickset run page follows the job** (#685). Run now queues the job and opens step 5: the pull shows as "Applying the pull" with no count, the sends show "N of M", the time left and the day's budget, and Stop after this one works between calls. You can close the page; the run goes on and shows in Jobs. If the server restarted while a send was going out, the page shows what went out, marks the row in flight "Not known" and offers Send again, which leaves that row out unless you tick Send it too on it. Last runs shows the run as Interrupted, with a link back, and keeps it and its pull listed until the pull is undone (within the site's newest 200 log entries). A run that waits for the daily budget says so and goes on by itself. No schema change.
+
 - **The Sync hub shows your account name, and the key says when it last worked** (#686). A connected Rebrickable or Brickset card shows the username you typed instead of "Linked". The API key line reads "checked 18 Nov", the day of its newest successful call; a replaced key shows no day until it is used. No schema change.
 
 - **A conflict you kept comes back as the same card** (#686). When you choose Keep on a set that changed in both places, the next Rebrickable or Brickset run shows it again as "Changed in both places", with Take and Send offered, until either count changes. Before, it came back as a plain row, and a pull with no ticks through the API could add it. No schema change.
 
 - **`docs/brickwork/pipeline.md` re-checked against the 1.2 code** (#677). Seven corrections, and the page now says what was checked and when.
 
-- **A long sync run keeps going without the page** (#685). A Rebrickable or Brickset run can now be queued as a job: it shows in Jobs, survives a restart, and a step's `count` and `total` say how many changes are done. A call is never repeated after a restart; the stage that was in flight is marked failed (interrupted) and Send again can resend what did not go out. Stop after this one works between calls. The progress page follows.
+- **A long sync run keeps going without the page** (#685). A Rebrickable or Brickset run can now be queued as a job: it shows in Jobs, survives a restart, and a step's `count` and `total` say how many changes are done. A call is never repeated after a restart; the stage that was in flight is marked failed (interrupted), unless every result was already saved, and Send again can resend what did not go out. Stop after this one works between calls. The progress page follows.
 
 - **Filter copies by the set list they came from** (#531). `GET /copies?list=NAME` keeps the copies a Rebrickable sync took from the set list with that exact name (a copy in several lists answers to each). The list names were already on each copy under `source`.
 

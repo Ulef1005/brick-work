@@ -181,3 +181,46 @@ def test_last_runs_shows_an_interrupted_run_with_undo_for_its_pull_and_a_way_bac
     assert any('Interrupted' in r for r in runs)
     assert site.select_one('[data-rb-runs] a[href$="/progress"]')['href'].endswith(f'/run/{run_id}/progress')
     assert sum(1 for r in runs if 'changes sent' in r or 'change sent' in r) <= 1      # one record for the send, not one per call
+
+
+def test_send_again_without_the_unknown_row_keeps_the_run_interrupted_with_its_choice(three_sends, client, monkeypatch):  # noqa: F811
+    pair, run_id, keys = three_sends
+    order, results = _interrupt(pair, run_id)
+    posted = client.post(f'/workbench/sync/rebrickable/run/{run_id}/retry', data={'csrf_token': _csrf(client)})
+    assert posted.location.endswith('/progress')                    # not the result: the choice for the row is on the run page
+    page = soup(client.get(posted.location))
+    assert page.select_one('input[name=also]') and 'Interrupted' in text(page.select_one('[data-rb-send]'))
+    site = soup(client.get('/workbench/sync/rebrickable'))
+    assert any('Interrupted' in text(r) for r in site.select('[data-rb-runs] .sr-run'))      # the log still says so
+    posted = client.post(f'/workbench/sync/rebrickable/run/{run_id}/retry', data={'csrf_token': _csrf(client), 'also': order[0]})
+    assert posted.location.endswith('/result')                      # every row is settled now
+
+
+def test_a_row_a_budget_pause_left_is_still_the_one_in_flight_after_a_restart(three_sends):  # noqa: F811
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        form = form_for(db, run_id)
+        wanted = [k.removeprefix('choice:') for k, v in form.items(multi=True) if v in ('send', 'remove')]
+        plan_id = sync_run.load(db, run_id)[1]['send']['id']
+        plan = sync.load_plan(db, plan_id, 'send')
+        plan['results'] = {wanted[0]: dict(result='sent', detail=None), wanted[1]: dict(result='paused', detail=None), wanted[2]: dict(result='paused', detail=None)}
+        sync._store_plan(db, plan)
+    order, results = _interrupt(pair, run_id)
+    assert dict(zip(order, results)) == {wanted[0]: 'sent', wanted[1]: 'unknown', wanted[2]: 'paused'}
+
+
+def test_the_hub_log_shows_one_row_for_a_long_send_and_keeps_the_pull_in_its_limit(three_sends):  # noqa: F811
+    from brickwork.web.sync_views import _log
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        rows = _log(db, limit=2)
+        assert [r['direction'] for r in rows].count('Sent') == 1 and 'Pulled' in [r['direction'] for r in rows]
+
+
+def test_the_preview_of_a_run_with_a_job_opens_its_run_page(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id))
+    assert client.get(f'/workbench/sync/rebrickable/run/{run_id}/preview').location.endswith('/progress')

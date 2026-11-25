@@ -158,7 +158,9 @@ def test_a_stage_that_was_started_is_never_run_again_after_a_takeover_but_can_be
         assert stage['status'] == 'failed' and stage['message'] == run_job.INTERRUPTED_MESSAGE and run['applied']
         assert {r['key'] for r in stage['results']} == set(sends(db, run_id)) and sorted(r['result'] for r in stage['results']) == ['failed'] * (len(stage['results']) - 1) + ['unknown']
         gate['open'] = True
-        retried = sync_run.retry_send(db, run_id)
+        unknown = [r['key'] for r in stage['results'] if r['result'] == 'unknown']
+        assert sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'failed'            # the row that was in flight is left unless asked for
+        retried = sync_run.retry_send(db, run_id, also=unknown)
         assert retried['stages']['send']['status'] == 'done'
 
 
@@ -287,7 +289,8 @@ def test_an_unexpected_error_fails_the_job_and_the_run_still_shows_what_happened
         assert run['applied'] and 'applying' not in run and run['stages']['send']['status'] == 'failed'
         assert db.execute("SELECT count(*) FROM event WHERE entity_kind='sync' AND field='run'").fetchone()[0] == 1       # undo finds the run
         state['crash'] = False
-        assert sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'done'
+        unknown = [r['key'] for r in run['stages']['send']['results'] if r['result'] == 'unknown']
+        assert sync_run.retry_send(db, run_id, also=unknown)['stages']['send']['status'] == 'done'
 
 
 

@@ -25,6 +25,7 @@ from ..transaction import transaction
 from .. import sync
 from . import adapters, lost_parts, lost_parts_send, part_lists
 
+INTERRUPTED_MESSAGE = 'Interrupted: check what was sent and run again.'     # the message of a stage a restart cut off (`run_job`, `retry_send`)
 SOURCE = 'rebrickable'
 SOURCES = ('rebrickable', 'brickset')
 DIRECTIONS_KEY = 'rebrickable_sync_directions'
@@ -962,6 +963,11 @@ def retry_send(db, run_id, *, http=None, also=()):
         left = len(rows) - len(result['rows'])
         if left:
             counts['unknown'] = left
-        run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
+        if left:     # a row that may have gone out is still unchecked: the run stays interrupted, here and in the sync log
+            run['stages']['send'] = dict(status='failed', message=INTERRUPTED_MESSAGE, counts=counts, rows=len(rows), results=rows)
+            with transaction(db):
+                audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id))
+        else:
+            run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
         sync._store_plan(db, run)
         return run

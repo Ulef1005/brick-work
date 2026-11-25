@@ -258,27 +258,30 @@
 {% set pull_names = ['pull', 'parts'] %}{% set send_names = ['send', 'lost_out'] %}
 {% set pulls = pstages.values()|selectattr('name', 'in', pull_names)|list %}{% set sends = pstages.values()|selectattr('name', 'in', send_names)|list %}
 {% set sent_done = sends|sum(attribute='done') %}{% set sent_all = sends|sum(attribute='total') %}
-{% set pull_done = pulls|rejectattr('status', 'in', ['done', 'none'])|list|length == 0 %}
+{% set pull_done = pulls|rejectattr('status', 'in', ['done', 'none', 'failed'])|list|length == 0 %}
 {% set pull_changes = pulls|sum(attribute='done') %}
 {% if interrupted %}{{ head('Interrupted' ~ ((' ' ~ stamp(info.result.at)) if info.result and info.result.at else '') ~ ' · the server restarted') }}
 {% else %}{{ head('Running ' ~ '{:,}'.format(info.total) ~ ' changes' ~ ((', started ' ~ stamp(info.started_at)) if info.started_at else '')) }}{% endif %}
 {{ stepbar() }}
 {{ flashes() }}
-<div data-sr-live{% if not interrupted and info.state in ['queued', 'running', 'waiting_for_budget'] %} data-sr-poll{% endif %} aria-live="polite">
+<div data-sr-live{% if not interrupted and info.state != 'failed' %} data-sr-poll{% endif %} aria-live="polite">
 {% if info.state == 'failed' %}<p class="bk-banner bk-warning" role="alert">{{ unsaved }}</p>{% endif %}
 {% if pulls %}<section class="sr-card" data-rb-pull>
-{% if pull_done %}<h2>Pull applied {{ tag('Done') }}</h2>
+{% if pull_failed %}<h2>The pull was not applied {{ tag('Failed', true, true) }}</h2>
+<p class="sr-lede">Nothing here changed. The result page says why.</p>
+{% elif pull_done %}<h2>Pull applied {{ tag('Done') }}</h2>
 <p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes applied here, in one step. {{ 'They stay done.' if interrupted else 'Undo for the run stays on the result page.' }}</p>
-{% else %}<h2>Applying the pull {% if pulls|selectattr('status', 'equalto', 'failed')|list %}{{ tag('Failed', true, true) }}{% endif %}</h2>
+{% else %}<h2>Applying the pull</h2>
 <p class="sr-lede sr-wait">{% if info.state == 'queued' %}Waiting to start.{% else %}<span class="sr-spin" aria-hidden="true"></span>Sets, wishes, loose stock and part lists are applied together, so there is no count for this part. If it fails, nothing here changed.{% endif %}</p>
 {% endif %}</section>{% endif %}
 {% if sends %}<section class="sr-card" data-rb-send>
 {% if interrupted %}<h2>Sending {{ tag('Interrupted', true, true) }}</h2>
-<p class="sr-meta mono">{{ sent_count }} of {{ send_total }} sent{% if unknown_count %} · {{ unknown_count }} not known{% endif %}{% if unsent_count %} · {{ unsent_count }} not sent{% endif %}</p>
+{% if send_total %}<p class="sr-meta mono">{{ sent_count }} of {{ send_total }} sent{% if unknown_count %} · {{ unknown_count }} not known{% endif %}{% if unsent_count %} · {{ unsent_count }} not sent{% endif %}</p>{% endif %}
+{% if lost_interrupted %}<p class="sr-info">Lost Parts were being sent when the server restarted. Check them on {{ label }}. Brick Work does not send them again by itself.</p>{% endif %}
 {% for u in unsent[:20] %}<div class="sr-prow"><div class="sr-rowid">{{ tile(u.number) }}<span><b>{{ u.name }}</b><span>{{ u.number }}{% if u.what %} · {{ u.what }}{% endif %}</span></span></div>{{ tag(u.state|capitalize, true, u.state == 'not known') }}
 {% if u.state == 'not known' and can_edit %}<label class="sr-also"><input type="checkbox" name="also" value="{{ u.key }}" form="sr-again"> Send it too</label>{% endif %}</div>{% endfor %}
 {% if unsent|length > 20 %}<p class="sr-note">and {{ unsent|length - 20 }} more not sent</p>{% endif %}
-<p class="sr-info">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on {{ label }}, then send the rest again.</p>
+{% if send_total %}<p class="sr-info">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on {{ label }}, then send the rest again.</p>{% endif %}
 <div class="sr-actions">{% if can_edit and unsent %}<form id="sr-again" method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_retry', run_id=run.id) }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-outline" data-busy-label="Sending">Send again</button></form>{% endif %}<a class="sr-link" href="{{ url_for('web.bw_admin', page='jobs') }}">Open Jobs</a><a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_result', run_id=run.id) }}">Open the result</a></div>
 {% else %}
 {% set pct = (100 * sent_done / sent_all)|round|int if sent_all else 0 %}

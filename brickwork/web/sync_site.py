@@ -350,6 +350,8 @@ def step_preview(source, run_id):
             return _gone(source)
         if run.get('applied'):
             return redirect(_to(source, 'result', run_id=run_id))
+        if run.get('job'):
+            return redirect(_to(source, 'progress', run_id=run_id))
         if run.get('applying'):
             flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
             return redirect(url_for('web.bw_sync_site', source=source))
@@ -413,9 +415,14 @@ def step_apply(source, run_id):
     return redirect(_to(source, 'result', run_id=run_id))
 
 
+def _interrupted_stage(stages, name):
+    from ..core.sync import run as sync_run
+    stage = stages.get(name) or {}
+    return stage.get('status') == 'failed' and stage.get('message') == sync_run.INTERRUPTED_MESSAGE
+
+
 def _is_interrupted(stages):
-    from ..core.sync import run_job
-    return any((stages.get(n) or {}).get('status') == 'failed' and (stages.get(n) or {}).get('message') == run_job.INTERRUPTED_MESSAGE for n in ('send', 'lost_out'))
+    return _interrupted_stage(stages, 'send') or _interrupted_stage(stages, 'lost_out')
 
 
 def _unsent_rows(rows, send):
@@ -428,7 +435,7 @@ def _unsent_rows(rows, send):
         row = rows.get(r['key'], {})
         items.append(dict(key=r['key'], number=row.get('number'), name=row.get('name') or 'Name not recorded',
                           what=(row['options'][-1]['label'].lower() if row.get('options') else ''), state='not known' if r['result'] == 'unknown' else 'not sent'))
-    return items
+    return sorted(items, key=lambda i: i['state'] != 'not known')       # the rows that may have gone out come first: the list shows only the first few
 
 
 @_route('get', '/run/<run_id>/progress', True)
@@ -453,7 +460,8 @@ def step_progress(source, run_id):
     unsent = _unsent_rows(rows, send) if interrupted else []
     return _render(source, screen='progress', title=LABEL[source], run=run, info=info, unsaved=_unsaved(source), pstages=stages, interrupted=bool(interrupted), unsent=unsent,
                  sent_count=len(sent_rows), send_total=send.get('rows', 0), unknown_count=sum(1 for u in unsent if u['state'] == 'not known'),
-                 unsent_count=sum(1 for u in unsent if u['state'] == 'not sent'), **_steps(5))
+                 unsent_count=sum(1 for u in unsent if u['state'] == 'not sent'), lost_interrupted=_interrupted_stage(run['stages'], 'lost_out'),
+                 pull_failed=any((run['stages'].get(n) or {}).get('status') == 'failed' for n in ('pull', 'parts')), **_steps(5))
 
 
 @_route('post', '/run/<run_id>/stop', False)
@@ -551,7 +559,12 @@ def step_retry(source, run_id):
         return redirect(url_for('web.bw_sync_site', source=source))
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, source), 'warning')
-    return redirect(_to(source, 'result', run_id=run_id))
+    try:
+        with _db() as db:
+            stages = sync_run.load(db, run_id)[0].get('stages') or {}
+    except (errors.BrickWorkError, *LOCAL):
+        stages = {}
+    return redirect(_to(source, 'progress' if _is_interrupted(stages) else 'result', run_id=run_id))
 
 
 def _register():

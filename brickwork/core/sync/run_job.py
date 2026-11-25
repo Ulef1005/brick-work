@@ -15,7 +15,7 @@ from . import run as sync_run
 KIND = 'sync_run'
 STAGES = ('pull', 'parts', 'send', 'lost_out')
 VALID_VIA = ('app', 'cli', 'api', 'import', 'migration')
-INTERRUPTED_MESSAGE = 'Interrupted: check what was sent and run again.'
+INTERRUPTED_MESSAGE = sync_run.INTERRUPTED_MESSAGE
 LOG = logging.getLogger(__name__)
 
 _STAGE_NOW = {
@@ -57,12 +57,12 @@ def _interrupted(db, plans, form_data, name):
         plan = sync.load_plan(db, plans['send']['id'], 'send')
         kept = plan.get('results') or {}
         wanted = [k for k, v in form_data['chosen'].items() if v in ('send', 'remove')]
-        waiting = [k for k in wanted if k not in kept]
+        waiting = [k for k in wanted if kept.get(k, {}).get('result') in (None, 'paused')]     # not yet sent: a row a budget pause left is tried again on resume
         in_flight = set(waiting[:1])
         if in_flight and plan.get('source') == 'brickset':
             by_key = {r['key']: r for r in plan['rows']}
             in_flight = {k for k in waiting if by_key[k]['remote_no'] == by_key[waiting[0]]['remote_no']}
-        rows = [dict(key=k, **(kept[k] if k in kept else dict(result='unknown' if k in in_flight else 'failed', detail=INTERRUPTED_MESSAGE))) for k in wanted]
+        rows = [dict(key=k, **(dict(result='unknown', detail=INTERRUPTED_MESSAGE) if k in in_flight else kept[k] if k in kept else dict(result='failed', detail=INTERRUPTED_MESSAGE))) for k in wanted]
         counts = {}
         for row in rows:
             counts[row['result']] = counts.get(row['result'], 0) + 1

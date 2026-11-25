@@ -55,9 +55,8 @@ def _log(db, limit=20, source=None):
     rows = []
     seen_sends = set()
     for r in db.execute("""SELECT e.id, e.entity_id, e.field, e.new_value, e.at, EXISTS(SELECT 1 FROM event_undo u WHERE u.event_id=e.id) AS undone
-            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send', 'parts_receipt') ORDER BY e.id DESC""" + (' LIMIT ?' if source is None else ''),
-                        (limit,) if source is None else ()):
-        if source is not None and len(rows) >= limit:
+            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send', 'parts_receipt') ORDER BY e.id DESC"""):
+        if len(rows) >= limit:              # read until `limit` rows are found: a long run records every call, and those collapse into one row
             break
         value = json.loads(r['new_value']) if r['new_value'] else None
         site = _row_source(db, r, value)

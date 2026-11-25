@@ -429,6 +429,28 @@ def _is_interrupted(stages):
     return _interrupted_stage(stages, 'send') or _interrupted_stage(stages, 'lost_out')
 
 
+def _send_it_when(site, unknown):
+    """When to tick Send it too, for the rows in flight as (chosen action, run row): how the person sees on the site that the call did not arrive.
+    A removal did not arrive when the row is still there, an add when it is not there, a changed row stays there either way."""
+    if len(unknown) != 1:
+        return 'where the change did not arrive'
+    action, row = unknown[0]
+    if action == 'remove':
+        return 'if it is still there'
+    label = next((o['label'] for o in row.get('options', ()) if o['id'] == 'send'), '')
+    if label.startswith('Add '):
+        return 'if it is not there'
+    if label.startswith('Quantity ') or label.removeprefix('Send ').split(' ', 1)[0].isdigit():
+        return f'if {site} does not show the new count'
+    return f'if {site} does not show the new value'
+
+
+def _undo_listed(runs, run_id):
+    """Whether Last runs lists this run as Interrupted and offers the Undo of its pull (a newer pull takes the Undo over)."""
+    pulls = {e for r in runs if r.get('run') == run_id and r['state'] == 'Interrupted' for e in r.get('pulls', ())}
+    return any(r['undoable'] and r.get('event') in pulls for r in runs)
+
+
 def _unsent_rows(rows, send):
     """The rows an interrupted send left, from the stage's results: `unknown` is the one that was in flight (it may have gone out), `failed` did not
     go. Rows that went out are only counted."""
@@ -458,22 +480,17 @@ def step_progress(source, run_id):
         if run.get('applied') and not interrupted:
             return redirect(_to(source, 'result', run_id=run_id))
         rows = {r['key']: r for r in sync_run.rows(db, run, plans)} if interrupted else {}
+        undo_listed = bool(interrupted) and _undo_listed(_runs(db, source), run_id)
     stages = {s['name']: s for s in info['stages']}
     send = run['stages'].get('send') or {}
     sent_rows = [r for r in send.get('results', ()) if r['result'] in ('sent', 'unchanged')]
     unsent = _unsent_rows(rows, send) if interrupted else []
     chosen = (run.get('job_form') or {}).get('chosen', {})
-    unknown = [u for u in unsent if u['state'] == 'not known']
-    removals = sum(1 for u in unknown if chosen.get(u['key']) == 'remove')       # a removal arrived when the row is gone, any other send when it is there
-    there = 'still there' if removals else 'not there'
-    if removals not in (0, len(unknown)):
-        send_it_when = 'where the change did not arrive'
-    else:
-        send_it_when = f'if it is {there}' if len(unknown) == 1 else f'where the row is {there}'
+    send_it_when = _send_it_when(LABEL[source], [(chosen.get(u['key']), rows.get(u['key'], {})) for u in unsent if u['state'] == 'not known'])
     return _render(source, screen='progress', title=LABEL[source], run=run, info=info, unsaved=_unsaved(source), pstages=stages, interrupted=bool(interrupted), unsent=unsent,
                  sent_count=len(sent_rows), send_total=send.get('rows', 0), unknown_count=sum(1 for u in unsent if u['state'] == 'not known'),
                  unsent_count=sum(1 for u in unsent if u['state'] == 'not sent'), lost_interrupted=_interrupted_stage(run['stages'], 'lost_out'),
-                 send_interrupted=_interrupted_stage(run['stages'], 'send'), send_it_when=send_it_when,
+                 undo_in_last_runs=undo_listed, send_it_when=send_it_when,
  **_steps(5))
 
 

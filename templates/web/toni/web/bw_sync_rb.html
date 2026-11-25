@@ -272,7 +272,7 @@
 {% elif pull_done and pull_bad %}<h2>The pull was applied in part {{ tag('Failed', true, true) }}</h2>
 <p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes were applied here. One part was not. The result page says which and why.</p>
 {% elif pull_done %}<h2>Pull applied {{ tag('Done') }}</h2>
-<p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes applied here, in one step. {% if interrupted %}They stay done.{% if send_interrupted %} Undo for this pull is in Last runs, where this run is listed as Interrupted.{% endif %}{% else %}Undo for the run stays on the result page.{% endif %}</p>
+<p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes applied here, in one step. {% if interrupted %}They stay done.{% if undo_in_last_runs and can_edit %} Undo for this pull is in Last runs, where this run is listed as Interrupted.{% endif %}{% else %}Undo for the run stays on the result page.{% endif %}</p>
 {% else %}<h2>Applying the pull</h2>
 <p class="sr-lede sr-wait">{% if info.state == 'queued' %}Waiting to start.{% else %}<span class="sr-spin" aria-hidden="true"></span>Sets, wishes, loose stock and part lists are applied together, so there is no count for this part. If it fails, nothing here changed.{% endif %}</p>
 {% endif %}</section>{% endif %}

@@ -294,7 +294,6 @@ def test_an_interrupt_between_two_sends_says_no_send_was_cut_off(three_sends, cl
         db.commit()
         run_job.drain(db)
     send = soup(page_of(client, run_id)).select_one('[data-rb-send]')
-    assert 'Undo for this pull is in Last runs' not in text(send)
     assert 'No send was cut off' in text(send) and 'Send again sends every row that is not sent' in text(send) and 'Not known' not in text(send) and not send.select('input[name=also]')
 
 
@@ -344,7 +343,7 @@ def test_last_runs_keeps_an_interrupted_run_and_its_pull_until_the_pull_is_undon
         assert len(listed) == 5 and not [r for r in listed if r['state'] == 'Interrupted']
 
 
-@pytest.mark.parametrize('choice, words', [('send', 'Tick Send it too only if it is not there'), ('remove', 'Tick Send it too only if it is still there')])
+@pytest.mark.parametrize('choice, words', [('send', 'Tick Send it too only if Rebrickable does not show the new count'), ('remove', 'Tick Send it too only if it is still there')])
 def test_the_note_says_when_to_tick_send_it_too(three_sends, client, choice, words):  # noqa: F811
     pair, run_id, keys = three_sends
     with db_of(pair) as db:
@@ -356,3 +355,24 @@ def test_the_note_says_when_to_tick_send_it_too(three_sends, client, choice, wor
         sync._store_plan(db, run)
     page = text(soup(page_of(client, run_id)).select_one('main'))
     assert words in page and 'They stay done. Undo for this pull is in Last runs, where this run is listed as Interrupted.' in page
+    from brickwork.core.admin import audit
+    from brickwork.core.transaction import transaction
+    with db_of(pair) as db:
+        with transaction(db):       # a newer pull takes the Undo over: the card no longer says where this one's is
+            audit(db, 'sync:rebrickable', 'receipt', None, dict(source='rebrickable', counts={}, plan='newer'))
+    page = text(soup(page_of(client, run_id)).select_one('main'))
+    assert 'They stay done.' in page and 'Undo for this pull is in Last runs' not in page
+
+
+@pytest.mark.parametrize('unknown, words', [
+    ([('send', 'Add 2 there')], 'if it is not there'),
+    ([('send', 'Quantity 1 to 2')], 'if Brickset does not show the new count'),
+    ([('send', 'Send 3 to Brickset')], 'if Brickset does not show the new count'),
+    ([('send', 'Send built in 2019 to Brickset')], 'if Brickset does not show the new value'),
+    ([('remove', 'Remove from Brickset')], 'if it is still there'),
+    ([('send', 'Add 2 there'), ('remove', 'Remove from Brickset')], 'where the change did not arrive'),
+    ([('send', 'Add 2 there'), ('send', 'Add 1 there')], 'where the change did not arrive'),
+])
+def test_send_it_when_matches_what_the_row_would_show(client, unknown, words):  # noqa: F811     the app is built first: importing the web module alone changes the route order
+    from brickwork.web.sync_site import _send_it_when
+    assert _send_it_when('Brickset', [(a, dict(options=[dict(id=a, label=label)])) for a, label in unknown]) == words

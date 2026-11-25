@@ -235,14 +235,15 @@ def long_applying(ph):
 # After a restart, finished stages stay done and a send in flight is never repeated (a send is not safe to repeat). The run shows as interrupted with
 # the rows that went out; Send again resends only after the person has checked.
 def interrupted(ph):
-    done = card(f'Pull applied {tag("Done")}', '<p class="n">3,200 changes applied here, in one step. They stay done.</p>')
+    done = card(f'Pull applied {tag("Done")}', '<p class="n">3,200 changes applied here, in one step. They stay done. Undo for this pull is in Last runs, where this run is listed as Interrupted.</p>')
     sent = ''.join(f'<div class="nrow"><div class="id"><b>{a}</b><span>{b}</span></div>{"" if ph else tag(c, k)}</div>' if not ph else
                    f'<div class="nrow"><div class="id"><b>{a}</b><span>{b}</span><div style="margin-top:6px">{tag(c, k)}</div></div></div>'
                    for a, b, c, k in (('7213-1 · Off-Road Fire Truck & Fireboat', 'Quantity 2 sent to Rebrickable', 'Sent', ''),
                                       ('7938-1 · Passenger Train', 'Lost Parts: 2 parts removed', 'Sent', ''),
                                       ('10254-1 · Winter Holiday Train', 'Add 1 to Main collection · the server restarted while this was going out', 'Not known', 'hatch')))
-    out = card(f'Sending {tag("Interrupted", "hatch")}', f'<p class="mono" style="{small}">640 of 800 sent · 1 not known · 159 not sent</p>' + sent
-               + '<div class="ninfo">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on Rebrickable, then send the rest again.</div>'
+    choice = f'<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 4px">{btn("Send it too", "sec sm")}{btn("Leave it", "q sm")}</div>'
+    out = card(f'Sending {tag("Interrupted", "hatch")}', f'<p class="mono" style="{small}">640 of 800 sent · 1 not known · 159 not sent</p>' + sent + choice
+               + '<div class="ninfo">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on Rebrickable, then choose Send it too or Leave it. Send again sends the 159 not sent; the Not known row stays out until you choose.</div>'
                f'<div style="display:flex;gap:10px;flex-wrap:wrap">{btn("Send again", "sec sm")}{btn("Open Jobs", "q sm")}</div>')
     return head('Rebrickable', 'Interrupted 19 Nov, 15:31 · the server restarted', ph) + N.steps('Run', ph) + done + out
 

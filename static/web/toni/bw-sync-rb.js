@@ -34,4 +34,21 @@
   if (seconds && requests && typeof MutationObserver === 'function') {
     new MutationObserver(() => { seconds.textContent = requests.textContent; }).observe(requests, { childList: true, characterData: true, subtree: true });
   }
+  // #685: the run page follows the job. It fetches its own page every two seconds and swaps the live part; the server redirects to the result when the
+  // run is done. Without script the page stays as loaded and a reload shows the state.
+  const live = typeof document.querySelector === 'function' ? document.querySelector('[data-sr-poll]') : null;
+  if (live && typeof fetch === 'function' && typeof DOMParser === 'function') {
+    const tick = () => fetch(window.location.href, { credentials: 'same-origin', headers: { Accept: 'text/html' } }).then((response) => {
+      if (response.redirected) { window.location.href = response.url; return null; }
+      return response.ok ? response.text() : null;
+    }).then((html) => {
+      const next = html && new DOMParser().parseFromString(html, 'text/html').querySelector('[data-sr-live]');
+      if (next) {
+        live.innerHTML = next.innerHTML;
+        if (!next.hasAttribute('data-sr-poll')) { window.location.reload(); return; }
+      }
+      setTimeout(tick, 2000);
+    }).catch(() => setTimeout(tick, 5000));
+    setTimeout(tick, 2000);
+  }
 })();

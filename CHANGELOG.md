@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **A refused Lost Part is no longer counted as sent** (#469). When you add a part that Rebrickable already lists as lost, it refuses and changes nothing. Brick Work now reports the row as failed. Sending Lost Parts stays switched off.
+
 - **Sync run page fixes** (#722, #685). On a phone, the status tags of an interrupted run and the Retry button of a failed row are no longer squeezed, and Send it too no longer overlaps Not known. After you undo the pull, the interrupted run says so. With only the Not known row left, the note asks you to choose Send again. Undo takes back both pulls of an older run, however many runs came after it.
 
 - **The demo's real sets carry element ids** (#676). The seven real sets and their figures now bring Rebrickable's element id for each part and colour (ids only, from `elements.csv`), so the demo's Pick a Brick file and the Lot Sorter can show real element ids. The demo still builds from the repository alone; `not-mit/NOTICE.md` says where the ids come from.

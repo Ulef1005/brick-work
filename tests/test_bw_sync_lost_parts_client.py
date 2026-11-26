@@ -105,6 +105,7 @@ def test_lost_parts_tracks_ids_complete_across_merged_rows(store):
     ('add', {'lost_quantity': ['Ensure this value is greater than or equal to 1.']}),
     ('add', {'non_field_errors': ['nope']}),
     ('add', {'detail': 'bad', 'code': 400}),
+    ('add', ['Lost Part for Inv Part 501 already exists. Use PUT/PATCH to update it instead.']),      # the live reply, 2026-11-26
     ('remove', {'non_field_errors': ['nope']}),
     ('remove', []),
 ])

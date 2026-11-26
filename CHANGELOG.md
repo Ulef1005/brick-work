@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The run page matches its design while the pull is applied** (#722). It shows the run, then Into Brick Work and To Rebrickable or Brickset side by side, with an empty bar for the sends. Stop after this one is greyed out until the pull is applied. It stays usable while the run waits to start or waits for the daily budget.
+
 - **A changed Lost Part can be sent** (#469). Rebrickable cannot change a Lost Part, so Brick Work removes it and adds the new count. If the add fails, it puts the old count back. If that fails too, the result names the part and the old count. If the daily budget or a refused key stops it in between, the message names them too. Under Add only, which removes nothing, a larger count on a listed part is shown and not sent. Sending Lost Parts is off until you switch it on.
 
 - **A refused Lost Part is no longer counted as sent** (#469). When you add a part that Rebrickable already lists as lost, it refuses and changes nothing. Brick Work now reports the row as failed. Sending Lost Parts is off until you switch it on.

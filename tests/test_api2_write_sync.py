@@ -14,6 +14,12 @@ from tests.api2 import app4, call, coll, events, png, row, rows, stored_token, u
 from tests.app4 import Coll, make_pair
 from tests.importer.test_bricktracker_import import upstream
 from tests.test_bw_sync import EXTRA, PASSWORD, TOKEN, Rebrickable, everything
+from brickwork.core.sync import lost_parts_send
+
+@pytest.fixture(autouse=True)
+def _lost_parts_send_unlocked(monkeypatch):
+    """The send is locked for now (#469); these tests cover the code behind the lock. `test_lost_parts_send_lock.py` covers the lock."""
+    monkeypatch.setattr(lost_parts_send, 'SEND_LOCKED', False)
 
 
 @pytest.fixture

@@ -247,6 +247,8 @@ def _settle_done(db, job, run, *, error=None):
     _refresh_plans(db, run, t)
     with transaction(db):
         audit(db, 'sync:' + source, 'run', None, dict(run=run['id'], events=events), via=job['via'], actor=job['actor'])
+        db.execute("UPDATE job_step SET state='done', error=NULL, error_code=NULL, retry_at=NULL, updated_at=? WHERE job_id=? AND state IN ('queued', 'running', 'waiting_for_budget')",
+                   (stamp, job['id']))      # a step this version no longer runs (Lost Parts out of a job queued before the lock) must not stay open
         db.execute("UPDATE job SET state='done', error=?, error_code=NULL, retry_at=NULL, updated_at=? WHERE id=?",
                    (error, stamp, job['id']))
         db.execute('DELETE FROM job_owner WHERE job_id=?', (job['id'],))

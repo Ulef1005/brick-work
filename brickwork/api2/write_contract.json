@@ -3578,7 +3578,7 @@
         },
         "rebrickable_lost_parts_send": {
           "default": false,
-          "description": "Whether Brick Work may send your missing parts to Rebrickable's Lost Parts list (#469). Off until you turn it on; a send is always shown first and Brick Work's Undo cannot take it back.",
+          "description": "Whether Brick Work may send your missing parts to Rebrickable's Lost Parts list (#469). Locked in this version: it reads false, and true is refused.",
           "type": "boolean"
         },
         "rebrickable_lost_parts_send_rule": {

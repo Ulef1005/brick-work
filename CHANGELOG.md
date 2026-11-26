@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Sending Lost Parts to Rebrickable is not available yet** (#469). Bringing your Lost Parts in works as before. The way out cannot be chosen on the page, in the API or on the command line, and a direction saved earlier has no effect.
+- **Sending Lost Parts to Rebrickable is not available yet** (#469). Bringing your Lost Parts in works as before. Sending cannot be chosen on the page, in the API or on the command line, and a send direction saved earlier has no effect.
 
 - **Interrupted sync runs, three fixes** (#722). A run where only Lost Parts were cut off by a restart now shows in Last runs as Interrupted. After Send again sends everything, Jobs no longer shows the send step as failed. With one of a run's two pulls still there, the result page no longer says the run was undone.
 

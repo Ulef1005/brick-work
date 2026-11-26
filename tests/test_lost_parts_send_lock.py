@@ -76,6 +76,8 @@ def test_a_run_planned_before_the_lock_sends_no_lost_parts(client, remote, pair,
         if how == 'in one call':
             sync_run.apply(db, run_id, MultiDict([('lostsend', KEY)]))
         run_job.drain(db)
+        open_steps = db.execute("SELECT s.name, s.state FROM job_step s JOIN job j ON j.id=s.job_id WHERE j.kind='sync_run' AND j.state='done' AND s.state<>'done'").fetchall()
+        assert not open_steps, [tuple(r) for r in open_steps]
     assert remote.lost_writes == []
 
 

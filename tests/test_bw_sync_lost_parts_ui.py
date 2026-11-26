@@ -14,6 +14,12 @@ from tests.test_bw_sync import EXTRA, TOKEN
 from tests.test_bw_sync_lost_parts import Remote, copy_of, marks, raw, two_copies_line
 from tests.test_bw_sync_ui import soup, token
 from tests.web_fixtures import ROOT  # noqa: F401
+from brickwork.core.sync import lost_parts_send
+
+@pytest.fixture(autouse=True)
+def _lost_parts_send_unlocked(monkeypatch):
+    """The send is locked for now (#469); these tests cover the code behind the lock. `test_lost_parts_send_lock.py` covers the lock."""
+    monkeypatch.setattr(lost_parts_send, 'SEND_LOCKED', False)
 
 
 @pytest.fixture

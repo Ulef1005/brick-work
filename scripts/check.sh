@@ -27,6 +27,12 @@ export BW_RENDERED_SKIPS=$skips BW_GATE_SUMMARY=$gate_summary
 mode=${BW_CHECK_MODE:-full}
 if [[ $mode != full && $mode != docs ]]; then echo "BW_CHECK_MODE must be full or docs, not $mode"; exit 2; fi
 echo "Check mode: $mode"
+# Two tiers (Repo Gates, ADR 0043): on GitHub (CI set) the gate runs everything, tests included. On the Mac it runs the land tier: every
+# check except the test suite, Chrome and the Node harnesses, which the pull request's `check` runs, plus the private patterns check
+# (tests/test_public_snapshot.py with BW_PRIVATE_PATTERNS_FILE), which only the Mac can run. BW_LOCAL_TESTS=1 runs the tests here too, at
+# most 4 workers under the machine lock (when the GitHub minutes or the network are not available).
+if [[ -n ${CI:-} || ${BW_LOCAL_TESTS:-} == 1 ]]; then run_tests=1; else run_tests=0; fi
+if (( run_tests )); then echo "Tests: run here"; else echo "Tests: not run here; the pull request's check runs them on GitHub (BW_LOCAL_TESTS=1 runs them here)"; fi
 # The tests run in parallel (pytest-xdist; ADR 0024): one worker per core in CI, 4 locally (Repo Gates: the M1), and the tests of the xdist group `rendered` (Chrome, the screen gate's
 # shared world folder; tests/rendered.py) one at a time on one worker. BW_TEST_WORKERS overrides the count (1 runs them serially).
 if [[ -n ${CI:-} ]]; then workers_default=auto; else workers_default=4; fi
@@ -75,7 +81,7 @@ browser() {
   # checked by version and SHA-256), else a system Chrome (scripts/chrome.py; CONTRIBUTING, Rendered tests).
   local found
   if [[ ${BW_NO_CHROME:-} == 1 ]]; then
-    echo "NOTE: BW_NO_CHROME=1, so every Chrome test and every Node test is skipped and named below (CI sets it on pull requests; run them by hand before a release)."
+    echo "NOTE: BW_NO_CHROME=1, so every Chrome test and every Node test is skipped and named below (set by hand; CI runs them on every pull request since 2026-11-26)."
     return 0
   fi
   if found=$(python3 scripts/chrome.py ensure); then
@@ -94,7 +100,7 @@ runtimes() {
   shopt -s nullglob
   local harnesses=(tests/*_runtime.cjs) rc=0 harness
   if [[ ${BW_NO_CHROME:-} == 1 ]]; then
-    echo "NOTE: BW_NO_CHROME=1, so the Node runtime harnesses are skipped and named below (CI sets it on pull requests; a push to main runs them)."
+    echo "NOTE: BW_NO_CHROME=1, so the Node runtime harnesses are skipped and named below (set by hand; CI runs them on every pull request since 2026-11-26)."
     (( ${#harnesses[@]} )) && printf '%s (BW_NO_CHROME=1)\n' "${harnesses[@]}" >> "$skips"   # an empty glob names nothing
     return 0
   fi
@@ -114,6 +120,10 @@ runtimes() {
 }
 
 secrets() {
+  if [[ -n ${GITHUB_ACTIONS:-} ]]; then
+    echo "Secret scan: the workflow's gitleaks action (shard 1) is this run's one scan (Repo Gates)."
+    return 0
+  fi
   if ! command -v gitleaks >/dev/null 2>&1; then
     echo "NOTE: gitleaks is not installed; skipping secret scan."
     return 0
@@ -139,20 +149,6 @@ secrets() {
   fi
   rm -rf "$base"
   return $rc
-}
-
-quarantine() {
-  # Tests that wait for their module's port to the 4.0 store (tests/quarantine.py; the list can only shrink). Importing them to
-  # count would need the 3.3 store, so the tests are counted statically: every `def test_*`, parametrised cases not expanded.
-  "$python" - <<'PY'
-import ast
-import sys
-sys.path.insert(0, '.')
-from tests.quarantine import QUARANTINE
-tests = sum(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name.startswith('test_')
-            for name in QUARANTINE for n in ast.walk(ast.parse(open(name).read())))
-print(f'quarantined: {len(QUARANTINE)} files / {tests} tests (def test_ counted, parametrised cases not expanded)')
-PY
 }
 
 docs() {
@@ -184,11 +180,12 @@ docs() {
 if [[ $mode == docs ]]; then
   if (( ! shard_first )); then echo "NOTE: docs mode runs on shard 1 only."; exit 0; fi
   step names "$python" scripts/check_names.py
-  step docs-tests heavy "$python" -m pytest tests/test_docs_*.py tests/test_vale.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
+  [[ -z ${GITHUB_ACTIONS:-} ]] && step private-names "$python" -m pytest -q -p no:xdist -p no:cacheprovider tests/test_public_snapshot.py
+  (( run_tests )) && step docs-tests heavy "$python" -m pytest tests/test_docs_*.py tests/test_vale.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
   step secrets secrets
   step docs docs
 else
-  step chrome browser
+  (( run_tests )) && step chrome browser
   if (( shard_first )); then
     step names "$python" scripts/check_names.py
     step tokens "$python" scripts/tokens_base.py check
@@ -201,13 +198,19 @@ else
   fi
   # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice
   # (every step runs whatever the earlier ones did, so an early smoke step brought no earlier failure; #254).
-  step pytest heavy "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}" ${shard_args[@]+"${shard_args[@]}"}   # the + form: bash 3.2 (macOS) fails an empty array under set -u
+  # The private patterns check on every run off GitHub (the patterns file never goes to CI), on shard 1 only, and
+  # here only when the test suite does not run it anyway
+  if [[ -z ${GITHUB_ACTIONS:-} ]] && (( shard_first && ! run_tests )); then
+    step private-names "$python" -m pytest -q -p no:xdist -p no:cacheprovider tests/test_public_snapshot.py
+  fi
+  if (( run_tests )); then
+    step pytest heavy "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}" ${shard_args[@]+"${shard_args[@]}"}   # the + form: bash 3.2 (macOS) fails an empty array under set -u
+  fi
   # The screenshot gate (tests/test_screen_gate.py) no longer runs here (Ulf, 2026-11-13: screens are approved from frames in a review artifact).
   # Run it by hand: python -m pytest tests/test_screen_gate.py -q -p no:xdist
   if (( shard_first )); then
-    step quarantine quarantine
     step suite-size "$python" scripts/check_suite_size.py
-    step runtimes runtimes
+    (( run_tests )) && step runtimes runtimes
     step secrets secrets
     step api-contract "$python" scripts/check_api_contract.py
     step docs docs
@@ -224,6 +227,10 @@ if [[ -s $skips ]]; then
   rm -f "$skips.sorted"
 else
   echo 'Skipped rendered tests: none (0)'
+fi
+if (( ! run_tests )); then
+  echo '--- Tests ---'
+  echo 'Tests: not run here (the test suite, Chrome and the Node harnesses); the pull request'"'"'s check runs them on GitHub. BW_LOCAL_TESTS=1 runs them here.'
 fi
 echo '--- Screenshot gate ---'
 echo 'Screenshot gate: not run (removed from the check, 2026-11-13)'

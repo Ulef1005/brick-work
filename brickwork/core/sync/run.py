@@ -888,7 +888,7 @@ def _lost_out_calls(db, run, wanted, http):
         reply = dict(getattr(exc, 'partial', dict(sent=[], failed=[], remaining=[])))
         message = _message(exc)
         key_rejected = True
-        reply['failed'] = list(reply['failed']) + [dict(r, reason=message) for r in reply['remaining']]     # refused, not paused: what was not tried failed
+        reply['failed'] = list(reply['failed']) + [dict(r, reason=' '.join(filter(None, (message, r.get('gone'))))) for r in reply['remaining']]     # refused, not paused: what was not tried failed
         reply['remaining'] = []
     except WaitingForBudget as exc:
         return dict(status='failed', message=_message(exc)), dict(retry_at=exc.retry_at, key_rejected=False, budget_error=True)

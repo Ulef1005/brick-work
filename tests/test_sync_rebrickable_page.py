@@ -1111,6 +1111,32 @@ def test_a_kept_difference_with_a_missing_baseline_side_comes_back_as_the_card(c
     assert not row.select_one('input[type=checkbox]').has_attr('checked') and 'not taken at the last run' in row.get_text()
 
 
+def test_a_key_refused_on_a_second_pass_still_names_what_an_earlier_pass_removed(client, remote, pair, monkeypatch):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3), ('3023', '15', 2)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1), raw('1000-1', '3023', 15, 1, number=2)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
+
+    def refuse(self, inv, quantity):
+        raise base.KeyRejected('Rebrickable refused the user token')
+    monkeypatch.setattr(adapters.RebrickableUser, 'lost_part_remove', lambda self, lost_id: refuse(self, lost_id, 0))
+    keys = [lost_parts_send.row_key('1000-1', '3001', 4, False), lost_parts_send.row_key('1000-1', '3023', 15, False)]
+    real = sync_run._lost_out_calls
+
+    def earlier_pass_removed_the_second(db, run, wanted, http):
+        for row in run['lost_out']['rows']:
+            if row['key'] == keys[1]:
+                row['gone'] = 'it had 1'
+        return real(db, run, wanted, http)
+    monkeypatch.setattr(sync_run, '_lost_out_calls', earlier_pass_removed_the_second)
+    apply_run(client, csrf, run_id, lostsend=keys)
+    with db_of(pair) as db:
+        stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
+    assert 'it had 1' in [f['reason'] for f in stage['failed'] if f['part_no'] == '3023'][0]
+
+
 def test_a_refused_key_makes_what_was_not_tried_failed_not_waiting(client, remote, pair, monkeypatch):
     csrf = connected(client, pair)
     with db_of(pair) as db:

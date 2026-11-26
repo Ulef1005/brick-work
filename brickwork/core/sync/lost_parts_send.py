@@ -51,7 +51,7 @@ RULE_VALUES = tuple(r[0] for r in RULES)
 UNDO_NOTE = 'Undo cannot reverse a remote change on Rebrickable.'
 
 
-ADD_ONLY_CHANGE = 'Add only removes nothing, and Rebrickable cannot change an entry'
+ADD_ONLY_CHANGE = 'Rebrickable cannot change a count in place, and Add only removes nothing.'
 
 def enabled(db):
     """Whether sending Lost Parts to Rebrickable is switched on in `main.setting` (off by default)."""
@@ -424,9 +424,10 @@ def _validate_row(row, plan_rule):
     return None
 
 
-def _gone(row):
+def _gone(row, *, tried=False):
+    """`tried`: putting the old count back failed too. Otherwise nothing has tried yet (a pause, a refused key, a removal that stopped halfway)."""
     return (f"Part {row.get('part_no')} of set {row.get('set_no')} may be gone from Rebrickable's Lost Parts: it had {row.get('before')}. "
-            'Brick Work has not put it back. Check it there.')
+            f"Brick Work {'could not put it back' if tried else 'stopped before putting it back'}. Check it there.")
 
 
 def _put_back(client, row):
@@ -518,7 +519,7 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
                     except Exception:
                         back = _put_back(client, row)
                         if back is None:
-                            reason = _gone(row)
+                            reason = row['gone'] = _gone(row, tried=True)      # kept on the row: a later pause or refused key shows it again
                         else:      # the old count is there again, under a new id: a retry starts over from it
                             reason = f"Rebrickable did not take the new count. The old count, {row['before']}, was put back."
                             row['ids'], row['ids_complete'] = [back], True

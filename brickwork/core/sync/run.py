@@ -762,7 +762,7 @@ def stage_lost_out(db, run, form_data, *, http=None, per_key=False, should_stop=
             for row in planned['rows']:
                 if row['key'] in set(wanted[idx + 1:]) and row.get('outcome') != 'sent':
                     row['outcome'] = 'failed'
-                    row['reason'] = key_rejected_msg
+                    row['reason'] = ' '.join(filter(None, (key_rejected_msg, row.get('gone'))))      # gone from an earlier pass
             done_count = len(wanted)
             if on_call:
                 on_call('after', key, done_count)

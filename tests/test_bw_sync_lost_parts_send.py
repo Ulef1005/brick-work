@@ -600,8 +600,8 @@ def test_a_change_that_loses_the_entry_names_the_part_and_the_old_count(store):
     client = ListedClient(refuse=lambda quantity: adapters.SourceError('down'))
     report = lost_parts_send.apply(store, client, planned, keys, via='test', actor='tester')
     (row,) = report['failed']
-    assert row['reason'].startswith("Part 3001 of set 1000-1 may be gone from Rebrickable's Lost Parts: it had 1.")
-    assert row['removed'] is True and row['added'] is False and client.listed == {}
+    assert row['reason'] == "Part 3001 of set 1000-1 may be gone from Rebrickable's Lost Parts: it had 1. Brick Work could not put it back. Check it there."
+    assert row['removed'] is True and row['added'] is False and client.listed == {} and row['gone'] == row['reason']
 
     client.refuse = lambda quantity: None
     retry = lost_parts_send.apply(store, client, dict(rows=report['failed']), None, via='test', actor='tester')

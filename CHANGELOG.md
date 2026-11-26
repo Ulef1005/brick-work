@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **A changed Lost Part can be sent** (#469). Rebrickable cannot change a Lost Part, so Brick Work removes it and adds the new count. If the add fails, it puts the old count back. If that fails too, the result names the part and the old count. If the daily budget or a refused key stops it in between, the message names them too. Under Add only, which removes nothing, a larger count on a listed part is shown and not sent. Sending Lost Parts stays switched off.
+
 - **A refused Lost Part is no longer counted as sent** (#469). When you add a part that Rebrickable already lists as lost, it refuses and changes nothing. Brick Work now reports the row as failed. Sending Lost Parts stays switched off.
 
 - **Sync run page fixes** (#722, #685). On a phone, the status tags of an interrupted run and the Retry button of a failed row are no longer squeezed, and Send it too no longer overlaps Not known. After you undo the pull, the interrupted run says so. With only the Not known row left, the note asks you to choose Send again. Undo takes back both pulls of an older run, however many runs came after it.

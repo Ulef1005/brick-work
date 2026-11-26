@@ -6,8 +6,8 @@ candidate set, and translated to Rebrickable `(set_no, part_no, color_id, is_spa
 `lost_parts.copy_label`, so a copy on a BrickLink part list is translated through confirmed Rebrickable links.
 
 Rule mapping (`RULES`, mirroring `lost_parts.RULES` in the send direction):
-- `add_only`: adds parts missing locally that are not on Rebrickable (`add`), and increases counts where the local missing sum exceeds
-  Rebrickable's count (`change` upward only). Never lowers a remote count and never removes a remote Lost Part.
+- `add_only`: adds parts missing locally that are not on Rebrickable (`add`). A larger local count is listed as a `change` that cannot be
+  sent, because a change removes the old entry. Never lowers a remote count and never removes a remote Lost Part.
 - `per_part`: adds new missing parts (`add`), changes differing counts both upward and downward (`change`), and removes remote Lost Parts
   whose part line is present on the local copies of sets listed on both sides (`remove`, unticked by default).
 - `per_set`: every candidate set with at least one local missing mark becomes the local list (`add`, `change`, and `remove` for any other
@@ -21,10 +21,12 @@ re-plan before `apply`. The inventory part id of a new Lost Part comes from the 
 `source='rebrickable'` and `kind='set_parts'`, written when a set newer than the catalogue was fetched; `RebrickableUser.lost_parts()`
 returns none for parts not yet on Rebrickable). A catalogue set the catalogue already had has no such record and stays at "Rebrickable
 inventory part id unknown": the page needs a live `GET /sets/<num>/parts/` lookup for those. The settings `rebrickable_lost_parts_send`
-and `rebrickable_lost_parts_send_rule` must be added to `admin.patch_settings`' allowlist with the page. The endpoint shapes are assumed
-from Rebrickable's documentation; a DELETE with an empty reply cannot be told from an empty-bodied error, and the live behaviour of POST
-and DELETE (including whether POST creates a second row or updates an existing one) must be tried with a real user token before the switch
-is offered. Candidate sets are the sets of all live copies that have a Rebrickable number, not only the sets on a linked list.
+and `rebrickable_lost_parts_send_rule` must be added to `admin.patch_settings`' allowlist with the page.
+
+A change, checked live on 2026-11-26 (#469): Rebrickable refuses an add for a listed part and has no `PATCH` on the entry, so a change
+removes the old entry and adds the new count. If the add fails, the old count is added back; if that fails too, the row names the part
+and the old count. A budget pause or a refused key between the two keeps the row's progress, and a retry adds the new count. A DELETE with
+an empty reply cannot be told from an empty-bodied error. Candidate sets are the sets of all live copies that have a Rebrickable number, not only the sets on a linked list.
 """
 import json
 import sqlite3
@@ -37,7 +39,7 @@ RULE_KEY = 'rebrickable_lost_parts_send_rule'
 DEFAULT_RULE = 'add_only'
 RULES = (
     ('add_only', 'Add only',
-     'Only sends new Lost Parts and larger counts. Where both sides have a count, the larger is kept. Nothing is removed on Rebrickable.'),
+     'Only sends new Lost Parts. A larger count on a listed part is shown and not sent. Nothing is removed on Rebrickable.'),
     ('per_part', 'Brick Work wins per part',
      "For parts on sets listed on both sides, Brick Work's missing count replaces Rebrickable's, also when smaller or zero."),
     ('per_set', 'Brick Work wins per set',
@@ -48,6 +50,8 @@ RULES = (
 RULE_VALUES = tuple(r[0] for r in RULES)
 UNDO_NOTE = 'Undo cannot reverse a remote change on Rebrickable.'
 
+
+ADD_ONLY_CHANGE = 'Rebrickable cannot change a count in place, and Add only removes nothing.'
 
 def enabled(db):
     """Whether sending Lost Parts to Rebrickable is switched on in `main.setting` (off by default)."""
@@ -318,7 +322,11 @@ def plan(db, remote, translate, *, rule=None, on=True):
             reason = None
             line_qty = line_quantities.get((part_no, color_id, is_spare))
             needs_remove = state == 'remove' or (state == 'change' and how != 'add_only')
-            if state in ('add', 'change') and line_qty is not None and local_qty > line_qty:
+            if state == 'change' and how == 'add_only':
+                tickable = False
+                ticked = False
+                reason = ADD_ONLY_CHANGE
+            elif state in ('add', 'change') and line_qty is not None and local_qty > line_qty:
                 tickable = False
                 ticked = False
                 reason = 'The copies together miss more than the set holds'
@@ -345,7 +353,7 @@ def plan(db, remote, translate, *, rule=None, on=True):
                 rule=how,
                 before=remote_qty,
                 after=local_qty,
-                quantity=(local_qty - remote_qty) if (state == 'change' and how == 'add_only') else (local_qty if state != 'remove' else remote_qty),
+                quantity=local_qty if state != 'remove' else remote_qty,
                 tickable=tickable,
                 ticked=ticked,
                 reason=reason,
@@ -393,7 +401,8 @@ def _validate_row(row, plan_rule):
     state = row.get('state')
     if state not in ('add', 'change', 'remove'):
         return f'Unknown state: {state}'
-    add_only_change = state == 'change' and (row.get('rule') or plan_rule) == 'add_only'
+    if state == 'change' and (row.get('rule') or plan_rule) == 'add_only':
+        return ADD_ONLY_CHANGE
     if state in ('add', 'change'):
         if not _is_pos_int(row.get('inv_part_id')):
             return row.get('reason') or (
@@ -403,18 +412,33 @@ def _validate_row(row, plan_rule):
             )
         if not _is_pos_int(row.get('after')):
             return 'Invalid target quantity'
-        if add_only_change:
-            before = row.get('before')
-            if type(before) is not int or before < 0 or row['after'] <= before:
-                return 'Invalid quantity change for add_only'
+    if state == 'change' and not _is_pos_int(row.get('before')):
+        return 'Invalid old quantity'
     ids = row.get('ids')
     if ids is not None:
         if not isinstance(ids, (list, tuple)) or not all(_is_pos_int(lost_id) for lost_id in ids):
             return 'Invalid Rebrickable lost part id'
-    if (state == 'remove' or (state == 'change' and not add_only_change)) and not row.get('removed'):
+    if state in ('remove', 'change') and not row.get('removed'):
         if not row.get('ids_complete', True) or not ids:
             return row.get('reason') or 'Missing Rebrickable lost part id'
     return None
+
+
+def _gone(row, *, tried=False):
+    """`tried`: putting the old count back failed too. Otherwise nothing has tried yet (a pause, a refused key, a removal that stopped halfway)."""
+    return (f"Part {row.get('part_no')} of set {row.get('set_no')} may be gone from Rebrickable's Lost Parts: it had {row.get('before')}. "
+            f"Brick Work {'could not put it back' if tried else 'stopped before putting it back'}. Check it there.")
+
+
+def _put_back(client, row):
+    """After the new count failed: add the old one again. The new Lost Part id, or None when that failed too. A refused key or a used-up budget
+    goes on to the caller: the row keeps `removed`, and a retry adds the new count."""
+    try:
+        return _reply_lost_part_id(client.lost_part_add(row['inv_part_id'], row['before']))
+    except (adapters.KeyRejected, adapters.RemoteBudgetExceeded, adapters.WaitingForBudget):
+        raise
+    except Exception:
+        return None
 
 
 def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
@@ -451,7 +475,7 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
             failed.append(dict(row, reason=err))
             continue
         state = row['state']
-        add_only_change = state == 'change' and (row.get('rule') or plan_rule) == 'add_only'
+        row.pop('gone', None)
         added = bool(row.get('added'))
         added_id = row.get('added_id') if _is_pos_int(row.get('added_id')) else None
         removed = bool(row.get('removed'))
@@ -462,10 +486,14 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
                 row['added'] = added
                 if added_id is not None:
                     row['added_id'] = added_id
-            if state == 'remove' or (state == 'change' and not add_only_change):
+            if state in ('remove', 'change'):
                 row['removed'] = removed
                 if removed_ids:
                     row['removed_ids'] = removed_ids
+
+        def _warn():
+            if state == 'change' and (removed or removed_ids) and not added:      # something of the old count is gone and the new one is not there
+                row['gone'] = _gone(row)
 
         try:
             if state == 'add':
@@ -474,29 +502,33 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
                     added = True
                     added_id = _reply_lost_part_id(reply)
             elif state == 'change':
-                if not added:
-                    qty = (row['after'] - row['before']) if add_only_change else row['after']
-                    reply = client.lost_part_add(row['inv_part_id'], qty)
-                    added = True
-                    added_id = _reply_lost_part_id(reply)
-                if add_only_change:
-                    if added_id is not None and added_id in (row.get('ids') or ()):
-                        _save_progress()
-                        row['ticked'] = True
-                        failed.append(dict(row, reason='Rebrickable updated the existing Lost Part instead of adding to it'))
-                        continue
-                elif not removed:
-                    if added_id is None:
-                        _save_progress()
-                        row['ticked'] = True
-                        failed.append(dict(row, reason='Rebrickable did not confirm the new Lost Part; the old rows were kept'))
-                        continue
+                # Rebrickable has no update call and refuses an add for a listed part (#469): remove the old entry, then add the new count.
+                if not removed:
                     for lost_id in row.get('ids') or ():
-                        if lost_id in removed_ids or lost_id == added_id:
+                        if lost_id in removed_ids:
                             continue
                         client.lost_part_remove(lost_id)
                         removed_ids.append(lost_id)
                     removed = True
+                if not added:
+                    try:
+                        added_id = _reply_lost_part_id(client.lost_part_add(row['inv_part_id'], row['after']))
+                        added = True
+                    except (adapters.KeyRejected, adapters.RemoteBudgetExceeded, adapters.WaitingForBudget):
+                        raise
+                    except Exception:
+                        back = _put_back(client, row)
+                        if back is None:
+                            reason = row['gone'] = _gone(row, tried=True)      # kept on the row: a later pause or refused key shows it again
+                        else:      # the old count is there again, under a new id: a retry starts over from it
+                            reason = f"Rebrickable did not take the new count. The old count, {row['before']}, was put back."
+                            row['ids'], row['ids_complete'] = [back], True
+                            removed, removed_ids = False, []
+                            row.pop('removed_ids', None)
+                        _save_progress()
+                        row['ticked'] = True
+                        failed.append(dict(row, reason=reason))
+                        continue
             elif state == 'remove':
                 if not removed:
                     for lost_id in row.get('ids') or ():
@@ -507,6 +539,7 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
                     removed = True
         except adapters.KeyRejected as exc:
             _save_progress()
+            _warn()
             row['ticked'] = True
             remaining.append(row)
             _partition_tail(chosen[idx + 1:])
@@ -514,14 +547,16 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
             raise
         except (adapters.RemoteBudgetExceeded, adapters.WaitingForBudget):
             _save_progress()
+            _warn()                      # a paused run can be stopped, and then nothing sends the new count
             row['ticked'] = True
             remaining.append(row)
             _partition_tail(chosen[idx + 1:])
             break
         except Exception as exc:
             _save_progress()
+            _warn()
             row['ticked'] = True
-            failed.append(dict(row, reason=str(exc) or 'Rebrickable API unsuccessful'))
+            failed.append(dict(row, reason=' '.join(filter(None, (str(exc) or 'Rebrickable API unsuccessful', row.get('gone'))))))
             continue
         _save_progress()
         if row.get('reason') is not None:

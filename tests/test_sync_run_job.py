@@ -303,7 +303,7 @@ def test_the_job_sends_lost_parts_out_one_call_with_one_audit_entry(client, remo
         copy_of(db, '1000-1', marks=[('3001', '4', 3)])
     remote.lists[1] = {'1000-1': 1}
     remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
-    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='add_only')
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
     key = lost_parts_send.row_key('1000-1', '3001', 4, False)
     with db_of(pair) as db:
         job_id = run_job.queue(db, run_id, MultiDict([('lostsend', key)]))
@@ -314,7 +314,7 @@ def test_the_job_sends_lost_parts_out_one_call_with_one_audit_entry(client, remo
         step = db.execute('SELECT count, total, state FROM job_step WHERE job_id=?', (job_id,)).fetchone()
         assert tuple(step) == (1, 1, 'done')
         assert len(db.execute("SELECT 1 FROM event WHERE entity_kind='sync' AND field='send'").fetchall()) == 1
-    assert [(m, d) for m, p, d in remote.lost_writes] == [('POST', 'inv_part_id=1&lost_quantity=2')]
+    assert [(m, d) for m, p, d in remote.lost_writes] == [('DELETE', ''), ('POST', 'inv_part_id=1&lost_quantity=3')]
 
 
 def test_a_run_that_never_began_is_released_when_the_job_fails_at_once(three_sends, monkeypatch):

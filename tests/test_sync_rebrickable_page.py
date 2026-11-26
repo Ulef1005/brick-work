@@ -503,18 +503,18 @@ def test_lost_parts_go_out_with_the_rule_and_a_row_over_one_copys_line_is_not_se
         copy_of(db, '1000-2', marks=[('3001', '4', 2)])
     remote.lists[1] = {'1000-1': 1, '1000-2': 2}
     remote.lost = [raw('1000-1', '3001', 4, 1, number=1), raw('1000-2', '3023', 15, 1, number=2)]
-    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='add_only')
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
     page = preview_of(client, run_id)
     card = page.select_one('[data-rb-lost-out]')
-    assert card.h2.get_text(' ', strip=True) == 'Lost Parts to Rebrickable 2'        # 1000-1 is sent, 1000-2 is listed as not sent
-    assert len(card.select('input[name=lostsend]')) == 1
-    assert 'Rule: Add only' in card.get_text()
+    assert card.h2.get_text(' ', strip=True) == 'Lost Parts to Rebrickable 3'        # 1000-1 is sent, 1000-2's 3001 is listed as not sent, its found 3023 can be removed
+    assert len(card.select('input[name=lostsend]')) == 2
+    assert 'Rule: Brick Work wins per part' in card.get_text()
     tick = card.select_one('input[name=lostsend]')
     assert tick['value'] == lost_parts_send.row_key('1000-1', '3001', 4, False) and '1 there to 3' in card.get_text()
     assert not tick.has_attr('checked')                              # a larger count is offered, not ticked: only an added part is ticked
     assert page.select_one('[data-rb-before]')
     apply_run(client, csrf, run_id, page, lostsend=[tick['value']])
-    assert [(m, d) for m, p, d in remote.lost_writes] == [('POST', 'inv_part_id=1&lost_quantity=2')]
+    assert [(m, d) for m, p, d in remote.lost_writes] == [('DELETE', ''), ('POST', 'inv_part_id=1&lost_quantity=3')]
     result = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result'))
     assert result.select_one('[data-rb-there] .sr-tag').get_text(strip=True) == '1 sent'
     with db_of(pair) as db:
@@ -529,7 +529,7 @@ def test_a_lost_parts_row_over_one_copys_line_shows_its_reason_and_cannot_be_pos
         copy_of(db, '1000-1', marks=[('3001', '4', 3)])
     remote.lists[1] = {'1000-1': 2}
     remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
-    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='add_only')
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
     page = preview_of(client, run_id)
     card = page.select_one('[data-rb-lost-out]')
     assert not card.select('input[name=lostsend]')
@@ -549,7 +549,7 @@ def test_a_lost_parts_send_that_fails_is_listed_and_a_budget_or_key_stop_keeps_t
         copy_of(db, '1000-1', marks=[('3001', '4', 3), ('3023', '15', 1)])
     remote.lists[1] = {'1000-1': 1}
     remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
-    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off')
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
     remote.fail_writes = True
     apply_run(client, csrf, run_id, lostsend=[lost_parts_send.row_key('1000-1', '3001', 4, False)])
     page = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result'))
@@ -755,7 +755,7 @@ def test_a_lost_parts_send_is_a_row_of_the_log_without_a_retry_that_would_open_t
         copy_of(db, '1000-1', marks=[('3001', '4', 3)])
     remote.lists[1] = {'1000-1': 1}
     remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
-    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off')
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
     remote.fail_writes = True
     apply_run(client, csrf, run_id, lostsend=[lost_parts_send.row_key('1000-1', '3001', 4, False)])
     site = soup(client.get('/workbench/sync/rebrickable'))
@@ -832,7 +832,7 @@ def test_a_lost_parts_send_writes_each_call_into_the_run(client, remote, pair, m
         copy_of(db, '1000-1', marks=[('3001', '4', 3), ('3023', '15', 1)])
     remote.lists[1] = {'1000-1': 1}
     remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
-    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off')
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
     seen = []
     real = adapters.RebrickableUser.lost_part_add
 
@@ -845,7 +845,7 @@ def test_a_lost_parts_send_writes_each_call_into_the_run(client, remote, pair, m
     apply_run(client, csrf, run_id, lostsend=[lost_parts_send.row_key('1000-1', '3001', 4, False)])
     with db_of(pair) as db:
         run = sync_run.load(db, run_id)[0]
-        assert seen == [0] and run['lost_calls'] == [['add', 1, 2]]
+        assert seen == [1] and run['lost_calls'] == [['remove', 1], ['add', 1, 3]]      # the old entry first
 
 
 def test_saving_step_2_after_a_failed_read_of_the_lists_keeps_the_links(client, remote, pair):
@@ -958,7 +958,7 @@ def test_a_budget_pause_shows_as_waiting_not_failed(client, remote, pair, monkey
         copy_of(db, '1000-1', marks=[('3001', '4', 3)])
     remote.lists[1] = {'1000-1': 1}
     remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
-    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off')
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
 
     def pause(self, inv, quantity):
         raise base.WaitingForBudget(None, '2026-11-25T00:00:00+00:00')
@@ -967,7 +967,9 @@ def test_a_budget_pause_shows_as_waiting_not_failed(client, remote, pair, monkey
     assert 'waiting for the daily budget' in page.select_one('[data-rb-send]').get_text() and not page.select('.bk-warning')
     assert client.get(f'/workbench/sync/rebrickable/run/{run_id}/result').location.endswith('/progress')
     with db_of(pair) as db:
-        assert sync_run.load(db, run_id)[0]['stages']['lost_out']['counts'] == dict(sent=0, failed=0, waiting=1)
+        stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
+        assert stage['counts'] == dict(sent=0, failed=0, waiting=1)
+        assert 'it had 1' in stage['message']          # the old entry is already removed: a Stop now would leave it gone
 
 
 def test_the_preview_shows_part_rows_that_could_not_be_matched_and_a_renamed_list_counts_as_chosen(client, remote, pair):
@@ -1109,13 +1111,39 @@ def test_a_kept_difference_with_a_missing_baseline_side_comes_back_as_the_card(c
     assert not row.select_one('input[type=checkbox]').has_attr('checked') and 'not taken at the last run' in row.get_text()
 
 
+def test_a_key_refused_on_a_second_pass_still_names_what_an_earlier_pass_removed(client, remote, pair, monkeypatch):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3), ('3023', '15', 2)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1), raw('1000-1', '3023', 15, 1, number=2)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
+
+    def refuse(self, inv, quantity):
+        raise base.KeyRejected('Rebrickable refused the user token')
+    monkeypatch.setattr(adapters.RebrickableUser, 'lost_part_remove', lambda self, lost_id: refuse(self, lost_id, 0))
+    keys = [lost_parts_send.row_key('1000-1', '3001', 4, False), lost_parts_send.row_key('1000-1', '3023', 15, False)]
+    real = sync_run._lost_out_calls
+
+    def earlier_pass_removed_the_second(db, run, wanted, http):
+        for row in run['lost_out']['rows']:
+            if row['key'] == keys[1]:
+                row['gone'] = 'it had 1'
+        return real(db, run, wanted, http)
+    monkeypatch.setattr(sync_run, '_lost_out_calls', earlier_pass_removed_the_second)
+    apply_run(client, csrf, run_id, lostsend=keys)
+    with db_of(pair) as db:
+        stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
+    assert 'it had 1' in [f['reason'] for f in stage['failed'] if f['part_no'] == '3023'][0]
+
+
 def test_a_refused_key_makes_what_was_not_tried_failed_not_waiting(client, remote, pair, monkeypatch):
     csrf = connected(client, pair)
     with db_of(pair) as db:
         copy_of(db, '1000-1', marks=[('3001', '4', 3), ('3023', '15', 2)])
     remote.lists[1] = {'1000-1': 1}
     remote.lost = [raw('1000-1', '3001', 4, 1, number=1), raw('1000-1', '3023', 15, 1, number=2)]
-    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off')
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
 
     def refuse(self, inv, quantity):
         raise base.KeyRejected('Rebrickable refused the user token')
@@ -1161,7 +1189,7 @@ def test_a_local_write_failure_after_a_sent_part_keeps_the_result_and_says_so(cl
         return real(db, plan)
     monkeypatch.setattr(sync, '_store_plan', flaky)
     apply_run(client, csrf, run_id, lostsend=[lost_parts_send.row_key('1000-1', '3001', 4, False)])
-    assert state['failed'] and [w[0] for w in remote.lost_writes] == ['POST', 'DELETE']       # the replaced row was still removed after the failed write
+    assert state['failed'] and [w[0] for w in remote.lost_writes] == ['DELETE', 'POST']       # the new count was still added after the failed write
     with db_of(pair) as db:
         stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
     assert stage['counts'] == dict(sent=1, failed=0, waiting=0) and stage['unsaved'] is True
@@ -1187,7 +1215,7 @@ def test_a_data_folder_that_stays_unwritable_after_the_send_is_a_message_not_a_5
     page = preview_of(client, run_id)
     response = _post_run(client, csrf, run_id, {**run_data(page), 'lostsend': lost_parts_send.row_key('1000-1', '3001', 4, False)})
     assert response.status_code == 200
-    assert [w[0] for w in remote.lost_writes] == ['POST', 'DELETE']
+    assert [w[0] for w in remote.lost_writes] == ['DELETE', 'POST']
     landing = response.get_data(as_text=True)                     # the run page of the failed job says it
     assert 'could not write down this run' in landing and '/secret/path' not in landing
 

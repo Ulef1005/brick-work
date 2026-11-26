@@ -762,7 +762,7 @@ def stage_lost_out(db, run, form_data, *, http=None, per_key=False, should_stop=
             for row in planned['rows']:
                 if row['key'] in set(wanted[idx + 1:]) and row.get('outcome') != 'sent':
                     row['outcome'] = 'failed'
-                    row['reason'] = key_rejected_msg
+                    row['reason'] = ' '.join(filter(None, (key_rejected_msg, row.get('gone'))))      # gone from an earlier pass
             done_count = len(wanted)
             if on_call:
                 on_call('after', key, done_count)
@@ -792,7 +792,7 @@ def stage_lost_out(db, run, form_data, *, http=None, per_key=False, should_stop=
         counts = dict(sent=len(sent_rows), failed=len(failed_rows), waiting=len(waiting_rows))
         message = key_rejected_msg
         if counts['waiting'] and not message:
-            message = 'Rebrickable is paused: the daily budget is used up. ' + ('1 Lost Part waits.' if counts['waiting'] == 1 else f"{counts['waiting']} Lost Parts wait.")
+            message = _paused_message(counts['waiting'], waiting_rows)
         if stopped and not message:
             message = 'Stopped at your request'
         if called or any(counts.values()):
@@ -877,6 +877,12 @@ class _Recorder:
         return getattr(self.client, name)
 
 
+def _paused_message(waiting, rows):
+    """The budget pause of a Lost Parts send. A row paused after its old entry was removed is named: a stopped run never sends it."""
+    text = 'Rebrickable is paused: the daily budget is used up. ' + ('1 Lost Part waits.' if waiting == 1 else f'{waiting} Lost Parts wait.')
+    return ' '.join([text, *(r['gone'] for r in rows if r.get('gone'))])
+
+
 def _lost_out_calls(db, run, wanted, http):
     """Run Lost Parts out calls for `wanted` and update `run['lost_out']` without writing the stage audit."""
     planned = run['lost_out']
@@ -888,7 +894,7 @@ def _lost_out_calls(db, run, wanted, http):
         reply = dict(getattr(exc, 'partial', dict(sent=[], failed=[], remaining=[])))
         message = _message(exc)
         key_rejected = True
-        reply['failed'] = list(reply['failed']) + [dict(r, reason=message) for r in reply['remaining']]     # refused, not paused: what was not tried failed
+        reply['failed'] = list(reply['failed']) + [dict(r, reason=' '.join(filter(None, (message, r.get('gone'))))) for r in reply['remaining']]     # refused, not paused: what was not tried failed
         reply['remaining'] = []
     except WaitingForBudget as exc:
         return dict(status='failed', message=_message(exc)), dict(retry_at=exc.retry_at, key_rejected=False, budget_error=True)
@@ -901,7 +907,7 @@ def _lost_out_calls(db, run, wanted, http):
                     planned['rows'][i] = dict(row, outcome='sent' if part == 'sent' else 'failed' if part == 'failed' else 'waiting')
     counts = dict(sent=len(reply['sent']), failed=len(reply['failed']), waiting=len(reply['remaining']))
     if counts['waiting'] and not message:
-        message = 'Rebrickable is paused: the daily budget is used up. ' + ('1 Lost Part waits.' if counts['waiting'] == 1 else f"{counts['waiting']} Lost Parts wait.")
+        message = _paused_message(counts['waiting'], reply['remaining'])
     try:
         sync._store_plan(db, run)      # what Rebrickable took is written down before anything else can fail
     except OSError as exc:

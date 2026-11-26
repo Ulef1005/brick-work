@@ -53,25 +53,20 @@ step() {
 }
 
 # Repo Gates phase 1 (ai-wiki wiki/projects/repo-gates.md): one test or browser run at a time on this machine.
-# heavy <program...> runs a program (not a shell function) under the machine lock ~/.cache/gate.lock, outside CI and
-# only where /usr/bin/lockf exists (macOS); a nested gate (GATE_LOCK_HELD set by the outer one) does not lock again.
-# Waiting is announced. GATE_WAIT (default 1800) is the gate's whole waiting budget in seconds, counted from its start:
-# past it a step that would wait fails at once (exit 75) instead of hanging.
-GATE_DEADLINE=${GATE_DEADLINE:-$(( $(date +%s) + ${GATE_WAIT:-1800} ))}
-export GATE_DEADLINE
+# heavy <cmd...> runs <cmd> under the machine lock ~/.cache/gate.lock, outside CI and only where /usr/bin/lockf
+# exists (macOS); a nested gate (GATE_LOCK_HELD set by the outer one) does not lock again. Waiting is announced,
+# and a wait longer than GATE_WAIT seconds (default 1800) fails the step instead of hanging.
 heavy() {
   if [[ -n ${CI:-} || -n ${GATE_LOCK_HELD:-} || ! -x /usr/bin/lockf ]]; then "$@"; return; fi
-  local lock="$HOME/.cache/gate.lock" left rc=0
-  left=$(( GATE_DEADLINE - $(date +%s) ))
-  (( left > 0 )) || left=0
+  local lock="$HOME/.cache/gate.lock" wait=${GATE_WAIT:-1800} rc=0
   mkdir -p "$HOME/.cache" || return
   /usr/bin/lockf -k -t 0 "$lock" true 2>/dev/null || rc=$?
   if (( rc == 75 )); then
-    echo "gate: waiting up to ${left}s for the machine lock ($lock: another gate is running tests; holder: lsof $lock)" >&2
+    echo "gate: waiting up to ${wait}s for the machine lock ($lock: another gate is running tests; holder: lsof $lock)" >&2
   fi
   rc=0
-  GATE_LOCK_HELD=1 /usr/bin/lockf -k -t "$left" "$lock" "$@" || rc=$?
-  if (( rc == 75 )); then echo "gate: gave up waiting for the machine lock $lock (GATE_WAIT budget used up)" >&2; fi
+  GATE_LOCK_HELD=1 /usr/bin/lockf -k -t "$wait" "$lock" "$@" || rc=$?
+  if (( rc == 75 )); then echo "gate: gave up after ${wait}s waiting for the machine lock $lock" >&2; fi
   return "$rc"
 }
 

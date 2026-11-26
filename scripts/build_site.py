@@ -386,6 +386,8 @@ def build_seo_files(out):
     """robots.txt and the sitemaps: /sitemap.xml is an index of sitemap-pages.xml (the pages of this site) and docs/sitemap.xml (Zensical's)."""
     base = origin() + site_base()
     (out / 'robots.txt').write_text(f'User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\nSitemap: {base}sitemap.xml\n')
+    (out / '.well-known').mkdir(exist_ok=True)   # RFC 9116: crawlers and scanners ask for it; the report channel is the repository's private advisory form, as in SECURITY.md
+    (out / '.well-known/security.txt').write_text(f'Contact: https://github.com/{repository()}/security/advisories/new\nExpires: 2027-11-24T00:00:00Z\nPolicy: https://github.com/{repository()}/blob/main/SECURITY.md\nCanonical: {base}.well-known/security.txt\nPreferred-Languages: en, de\n')
     urls = ''.join(f'<url><loc>{base}{path}</loc>' + (f'<lastmod>{day}</lastmod>' if (day := lastmod(path)) else '') + '</url>' for path in site_urls(out))
     (out / 'sitemap-pages.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + '</urlset>\n')
     (out / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
@@ -621,6 +623,7 @@ def build(out):
     for name in ('app-icon.svg', 'favicon.svg', 'favicon.ico', 'favicon-16.png', 'favicon-32.png',
                  'lockup-horizontal-light.png', 'lockup-horizontal-dark.png'):
         shutil.copy(static / 'brickwork' / name, out / 'assets' / name)
+    shutil.copy(static / 'brickwork/favicon.ico', out / 'favicon.ico')   # browsers and crawlers ask for /favicon.ico whatever the head says (7 404s a day, 2026-11-24)
     shutil.copy(static / 'brickwork/icons/icon-180.png', out / 'assets/apple-touch-icon.png')
     brand_css = (static / 'brickwork/brick-work.css').read_text().replace(
         '/static/fonts/PatrickHand-Regular.woff2', 'fonts/PatrickHand-Regular.woff2')
@@ -670,7 +673,7 @@ def build(out):
     shim.write_text(own_address(shim.read_text()))
     demo_entry = out / 'demo' / 'index.html'
     entry_text = demo_entry.read_text()
-    title_tag = '<title>Brick Work demo</title>'
+    title_tag = '<title>Brick Work demo: try it in your browser</title>'
     if title_tag not in entry_text:
         raise RuntimeError(f'{demo_entry} is missing {title_tag!r}; cannot inject demo SEO tags')
     demo_head = f'<meta name="description" content="{html.escape(DEMO_DESCRIPTION, quote=True)}">' + seo_head('Brick Work demo', DEMO_DESCRIPTION, 'demo/')

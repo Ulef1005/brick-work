@@ -83,6 +83,8 @@ Open a copy and look under its tags: the **Source** row says how it got here and
 
 On the Sets page, two chip rows under the status tabs filter by the same records: **Added via** and **Last synced from**, each chip with its count of sets. Press a chip to filter and press it again to clear it. The two rows combine with each other and with the status tabs. A set with several copies counts under every value its copies have.
 
+The Wishlist and the loose-stock lists, such as Parts and Minifigures, have the **Added via** row too. Its counts are list rows. Each row carries a chip that names where it came from. A single chip that every listed row matches is not shown. A row that groups stock from several origins shows each one. Pieces that are only inside sets have no chip of their own.
+
 Undo of a sync run uses these records to take back exactly what the run did.
 
 ## Rebrickable list names

@@ -30,7 +30,15 @@ def test_the_chips_count_sets_not_copies_and_name_the_list(tmp_path):
 
 def test_a_row_without_a_recorded_origin_reads_before_this_release():
     row = dict(via=['before'], list=[], list_labels={})
-    assert collection.source_chips([row])[0] == [('before', 'Before this release', 1)]
+    assert collection.source_chips([row, dict(via=['hand'], list=[], list_labels={})])[0] == [('hand', 'By hand', 1), ('before', 'Before this release', 1)]
+
+
+def test_a_lone_chip_is_hidden_only_when_it_matches_every_listed_row():
+    synced = dict(via=['hand'], list=['rebrickable|1'], list_labels={'rebrickable|1': 'Rebrickable'})
+    unsynced = dict(via=['hand'], list=[], list_labels={})
+    assert collection.source_chips([synced, synced]) == ([], [])
+    assert collection.source_chips([synced, unsynced]) == ([], [('rebrickable|1', 'Rebrickable', 1)])
+    assert collection.source_chips([synced, dict(via=[])]) == ([], [])                      # a row with nothing owned loose is not listed
 
 
 def test_the_server_side_filter_matches_the_two_new_fields(tmp_path):
@@ -81,7 +89,8 @@ def test_a_filter_no_chip_offers_is_dropped_not_kept_invisible(tmp_path):
 
 def test_a_list_recorded_without_its_name_takes_the_name_another_row_has():
     rows = [dict(via=['hand'], list=['rebrickable|42'], list_labels={'rebrickable|42': 'Rebrickable'}),
-            dict(via=['hand'], list=['rebrickable|42'], list_labels={'rebrickable|42': 'Rebrickable · Main collection'})]
+            dict(via=['hand'], list=['rebrickable|42'], list_labels={'rebrickable|42': 'Rebrickable · Main collection'}),
+            dict(via=['hand'], list=[], list_labels={})]
     assert collection.source_chips(rows)[1] == [('rebrickable|42', 'Rebrickable · Main collection', 2)]
 
 

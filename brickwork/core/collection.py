@@ -1755,7 +1755,8 @@ def _source_order(value):
 
 
 def source_chips(rows):
-    """The chip rows above a list (#551, frames 45, 78, 79): `(value, label, rows)` for Added via and, on Sets only, for Last synced from. A row of one chip would filter nothing and is empty (Ulf, 2026-11-26)."""
+    """The chip rows above a list (#551, frames 45, 78, 79): `(value, label, rows)` for Added via and, on Sets only, for Last synced from. A lone chip that every listed row matches would filter nothing: its row is empty (Ulf, 2026-11-26). A row with no origin (nothing
+    owned loose) is not listed."""
     via, lists = {}, {}
     for row in rows:
         for value in row.get('via') or []:
@@ -1768,4 +1769,5 @@ def source_chips(rows):
     order = [o for o in origins.ORIGINS] + ['before']
     added = [(v, 'Before this release' if v == 'before' else origins.label(v), via[v]) for v in order if v in via]
     synced = [(v, label, n) for v, (label, n) in sorted(lists.items(), key=lambda kv: kv[1][0].casefold())]
-    return tuple(chips if len(chips) > 1 else [] for chips in (added, synced))
+    listed = sum(1 for row in rows if row.get('via'))
+    return tuple([] if len(chips) == 1 and chips[0][2] == listed else chips for chips in (added, synced))

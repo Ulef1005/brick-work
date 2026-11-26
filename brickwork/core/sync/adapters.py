@@ -203,7 +203,8 @@ class RebrickableUser(Rebrickable):
         arrives here as `{}`, and a listed part cannot be added twice."""
         reply = self.user_call('/lost_parts/', method='POST',
                                data={'inv_part_id': int(inv_part_id), 'lost_quantity': int(quantity)})
-        if not isinstance(reply, dict) or _optional_id(reply.get('lost_part_id')) is None or 'detail' in reply or 'non_field_errors' in reply:
+        added_id = reply.get('lost_part_id') if isinstance(reply, dict) else None
+        if type(added_id) is not int or added_id < 1 or 'detail' in reply or 'non_field_errors' in reply:      # an int, as `lost_parts_send` requires
             raise SourceError('Rebrickable refused the Lost Part')
         return reply
 

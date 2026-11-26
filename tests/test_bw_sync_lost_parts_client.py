@@ -121,7 +121,7 @@ def test_lost_part_add_and_remove_reject_error_bodies(store, kind, reply):
         assert str(exc.value) == 'Rebrickable refused the Lost Part'
 
 
-@pytest.mark.parametrize('reply', [{}, {'ok': True}, [], {'lost_part_id': None}])
+@pytest.mark.parametrize('reply', [{}, {'ok': True}, [], {'lost_part_id': None}, {'lost_part_id': '99'}, {'lost_part_id': True}])
 def test_lost_part_add_without_a_lost_part_id_is_a_failure(store, reply):
     remote = rebrickable_ready(store, WriteRemote(reply=reply))
     with pytest.raises(adapters.SourceError):

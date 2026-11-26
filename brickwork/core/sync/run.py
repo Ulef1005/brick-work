@@ -952,6 +952,14 @@ def undo_run(db, event_id):
     return ids
 
 
+def _job_send_done(db, job_id):
+    """Send again sent what the job could not: its send step is done, and the job keeps no error unless another step still failed."""
+    with transaction(db):
+        db.execute("UPDATE job_step SET state='done', count=total, error=NULL, error_code=NULL, retry_at=NULL WHERE job_id=? AND name='send'", (job_id,))
+        if not db.execute("SELECT 1 FROM job_step WHERE job_id=? AND state='failed'", (job_id,)).fetchone():
+            db.execute("UPDATE job SET error=NULL, error_code=NULL WHERE id=? AND state='done'", (job_id,))
+
+
 def retry_send(db, run_id, *, http=None, also=()):
     """Send again the rows of the run's send stage that did not go through (failed, paused or refused). The send plan keeps what was sent. Under
     the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry. A row whose result is `unknown` (a send a
@@ -983,5 +991,7 @@ def retry_send(db, run_id, *, http=None, also=()):
                 audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id, pulls=pull_events(run)))
         else:
             run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
+            if run.get('job') and all(r['result'] in ('sent', 'unchanged') for r in rows):
+                _job_send_done(db, run['job'])
         sync._store_plan(db, run)
         return run

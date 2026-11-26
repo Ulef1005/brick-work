@@ -7,6 +7,8 @@ import pytest
 from brickwork.core import sync
 from brickwork.core.sync import run as sync_run
 from brickwork.core.sync import run_job
+from werkzeug.datastructures import MultiDict
+
 from tests.app4 import app4, client  # noqa: F401
 from tests.test_sync_rebrickable_page import apply_run, connected, db_of, pair, remote, soup, start  # noqa: F401
 from tests.test_sync_run_job import form_for, three_sends  # noqa: F401
@@ -443,3 +445,49 @@ def test_while_the_pull_is_applied_the_run_the_pull_and_the_sends_are_three_card
     assert text(page.select_one('[data-rb-pull] h2')) == 'Into Brick Work' and 'Applying the pull' in text(page.select_one('[data-rb-pull]'))
     send = page.select_one('[data-rb-send]')
     assert text(send.h2) == 'To Rebrickable' and f'0 of {len(keys)} sent' in text(send) and send.select_one('[role=progressbar]')['aria-valuenow'] == '0'
+
+
+def test_send_again_that_sends_everything_leaves_no_failed_step_in_jobs(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    order, _ = _interrupt(pair, run_id)
+    client.post(f'/workbench/sync/rebrickable/run/{run_id}/retry', data={'csrf_token': _csrf(client), 'also': order[0]})
+    with db_of(pair) as db:
+        job_id = sync_run.load(db, run_id)[0]['job']
+        assert db.execute("SELECT state, error FROM job_step WHERE job_id=? AND name='send'", (job_id,)).fetchone()[:] == ('done', None)
+        assert db.execute('SELECT error FROM job WHERE id=?', (job_id,)).fetchone()[0] is None
+
+
+def test_the_result_with_one_of_two_pulls_undone_still_offers_undo(three_sends, client, monkeypatch):  # noqa: F811
+    pair, run_id, keys = three_sends
+    apply_run(client, _csrf(client), run_id)
+    with db_of(pair) as db:
+        run_job.drain(db)
+        run = sync_run.load(db, run_id)[0]
+        first = run['applied']['events'][0]
+        run['applied']['events'] = [first, first + 100000]          # a second pull that is still there
+        sync._store_plan(db, run)
+    client.post('/workbench/sync/rebrickable/undo', data={'csrf_token': _csrf(client), 'event': first})
+    page = text(soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result')))
+    assert 'Undo this run' in page and 'This run was undone' not in page
+
+
+def test_a_run_where_only_lost_parts_were_cut_off_shows_in_last_runs(client, remote, pair):  # noqa: F811
+    from brickwork.core.sync import lost_parts_send
+    from tests.test_bw_sync_lost_parts import copy_of
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3)])
+    remote.lists[1] = {'1000-1': 1}
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
+    key = lost_parts_send.row_key('1000-1', '3001', 4, False)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, MultiDict([('lostsend', key)]))
+        run = sync_run.load(db, run_id)[0]
+        run['stages'] = {'lost_out': {'status': 'started'}}
+        sync._store_plan(db, run)
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
+        db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
+        db.commit()
+        run_job.drain(db)
+    runs = [text(r) for r in soup(client.get('/workbench/sync/rebrickable')).select('[data-rb-runs] .sr-run')]
+    assert any('Lost Parts: ' in r and 'Interrupted' in r for r in runs), runs

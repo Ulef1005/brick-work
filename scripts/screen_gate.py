@@ -1,6 +1,6 @@
 """The screenshot gate (D3, #160; ADR 0022): renders the built app per screen state and compares it with the approved baseline captures.
 
-    python3 scripts/screen_gate.py capture [SCREEN ...]   write CANDIDATE baselines for the built states into
+    python3 scripts/screen_gate.py capture [SCREEN ...]   (Linux only) write CANDIDATE baselines for the built states into
                                                           design/screens/approval/baselines/<NN-Screen>/ (all of them, or the named screens)
     python3 scripts/screen_gate.py agree                  render every approved state on one Chrome process and on four, compare the two renders (#267)
     python3 scripts/screen_gate.py compare                render every built state with `approved: true`, compare it with its baseline, write
@@ -331,7 +331,18 @@ def run_agree(chrome: str, parallel: int = 4) -> tuple[list[str], int]:
     return [f'Serial against {parallel}-process render: {total} captures compared, {len(differ)} differ'] + [f'  differs: {d}' for d in differ], total
 
 
+def refused_off_linux() -> bool:
+    if sys.platform.startswith('linux'):
+        return False
+    print(f'Refused: baselines are written on Linux only (ADR 0022), not on {sys.platform}. Run the `baselines` workflow and commit its artifact.')
+    return True
+
+
 def capture(selected: list[str], chrome: str) -> int:
+    """Write the candidate baselines. Linux only: the baselines are Linux renders (ADR 0022). A Mac draws text and line art differently, and
+    references written there never match the Linux gate (#503: 708 files of 2026-11-23). Run the `baselines` workflow instead."""
+    if refused_off_linux():
+        return 2
     states = load()
     todo = [e for e in states['states'] if e['built'] and (not selected or e['screen'] in selected or e['screen'].split('-')[0] in selected)]
     for entry in todo:
@@ -348,6 +359,8 @@ def main(argv: list[str]) -> int:
     if mode == 'summary':
         print('\n'.join(summary_lines(load(), 0, [])))
         return 0
+    if mode == 'capture' and refused_off_linux():   # before Chrome: a refused run downloads nothing, and says why where no pinned Chrome exists
+        return 2
     chrome = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'chrome.py'), 'pinned'], capture_output=True, text=True)
     if chrome.returncode:
         print(chrome.stderr.strip())

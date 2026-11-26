@@ -420,7 +420,7 @@ Two frames of N round 2 land on main ahead of the rest of commission N, because 
 
 ### N2-21 Sets, the Source filter (`45-sets-source-filter`, #551)
 
-- **Drawn:** two rows of chips with counts under the tabs, nothing chosen: Added via (By hand 2, Rebrickable sync 4, Before this release 1) and Last synced from (Rebrickable · Main collection 5, Bought 2026 2, Lent to a friend 1). The two are separate facts: a set added by hand can be matched by a later sync. A chip with no rows is not shown. A Source row with only one chip is not shown either: it would filter nothing (Ulf, 2026-11-26, after #723: frames 05 and 48 stay as drawn). The item lists (tokens-only screens, #501) take the same row.
+- **Drawn:** two rows of chips with counts under the tabs, nothing chosen: Added via (By hand 2, Rebrickable sync 4, Before this release 1) and Last synced from (Rebrickable · Main collection 5, Bought 2026 2, Lent to a friend 1). The two are separate facts: a set added by hand can be matched by a later sync. A chip with no rows is not shown. A Source row with a single chip is not shown when that chip matches every listed row, since it would filter nothing; a single chip that narrows the list is shown (Ulf, 2026-11-26, after #723: "Only if it matches all (Recommended)"; frames 05 and 48 stay as drawn). The item lists (tokens-only screens, #501) take the same row.
 - **Supersedes (wiki-agent decision, 2026-11-25):** `45` is the Sets page with the Source filter (the chips show whenever a chip has rows); `04`, `05` and `48` stay as the base.
 - **Inherited:** the 320 and 375 overflow of the approved Sets frame (`04`).
 - **SUCCESS:** Condense: two rows replace the list chips. Say: filter by how it arrived and by the list it was last synced from.

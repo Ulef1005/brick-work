@@ -39,7 +39,7 @@ RULE_KEY = 'rebrickable_lost_parts_send_rule'
 DEFAULT_RULE = 'add_only'
 RULES = (
     ('add_only', 'Add only',
-     'Only sends new Lost Parts. A count that differs on a listed part is shown and not sent. Nothing is removed on Rebrickable.'),
+     'Only sends new Lost Parts. A larger count on a listed part is shown and not sent. Nothing is removed on Rebrickable.'),
     ('per_part', 'Brick Work wins per part',
      "For parts on sets listed on both sides, Brick Work's missing count replaces Rebrickable's, also when smaller or zero."),
     ('per_set', 'Brick Work wins per set',
@@ -353,7 +353,7 @@ def plan(db, remote, translate, *, rule=None, on=True):
                 rule=how,
                 before=remote_qty,
                 after=local_qty,
-                quantity=(local_qty - remote_qty) if (state == 'change' and how == 'add_only') else (local_qty if state != 'remove' else remote_qty),
+                quantity=local_qty if state != 'remove' else remote_qty,
                 tickable=tickable,
                 ticked=ticked,
                 reason=reason,
@@ -426,7 +426,7 @@ def _validate_row(row, plan_rule):
 
 def _gone(row):
     return (f"Part {row.get('part_no')} of set {row.get('set_no')} may be gone from Rebrickable's Lost Parts: it had {row.get('before')}. "
-            'Brick Work could not put it back. Check it there.')
+            'Brick Work has not put it back. Check it there.')
 
 
 def _put_back(client, row):
@@ -490,6 +490,10 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
                 if removed_ids:
                     row['removed_ids'] = removed_ids
 
+        def _warn():
+            if state == 'change' and (removed or removed_ids) and not added:      # something of the old count is gone and the new one is not there
+                row['gone'] = _gone(row)
+
         try:
             if state == 'add':
                 if not added:
@@ -534,8 +538,7 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
                     removed = True
         except adapters.KeyRejected as exc:
             _save_progress()
-            if state == 'change' and removed and not added:
-                row['gone'] = _gone(row)
+            _warn()
             row['ticked'] = True
             remaining.append(row)
             _partition_tail(chosen[idx + 1:])
@@ -543,14 +546,16 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
             raise
         except (adapters.RemoteBudgetExceeded, adapters.WaitingForBudget):
             _save_progress()
+            _warn()                      # a paused run can be stopped, and then nothing sends the new count
             row['ticked'] = True
             remaining.append(row)
             _partition_tail(chosen[idx + 1:])
             break
         except Exception as exc:
             _save_progress()
+            _warn()
             row['ticked'] = True
-            failed.append(dict(row, reason=str(exc) or 'Rebrickable API unsuccessful'))
+            failed.append(dict(row, reason=' '.join(filter(None, (str(exc) or 'Rebrickable API unsuccessful', row.get('gone'))))))
             continue
         _save_progress()
         if row.get('reason') is not None:

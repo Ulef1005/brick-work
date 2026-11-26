@@ -615,10 +615,26 @@ def test_a_budget_pause_after_the_removal_waits_and_then_adds_the_new_count(stor
     client = ListedClient(refuse=outcomes.get)
     report = lost_parts_send.apply(store, client, planned, keys, via='test', actor='tester')
     (row,) = report['remaining']
-    assert report['failed'] == [] and row['removed'] is True and row['added'] is False
+    assert report['failed'] == [] and row['removed'] is True and row['added'] is False and 'it had 1' in row['gone']
     client.refuse = lambda quantity: None
     retry = lost_parts_send.apply(store, client, dict(rows=report['remaining']), None, via='test', actor='tester')
     assert client.listed == {501: (901, 3)} and len(retry['sent']) == 1 and client.calls.count(('remove', 41)) == 1
+
+
+@pytest.mark.parametrize('failure', [adapters.SourceError('down'), adapters.KeyRejected('Refused')])
+def test_a_removal_that_stops_halfway_names_the_old_count(store, failure):
+    class Halfway:
+        def lost_part_remove(self, lost_id):
+            if lost_id == 42:
+                raise failure
+            return True
+
+    row = dict(key='r', set_no='1000-1', part_no='3001', state='change', rule='per_part', inv_part_id=501, before=3, after=5, ids=[41, 42], ids_complete=True, tickable=True)
+    try:
+        report = lost_parts_send.apply(store, Halfway(), dict(rule='per_part', rows=[row]), ['r'])
+        assert 'it had 3' in report['failed'][0]['reason']
+    except adapters.KeyRejected as exc:
+        assert 'it had 3' in exc.partial['remaining'][0]['gone']
 
 
 def test_a_key_refused_after_the_removal_keeps_what_is_gone(store):
@@ -659,7 +675,7 @@ def test_apply_catches_unexpected_client_exception_and_retry_never_reposts(store
     assert len(report['failed']) == 1
     failed_row = report['failed'][0]
     assert failed_row['key'] == 'r1' and failed_row['added'] is False and failed_row['removed_ids'] == [41]
-    assert failed_row['reason'] == 'network drop'
+    assert failed_row['reason'].startswith('network drop ') and 'it had 1' in failed_row['reason']      # one of the two old rows is gone
 
     client.boom = False
     retry = lost_parts_send.apply(store, client, dict(rule='per_part', rows=report['failed']), None, via='test', actor='tester')

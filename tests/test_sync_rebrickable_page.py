@@ -967,7 +967,9 @@ def test_a_budget_pause_shows_as_waiting_not_failed(client, remote, pair, monkey
     assert 'waiting for the daily budget' in page.select_one('[data-rb-send]').get_text() and not page.select('.bk-warning')
     assert client.get(f'/workbench/sync/rebrickable/run/{run_id}/result').location.endswith('/progress')
     with db_of(pair) as db:
-        assert sync_run.load(db, run_id)[0]['stages']['lost_out']['counts'] == dict(sent=0, failed=0, waiting=1)
+        stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
+        assert stage['counts'] == dict(sent=0, failed=0, waiting=1)
+        assert 'it had 1' in stage['message']          # the old entry is already removed: a Stop now would leave it gone
 
 
 def test_the_preview_shows_part_rows_that_could_not_be_matched_and_a_renamed_list_counts_as_chosen(client, remote, pair):

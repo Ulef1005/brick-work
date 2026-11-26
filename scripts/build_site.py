@@ -296,7 +296,10 @@ def questions_markup(meta, body):
         return body, ''
     root, name = origin() + site_base(), html.unescape(meta['title'])
     if section == 'coming-from/':       # #724: Home, the hub, then the page's own breadcrumb label; no HowTo or ItemList
-        label = re.search(r'<span class="label">.*? / ([^<>/]+)</span>', body)[1] if path != section else None
+        found = re.search(r'<span class="label">.*? / ([^<>/]+)</span>', body) if path != section else None
+        if path != section and not found:
+            raise RuntimeError(f'{path}: no breadcrumb label found, so the BreadcrumbList would be wrong')
+        label = found[1] if found else None
         crumbs = [('Home', root), ('Coming from another tool', root + section)] + ([(html.unescape(label), root + path)] if label else [])
         data = [{'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
             {'@type': 'ListItem', 'position': n, 'name': text, 'item': url} for n, (text, url) in enumerate(crumbs, 1)]}]

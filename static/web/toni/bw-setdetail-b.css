@@ -297,3 +297,12 @@
   #bw-collection[data-b-copy] [data-bc-missing-rows] .bc-missing-card {grid-template-columns:60px auto minmax(0,1fr)}
   #bw-collection[data-b-copy] [data-bc-missing-rows] .bc-missing-card>.bc-pl-acts {grid-column:1 / -1;grid-row:3;margin:8px 0 0}
 }
+
+/* #551 (frame 44): the Source row under the copy's tags */
+#bw-collection[data-b-copy] .bc-source {display:flex;flex-basis:100%;gap:8px 10px;align-items:center;flex-wrap:wrap}
+#bw-collection[data-b-copy] .bc-source-label {font:600 11px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-2)}
+#bw-collection[data-b-copy] .bc-source-line {font-size:12.5px;color:var(--tw-text-2)}
+#bw-collection[data-b-copy] .bc-source {min-width:0;max-width:100%;white-space:normal}
+#bw-collection[data-b-copy] .bc-source .bc-status {white-space:normal;height:auto;min-height:22px;padding-top:2px;padding-bottom:2px}
+#bw-collection[data-b-copy] .bc-source-line {min-width:0;overflow-wrap:anywhere}
+#bw-collection[data-b-copy] .bc-source-line ~ .bc-source-line {flex-basis:100%}

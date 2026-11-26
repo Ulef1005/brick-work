@@ -440,6 +440,12 @@ def listing(db, type_letter, *, wishes=False):
             bars = _copy_bars(db, [i['id'] for r in rows for i in r['instances']])
             for row in rows:
                 row['bars'] = [bars.get(i['id']) for i in row['instances']]
+            sources = origins.sources_of(db, 'copy', [i['id'] for r in rows for i in r['instances']])   # #551: the Source filter of the Sets page
+            for row in rows:
+                row['via'] = sorted({i.get('added_via') or 'before' for i in row['instances']})
+                found = {origins.list_value(s): origins.list_label(s) for i in row['instances'] for s in sources[i['id']]}
+                row['list'] = sorted(found)
+                row['list_labels'] = found
         in_sets = []
         if kind == 'part':
             in_sets = [dict(r) for r in db.execute('''SELECT p.item_id,p.color_id,sum(p.quantity) AS quantity,sum(p.missing) AS missing,sum(p.damaged) AS damaged
@@ -704,6 +710,13 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     row.update(instances=all_instances, selected=selected, wish=wish, properties=props, prices=prices(db, item_id, colour))
     row['theme'] = row.get('theme') or props.get('theme', {}).get('value', '')
     row['external_links'] = external_links(db, row)
+    row['source'] = None                                                  # #551: where the shown copy, stock row or wish came from
+    if selected and selected.get('entity') in origins.TABLES:
+        from ..web.formatting import short_date
+        row['source'] = origins.body(selected.get('added_via'), origins.sources_of(db, selected['entity'], [selected['id']])[selected['id']])
+        row['source']['chip'] = origins.chip(selected.get('added_via'))
+        row['source']['lines'] = ['Last synced from ' + origins.SITE_NAMES.get(l['site'], l['site']) + (': ' + l['list_name'] if l['list_name'] else '')
+                                  + ' · ' + short_date(l['synced_at'], True) for l in row['source']['last_synced_from']]
     price_priority = collection_prices.priority(db)
     observations = [dict(r, item_type=letter) for r in db.execute('''SELECT o.*,f.max_age_days FROM price_observation o
         LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices'
@@ -1145,10 +1158,10 @@ INTEGER_IDS = {'instruction_file', 'copy_part', 'copy_figure', 'stock_part'}
 RESTORABLE = {'copy', 'stock', 'wish', 'lot', 'wishlist', 'flag', 'storage', 'place', 'instruction_file', 'photo'}
 FIELDS = {
     'copy': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'completeness',
-             'completeness_source', 'current_value', 'current_value_currency'},
+             'completeness_source', 'current_value', 'current_value_currency', 'rating'},
     'stock': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'lot_id'},
     'wish': {'quantity', 'color_id', 'condition', 'max_price', 'max_price_currency', 'max_price_boxed', 'max_price_boxed_currency', 'note',
-             'wishlist_id', 'qty_filled_manual'},
+             'wishlist_id', 'qty_filled_manual', 'priority'},
     'lot': {'name', 'note', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency'},
 }
 CONDITIONS = {'copy': (None, 'new', 'used'), 'stock': (None, 'new', 'used', 'damaged'), 'wish': (None, 'new', 'used', 'any'), 'lot': (None,)}
@@ -1266,6 +1279,10 @@ def save(db, entity, ids, data, *, archive=False, create_system_flags=False):
             if not 0 <= filled <= 99999:
                 raise ValueError('Enter how many you have as a whole number')
             edits['qty_filled_manual'] = filled
+        if edits.get('rating') is not None and (type(edits['rating']) is not int or not 1 <= edits['rating'] <= 5):
+            raise ValueError('Choose a rating from 1 to 5')
+        if edits.get('priority') is not None and (type(edits['priority']) is not int or not 1 <= edits['priority'] <= 999):
+            raise ValueError('Choose a priority from 1 to 999')
         if 'purchase_date' in edits and edits['purchase_date'] and any(r['purchase_date'] != edits['purchase_date'] for r in old):
             try:
                 datetime.fromisoformat(edits['purchase_date'].replace('Z', '+00:00'))
@@ -1719,3 +1736,19 @@ def defects(missing=0, damaged=0):
     """One unsigned defect label for server-rendered and materialized rows."""
     return ' · '.join(f'{count} {label}' for count, label in
                       ((missing, 'missing'), (damaged, 'damaged')) if count)
+
+
+def source_chips(rows):
+    """The two chip rows of the Sets page (#551, frame 45): `(value, label, sets)` for Added via and for Last synced from, counted in sets."""
+    via, lists = {}, {}
+    for row in rows:
+        for value in row.get('via') or []:
+            via[value] = via.get(value, 0) + 1
+        for value in row.get('list') or []:
+            entry = lists.setdefault(value, [row['list_labels'][value], 0])
+            entry[1] += 1
+            if ' · ' not in entry[0] and ' · ' in row['list_labels'][value]:     # a row recorded without the list's name: the name another row has wins
+                entry[0] = row['list_labels'][value]
+    order = [o for o in origins.ORIGINS] + ['before']
+    return ([(v, 'Before this release' if v == 'before' else origins.label(v), via[v]) for v in order if v in via],
+            [(v, label, n) for v, (label, n) in sorted(lists.items(), key=lambda kv: kv[1][0].casefold())])

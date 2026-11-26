@@ -673,7 +673,7 @@ def build(out):
     shim.write_text(own_address(shim.read_text()))
     demo_entry = out / 'demo' / 'index.html'
     entry_text = demo_entry.read_text()
-    title_tag = '<title>Brick Work demo</title>'
+    title_tag = '<title>Brick Work demo: try it in your browser</title>'
     if title_tag not in entry_text:
         raise RuntimeError(f'{demo_entry} is missing {title_tag!r}; cannot inject demo SEO tags')
     demo_head = f'<meta name="description" content="{html.escape(DEMO_DESCRIPTION, quote=True)}">' + seo_head('Brick Work demo', DEMO_DESCRIPTION, 'demo/')

@@ -14,12 +14,12 @@ from .. import errors, keys, secrets
 from ..sources.base import KeyRejected, RemoteBudgetExceeded, SourceError, WaitingForBudget, now, transport, USER_AGENT
 from ..sources.brickset import Brickset, BASE as BRICKSET
 from ..sources.rebrickable import Rebrickable
+from .brickowl_run import BrickOwlUser
 
 REBRICKABLE_USERS = 'https://rebrickable.com/api/v3/users'
 NUMBER = re.compile(r'[A-Za-z0-9][A-Za-z0-9.-]{0,63}')
 # Local ceilings for calls the sites do not count against the key.
 LOGIN_PER_DAY = 10
-BRICKSET_WRITES_PER_DAY = 500
 
 
 class ConnectRefused(errors.ValidationFailed):
@@ -309,9 +309,21 @@ class RebrickableUser(Rebrickable):
         return 'sent'
 
 
+def _flag_number(value):
+    """A Brickset flag number (1 to 8) from whatever a reply holds, else None: never an exception, however odd the value."""
+    text = str(value).strip()
+    return int(text) if text.isdecimal() and len(text) <= 2 and 1 <= int(text) <= 8 else None
+
+
+def _whole(value, low, high):
+    """A whole number from low to high out of whatever a reply holds, else None (0 for \"none\" is below `low`, so it reads as None): never an exception."""
+    text = str(value).strip()
+    return int(text) if text.isdecimal() and len(text) <= 4 and low <= int(text) <= high else None
+
+
 class BricksetUser(Brickset):
     """Brickset collection methods: login, checkUserHash, getSets (owned/wanted), setCollection."""
-    USER_METHODS = ('login', 'checkUserHash', 'getSets', 'setCollection')
+    USER_METHODS = ('login', 'checkUserHash', 'getSets', 'setCollection', 'getUserFlagLabels')
 
     def __init__(self, db, **kwargs):
         super().__init__(db, **kwargs)
@@ -363,7 +375,7 @@ class BricksetUser(Brickset):
         raise ConnectRefused('Brickset did not accept that username and password')
 
     def check_user(self):
-        self.user_call('checkUserHash', {}, payload={}, charged=False)
+        self.user_call('checkUserHash', {}, payload={}, charged=True)
         return True
 
     def lists(self):
@@ -383,16 +395,41 @@ class BricksetUser(Brickset):
                 raise SourceError('Brickset collection is too long')
 
     def fetch(self, link):
-        owned, wanted, ids = {}, {}, {}
+        """The owned and wanted sets with their counts, and `fields`: what else Brickset keeps per set (notes, the flags that are on), read from
+        the same two calls, so it costs nothing extra."""
+        owned, wanted, ids, fields = {}, {}, {}, {}
+
+        def note(number, collection, wanted=False):
+            # `flags` is a list of {flagNo, value} (documented, and an empty list on the live account checked 24.11.); anything else reads as no flags
+            listed = collection.get('flags')
+            on = [_flag_number(f.get('flagNo')) for f in (listed if isinstance(listed, list) else ())
+                  if isinstance(f, dict) and str(f.get('value')).lower() in ('true', '1') and _flag_number(f.get('flagNo'))]
+            # `rating` (0 = none) and `wantedPriority` (1 = Brickset's default) are ints in `collection`, checked live 24.11.; Brickset keeps a
+            # wantedPriority on every set, so it counts only for a set that is wanted
+            entry = fields.setdefault(number, dict(notes=str(collection.get('notes') or ''), flags=sorted(on),
+                                                   rating=_whole(collection.get('rating'), 1, 5), priority=None))
+            if wanted:
+                entry['priority'] = _whole(collection.get('wantedPriority'), 1, 999)
         for row in self._sets({'owned': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
-            owned[number] = int((row.get('collection') or {}).get('qtyOwned') or 1)
+            collection = row.get('collection') or {}
+            owned[number] = int(collection.get('qtyOwned') or 1)
             ids[number] = int(row['setID'])
+            note(number, collection)
         for row in self._sets({'wanted': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
-            wanted[number] = 1
+            collection = row.get('collection') or {}
+            wanted[number] = int(collection.get('qtyWanted') or 1)
             ids[number] = int(row['setID'])
-        return dict(owned=owned, wanted=wanted, ids=ids, names={})
+            note(number, collection, wanted=True)
+        return dict(owned=owned, wanted=wanted, ids=ids, names={}, fields=fields)
+
+    def flag_labels(self):
+        """The names the person gave the eight flags at Brickset, `{flag number: label}`; a flag without a name is missing. One charged call."""
+        reply = self.user_call('getUserFlagLabels', {}, payload={}, charged=True)
+        listed = reply.get('flags')
+        return {_flag_number(f.get('flagNo')): str(f['label']).strip() for f in (listed if isinstance(listed, list) else ())
+                if isinstance(f, dict) and f.get('label') and str(f['label']).strip() and _flag_number(f.get('flagNo'))}
 
     def set_ids(self, numbers):
         """Brickset setIDs for set numbers, one charged getSets per 500 numbers."""
@@ -406,21 +443,27 @@ class BricksetUser(Brickset):
                 found[_number(f"{row['number']}-{row['numberVariant']}")] = int(row['setID'])
         return found
 
-    def send(self, row, link, state):
-        set_id = state['ids'].get(row['remote_no'])
+    def send_set(self, rows, link, state):
+        """Write all rows of one set (owned and wanted) in a single setCollection call."""
+        set_id = state['ids'].get(rows[0]['remote_no'])
         if set_id is None:
             raise errors.ValidationFailed('Brickset does not know this set number')
-        _day_counter(self.db, 'brickset', 'write', BRICKSET_WRITES_PER_DAY)
-        if row['kind'] == 'wanted':
-            params = {'want': 1 if row['send'] else 0}
-        else:
-            params = {'own': 1, 'qtyOwned': row['send']} if row['send'] else {'own': 0}
+        params = {}
+        for row in rows:
+            n = row['send']
+            if row['kind'] == 'wanted':
+                params.update({'qtyWanted': n} if n > 0 else {'want': 0})
+            else:
+                params.update({'own': 1, 'qtyOwned': n} if n > 0 else {'own': 0})
         self.user_call('setCollection', {'SetID': set_id, 'params': json.dumps(params)},
-                       payload=dict(SetID=set_id, **params), charged=False)
+                       payload=dict(SetID=set_id, **params), charged=True)
         return 'sent'
 
+    def send(self, row, link, state):
+        return self.send_set([row], link, state)
 
-ADAPTERS = {'rebrickable': RebrickableUser, 'brickset': BricksetUser}
+
+ADAPTERS = {'rebrickable': RebrickableUser, 'brickset': BricksetUser, 'brickowl': BrickOwlUser}
 
 
 def adapter(db, source, http=None):

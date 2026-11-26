@@ -1776,6 +1776,7 @@ def bw_collection(kind):
     response = current_app.make_response(render_template('web/toni/web/bw_collection.html',
         title='Lot Sorter' if request.endpoint == 'web.bw_lot_sorter' else collection.TYPES[kind], kind=kind, rows=rows, records=ui.bw_collection_records(rows), choices=choices, error=error,
         storage_index=collection.storage_index(rows, choices['storages']) if kind == 'S' else [],
+        source_chips=collection.source_chips(rows) if kind == 'S' else ([], []),
         lot_total=ui.lot_total(rows) if kind == 'P' else 0,
         csrf_token=bw_add_token(), can_edit=bw_collection_editable(), detail=None,
         first_run=setup_state.first_run(bw_collection_editable()) if kind == 'S' and not rows and not error else None))
@@ -2804,6 +2805,7 @@ def bw_wishlists_export(identifier,format):
 
 from . import sync_views  # noqa: E402,F401 — 12n Collection sync pages
 from . import sync_site  # noqa: E402,F401 — the Rebrickable and Brickset sync pages and their steps (#519, #520)
+from . import sync_bricklink_steps  # noqa: E402,F401 — the BrickLink sync page and its steps (#521); registers the routes of sync_bricklink too
 
 from . import import_views  # noqa: E402,F401 — Import from BrickTracker (#11)
 

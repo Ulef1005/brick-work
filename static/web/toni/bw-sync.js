@@ -30,7 +30,11 @@
         submit.textContent = ticked ? verb + ' ' + ticked + ('syPlain' in submit.dataset ? '' : ticked === 1 ? ' change' : ' changes') : verb;
         submit.disabled = ticked === 0;
       }
-      if (requests) requests.textContent = String(form.dataset.syDirection === 'run' ? form.querySelectorAll('[data-sy-send]:checked').length : ticked);
+      if (requests) {
+        // Brickset takes one call per set: rows that carry the same data-sy-set (an owned and a wanted row of one set) are one request
+        const sends = [...form.querySelectorAll('[data-sy-send]:checked')].map((box, i) => (box.dataset && box.dataset.sySet) || 'row' + i);
+        requests.textContent = String(form.dataset.syDirection === 'run' ? new Set(sends).size : ticked);
+      }
       if (total) total.textContent = 'syOf' in total.dataset ? ticked + ' of ' + total.dataset.syOf + ' chosen' : ticked + ' ticked';
     };
     tabs.forEach((button) => button.addEventListener('click', () => {

@@ -25,19 +25,35 @@ A run is applied in one request, so there is no progress page; the **Run** butto
 
 The **Brickset** page works like the Rebrickable one and has the same six steps. Brickset's side holds owned and wanted sets with counts, and that is all this page syncs. Notes, ratings, flags, wanted priority, new and used counts and loose minifigures are not synced yet. Purchase date and price never leave Brick Work: Brickset has no field for them.
 
-The page shows your account (API key and today's budget, with **Test**, **Change** and **Remove**), the last runs with **Undo this run** and a table of **What syncs**. It reads nothing from Brickset until you start a run. The account name is not shown, because Brick Work keeps only the hash Brickset returns.
+The page shows your account (API key and today's budget, with **Test**, **Change** and **Remove**), the last runs with **Undo this run** and a table of **What syncs**. It reads nothing from Brickset until you start a run. The account name is the username you typed when you connected, and the Sync hub shows it on the site's card too. Brickset does not return it, so a pasted hash has none. The API key line says when the key last worked, for example **checked 18 Nov**: the day of the newest call that succeeded with it. A key you replaced shows no day until its first call.
 
 1. **Connect.** The API key and your account. Enter your Brickset **Username** and password and choose **Connect**, or open **Paste a user hash instead**. The password goes to Brickset once and is never stored. **Save and test** keeps a key you paste; a key from the environment can only be changed there. The keys step of **Get started** and the **Needs a Brickset key** line lead to this step.
 2. **Choose what.** A direction for **Owned sets** and one for **Wanted sets**: **Into Brick Work**, **Both ways**, **To Brickset** or **Off**. **Wishlist here** is the Brick Work wishlist that takes the wanted sets. **When both sides differ** is fixed: the preview asks each time.
 3. **Pick sets.** The sets the run could touch, **All linked**, **By theme**, **By year** or **One by one** (Brickset has no lists to pick by). A set you do not pick stays as it is on both sides.
-4. **Preview.** The same rows and choices as on the Rebrickable page: **Add here**, **Add there**, a quantity that differs, and **Changed in both places** with **Keep**, **Take** and **Send**. Brickset marks a set as wanted or not and has no quantity for it. A wish of two here and a wanted set there are the same, so they are not listed. **Before you send** names the number of changes and today's budget. A run reads your sets from Brickset once for each direction it covers, so a run **Both ways** uses several of the day's calls.
+4. **Preview.** The same rows and choices as on the Rebrickable page: **Add here**, **Add there**, a quantity that differs, and **Changed in both places** with **Keep**, **Take** and **Send**. A wanted set has a quantity on both sides. **Before you send** names the number of changes and today's budget. A run reads your owned and wanted sets once, for both directions. A set that changes in more than one way is sent in one call.
 5. **Result.** What changed here, with **Undo this run**, and what happened on Brickset, with a **Retry** for a row that failed. A change sent to Brickset cannot be undone here.
 
-Brickset allows 100 `getSets` calls a day unless it raises the limit for your key; the page shows how many are used.
+Brickset allows 100 calls a day unless it raises the limit for your key. Brickset now counts every call, not only `getSets`. The page counts reads, sends and the check of your user hash. Brickset also counts key checks and logins, so its own number can be a few higher.
+
+## A BrickLink run
+
+The **BrickLink** page has the same six steps, but its data is different: BrickLink's API has no personal collection and no wanted lists. This page pulls your **orders** into Orders. The price guide it reads is the one that already prices your sets and parts.
+
+The page shows your account (key and today's budget, with **Test**, **Change** and **Remove**), the last runs with **Undo this run** and a table of **What syncs**. It reads nothing from BrickLink until you start a run.
+
+1. **Connect.** BrickLink asks for four values: the consumer key and secret, and the token value and secret. Paste them and choose **Save**; Brick Work tests the key once with one call. BrickLink binds the token to one IP address that you registered with it, so register the address of the machine that runs Brick Work. A key from the environment can only be changed there.
+2. **Choose what.** **Orders**: **Into Brick Work** or **Off**, with an optional **Orders since** date and **Orders to pull**, either **Received and paid** or **All orders**. **Price guide**: the region that prices are read for. An installation can lock the region (`BW_PRICE_SETTINGS_LOCK`, on by default); the control then shows the region and cannot change it.
+3. **Pick lots.** The orders the run could pull, newest first. Ticked orders come in; an order you already imported is marked **Imported** and stays as it is. After **Undo this run**, its orders are no longer marked on this page and you can pull them again here.
+4. **Preview.** One row for each picked order. **Pull in** brings an order into Orders as a draft, with its lines placed on your items. Nothing changes until you run.
+5. **Result.** What each order did, with a link to it, and **Undo this run**. One Undo takes back every order the run pulled.
+
+Loose stock on BrickLink and the wanted-list file follow on this page. Until then, build a wanted-list file from a wishlist with **Export**.
+
+BrickLink's daily limit depends on your key. The page shows how many calls are used.
 
 ## Connect a site
 
-Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored: only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
+Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored. Only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. The username you type is kept as well, to show on the page. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
 
 ## Link the lists
 
@@ -57,6 +73,17 @@ A set becomes one **copy** per missing unit, with the part list the set has. Its
 **Undo this pull** (shown on the sync page right after a pull) archives the copies, takes the stock and wish quantities back and removes the tag. It is refused once you have changed any of them (**Something from this sync has changed since**).
 
 **Where each row came from.** Every copy, loose-stock row and wish records how it arrived: **By hand**, **Rebrickable sync**, **Brickset sync**, a file or an import from another app. A row made through the API, the CLI or MCP reads **Via the API**, **Via the CLI** or **Via MCP**. That value never changes. A pull also records, on each copy, stock row and wish whose set the site holds, that it was **last synced from** that site, with the date. This holds for rows you added by hand too. Rows from before version 4.8 of the data read **Before this release**. Undo of a pull takes its "last synced from" dates back as well. The API returns both as `source` on a copy, a stock row and a wish.
+
+## Where a copy came from
+
+Open a copy and look under its tags: the **Source** row says how it got here and when a site last met it.
+
+- **Added via** is one fixed value that never changes. It reads *By hand*, *Via the API*, *Via the CLI* or *Via MCP*. It can also name a site (*Rebrickable sync*, *Brickset sync*, *BrickLink sync* or *Brick Owl sync*). It can name a file (*BrickLink file*, *Rebrickable file*, *Brickset file*, *Brick Owl file* or *Brick Work export*). A row can also come from an import of the earlier app this one grew out of. Rows that exist from before this release read *Before this release*.
+- **Last synced from** is a separate line per site and list, such as *Last synced from Rebrickable: Main collection · 18 Nov, 21:40*. It changes with every sync that matches the row. A set you added by hand can show it too: a later sync matched it to a set on the site, which does not change how it was added. A set in two Rebrickable lists shows one line for each.
+
+On the Sets page, two chip rows under the status tabs filter by the same records: **Added via** and **Last synced from**, each chip with its count of sets. Press a chip to filter and press it again to clear it. The two rows combine with each other and with the status tabs. A set with several copies counts under every value its copies have.
+
+Undo of a sync run uses these records to take back exactly what the run did.
 
 ## Rebrickable list names
 

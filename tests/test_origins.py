@@ -45,7 +45,7 @@ def test_a_47_store_upgrades_with_every_row_null_and_matches_a_fresh_one(tmp_pat
                    "VALUES(1, 'catalogue', 'set', 'namespace', 'rebrickable', 'sets', '1-1', 'Old set', 'x', 'x')")
         db.execute("INSERT INTO copy(id, item_id, inventory_source, created_at, updated_at) VALUES('old', 1, 'none', 'x', 'x')")
         db.commit()
-    assert upgrade(old) == upgrade(old) == SCHEMA_VERSION == '4.8'
+    assert upgrade(old) == upgrade(old) == SCHEMA_VERSION == '4.9'
     with closing(connect(old, tmp_path / 'catalogue.db')) as upgraded, closing(connect(tmp_path / 'new.db', tmp_path / 'catalogue.db')) as fresh:
         assert dict(upgraded.execute('SELECT key,value FROM meta'))['upgraded_to_4.8'].endswith('Z')
         for name in ('copy', 'stock', 'wish', 'origin', 'synced_from', 'copy_added_via_fixed', 'synced_from_key'):
@@ -239,3 +239,22 @@ def test_a_synced_from_id_is_never_reused(store):
         origins.touch(store, 'copy', copy_id, 'rebrickable', at='y', list_key='2', list_name='B')
     ids = [r[0] for r in store.execute('SELECT id FROM synced_from ORDER BY id')]
     assert ids and min(ids) > 1                                                           # the first id went with the dropped line
+
+
+# --- the Source row of the set detail (#551, frame 44) ------------------------------------------
+
+def test_the_chip_and_the_detail_line_use_the_frames_words(store):
+    assert [origins.chip(o) for o in ('rebrickable', 'bricklink_xml', 'hand', 'api', None)] == [
+        'Added via Rebrickable sync', 'Added via BrickLink file', 'By hand', 'Via the API', 'Before this release']
+    copy = live_copies(store, '2070-1')[0]['id']
+    item = store.execute('SELECT item_id FROM copy WHERE id=?', (copy,)).fetchone()[0]
+    with transaction(store):
+        origins.touch(store, 'copy', copy, 'rebrickable', at='2026-11-18T21:40:00Z', list_key='1', list_name='Main collection')
+    source = collection.detail(store, item, copy_id=copy)['source']
+    assert source['chip'] == 'By hand'
+    assert source['lines'] == ['Last synced from Rebrickable: Main collection · 18 Nov, 21:40']
+
+
+def test_the_detail_template_writes_the_source_row_for_a_copy():
+    head = (ROOT / 'templates/web/toni/web/bw_collection_detail.html').read_text()
+    assert 'data-bc-source' in head and '{{ detail.source.chip }}' in head and 'detail.source.lines' in head

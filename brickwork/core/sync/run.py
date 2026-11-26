@@ -25,6 +25,7 @@ from ..transaction import transaction
 from .. import sync
 from . import adapters, lost_parts, lost_parts_send, part_lists
 
+INTERRUPTED_MESSAGE = 'Interrupted: check what was sent and run again.'     # the message of a stage a restart cut off (`run_job`, `retry_send`)
 SOURCE = 'rebrickable'
 SOURCES = ('rebrickable', 'brickset')
 DIRECTIONS_KEY = 'rebrickable_sync_directions'
@@ -153,7 +154,7 @@ def _brickset_what_syncs(db):
         rows.append(dict(what='Owned sets', direction=labels[d['owned']], linked='Quantity owned'))
     if d['wishlist'] != 'off':
         rows.append(dict(what='Wanted sets', direction=labels[d['wishlist']],
-                         linked='Wanted, as a flag, ↔ wishlist ' + wish_lists.get(link.get('wish_list') or 'default', 'Wanted')))
+                         linked='Quantity wanted ↔ wishlist ' +wish_lists.get(link.get('wish_list') or 'default', 'Wanted')))
     return rows
 
 
@@ -246,8 +247,12 @@ def start(db, *, http=None, source=SOURCE):
     sets_in = d['owned'] in ('into', 'both') or d['wishlist'] in ('into', 'both')
     send_kinds = tuple(k for k, key in (('owned', 'owned'), ('wanted', 'wishlist')) if d[key] in ('to', 'both'))
     lost_in_on = d['lost'] in ('into', 'both')
-    pull = (sync.plan_pull(db, source, http=http, lost_parts_switch=lost_in_on) if source == 'rebrickable' else sync.plan_pull(db, source, http=http)) if (sets_in or lost_in_on) else None
-    send = sync.plan_send(db, source, http=http, kinds=send_kinds) if send_kinds else None
+    want_pull = sets_in or lost_in_on
+    want_send = bool(send_kinds)
+    fetched = sync._fetch(db, source, http) if want_pull and want_send else None
+    pull = (sync.plan_pull(db, source, http=http, lost_parts_switch=lost_in_on, fetched=fetched) if source == 'rebrickable'
+            else sync.plan_pull(db, source, http=http, fetched=fetched)) if want_pull else None
+    send = sync.plan_send(db, source, http=http, kinds=send_kinds, fetched=fetched) if want_send else None
     parts = part_lists.plan(db, http=http) if d['parts'] == 'into' and link.get('part_lists') else None
     lost_send = _lost_send(db, adapters.adapter(db, SOURCE, http)) if d['lost'] in ('to', 'both') else None
     run = dict(id=uuid4().hex, created_at=now().isoformat(), direction='run', source=source, directions=d,
@@ -262,11 +267,6 @@ def load(db, run_id):
     return run, {name: (sync.load_plan(db, run[name]) if run.get(name) else None) for name in ('pull', 'send', 'parts')}
 
 
-def _presence_only(source, r):
-    """Brickset holds a wanted set as a flag, so a wish of 2 here against 1 there is not a difference; Rebrickable keeps quantities."""
-    return source == 'brickset' and r['kind'] == 'wanted' and bool(r['here']) == bool(r['remote'])
-
-
 def candidates(db, d, pull, send, lost_send, source=SOURCE):
     """One entry per set a run could touch (a row that differs, a Lost Parts set), for the pick step: item id, number, name, theme, year, lists."""
     found = {}
@@ -278,7 +278,7 @@ def candidates(db, d, pull, send, lost_send, source=SOURCE):
         entry['lists'] = sorted(set(entry['lists']) | set(lists))
     for plan, ways in ((pull, ('into', 'both')), (send, ('to', 'both'))):
         for r in (plan or {}).get('rows', ()):
-            if d['owned' if r['kind'] == 'owned' else 'wishlist'] in ways and not _presence_only(source, r):    # a kind that is Off in this direction is not a set this run touches
+            if d['owned' if r['kind'] == 'owned' else 'wishlist'] in ways:    # a kind that is Off in this direction is not a set this run touches
                 add(r['item_id'], r['number'], r['name'], r.get('lists') or ())
     if d['lost'] in ('into', 'both'):
         for e in ((pull or {}).get('lost') or {}).get('sets', ()):
@@ -302,7 +302,7 @@ def save_pick(db, run_id, ids, keep_names=None, *, http=None):
     which list names the preview offers. Returns the run."""
     with _Claim(db, run_id):
         run = sync.load_plan(db, run_id, 'run')
-        if run.get('applied') or run.get('applying'):
+        if run.get('applied') or run.get('applying') or run.get('job'):
             raise errors.ValidationFailed('This run has already run')
         ids = set(ids)
         if ids - {c['item_id'] for c in run['candidates']}:
@@ -334,11 +334,11 @@ def rows(db, run, plans):
     def row_of(r):
         return merged.setdefault(r['key'], dict(key=r['key'], item_id=r['item_id'], kind=r['kind'], number=r['number'], name=r['name'], remote=r['remote'],
                                                 here=r['here'], remote_no=r['remote_no'], options=[], default=None, state='info', reason=None,
-                                                kept=(r.get('baseline_remote') or 0) == r['remote'] and (r.get('baseline_here') or 0) == r['here'] and r['remote'] != r['here']))
+                                                kept=bool(r.get('kept')) or ((r.get('baseline_remote') or 0) == r['remote'] and (r.get('baseline_here') or 0) == r['here'] and r['remote'] != r['here'])))
     for r in (plans['pull'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
-        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('into', 'both') or _presence_only(source, r):
+        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('into', 'both'):
             continue
         row = row_of(r)
         if r['state'] == 'add' and r['tickable']:
@@ -354,9 +354,10 @@ def rows(db, run, plans):
     for r in (plans['send'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
-        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('to', 'both') or _presence_only(source, r):
+        if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('to', 'both'):
             continue
         row = row_of(r)
+        row['send_no'] = r.get('remote_no')          # the number a send goes to: Brickset gets one call per set number, whatever kind the row is
         if r['state'] == 'conflict':
             row['state'] = 'conflict'
             if r['tickable']:
@@ -492,6 +493,44 @@ class _Claim:
             self.file.close()
 
 
+def _getlist(form, key):
+    if hasattr(form, 'getlist'):
+        return form.getlist(key)
+    value = form.get(key)
+    if value is None:
+        return []
+    return list(value) if isinstance(value, (list, tuple)) else [value]
+
+
+def validate_choices(db, run, plans, form):
+    """Validate the preview row choices as `apply` and `run_job.queue` require."""
+    shown = rows(db, run, plans)
+    allowed = {r['key']: {o['id'] for o in r['options']} for r in shown}
+    chosen = {k: form.get('choice:' + k) or 'keep' for k, ids in allowed.items() if ids}
+    if any(v != 'keep' and v not in allowed[k] for k, v in chosen.items()):
+        raise errors.ValidationFailed('Choose one of the offered changes for each row')
+    return chosen
+
+
+def _extract_form(run, plans, form, chosen):
+    """Freeze the preview MultiDict into the plain dict a durable run job also uses."""
+    listed = lost_in(run, plans)
+    lost = [s for s in _getlist(form, 'lost') if s in {e['set_no'] for e in listed['sets']}] if listed else None
+    picks = {k.removeprefix('copy:'): v for k, v in form.items() if k.startswith('copy:') and v}
+    if listed:
+        picks = {k: v for k, v in picks.items() if k in {e['set_no'] for e in listed['sets']}}
+        lost = sorted(set(lost or ()) | set(picks))        # choosing a copy for a set is ticking it
+    else:
+        picks = {}
+    lines = {line['key']: line for line in ((plans['pull'] or {}).get('lists') or {}).get('preview', ())}
+    lists = {k.removeprefix('list:'): v for k, v in form.items() if k.startswith('list:') and k.removeprefix('list:') in lines}
+    part = [k for k in _getlist(form, 'part') if k in {r['key'] for r in part_rows(plans)}]
+    lots = {k.removeprefix('lot:'): v for k, v in form.items() if k.startswith('lot:') and v and k.removeprefix('lot:') in part}
+    section = lost_out(run)
+    lostsend = [k for k in _getlist(form, 'lostsend') if k in {r['key'] for r in section['rows'] if r.get('tickable')}] if section else []
+    return dict(chosen=chosen, lost=lost, copies=picks, lists=lists, part=part, lots=lots, lostsend=lostsend)
+
+
 def apply(db, run_id, form, *, http=None, via=None, actor=None):
     """Apply the chosen rows, stage by stage. `form` is a MultiDict of the preview's fields: `choice:<row key>` (pull, take, send, remove, keep),
     `lost` and `copy:<set no>` (Lost Parts in), `list:<key>` (list names), `part` and `lot:<key>` (loose stock), `lostsend` (Lost Parts out).
@@ -499,13 +538,9 @@ def apply(db, run_id, form, *, http=None, via=None, actor=None):
     first call to Rebrickable), so a second request for it, at once or later, changes nothing and gets the run as it is. Returns the run, saved."""
     with _Claim(db, run_id):
         run, plans = load(db, run_id)
-        if run.get('applied') or run.get('applying'):
+        if run.get('applied') or run.get('applying') or (run.get('job') and not run.get('applied')):
             return run
-        shown = rows(db, run, plans)
-        allowed = {r['key']: {o['id'] for o in r['options']} for r in shown}
-        chosen = {k: form.get('choice:' + k) or 'keep' for k, ids in allowed.items() if ids}
-        if any(v != 'keep' and v not in allowed[k] for k, v in chosen.items()):
-            raise errors.ValidationFailed('Choose one of the offered changes for each row')
+        chosen = validate_choices(db, run, plans, form)
         run['applying'] = now().isoformat()
         sync._store_plan(db, run)
         _stages(db, run, plans, form, chosen, http, via, actor)
@@ -515,61 +550,290 @@ def apply(db, run_id, form, *, http=None, via=None, actor=None):
         return run
 
 
-def _stages(db, run, plans, form, chosen, http, via, actor):
-    stages, events = run['stages'], []
-    source = run.get('source', SOURCE)
+def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=False):
+    """Run the pull stage (sets, wishes, Lost Parts in, list names) and store its outcome on `run`."""
     pull = plans['pull']
-    if pull:
-        wanted = [k for k, v in chosen.items() if v in ('pull', 'take')]
-        listed = lost_in(run, plans)
-        lost = [s for s in form.getlist('lost') if s in {e['set_no'] for e in listed['sets']}] if listed else None
-        picks = {k.removeprefix('copy:'): v for k, v in form.items() if k.startswith('copy:') and v}
-        if listed:
-            picks = {k: v for k, v in picks.items() if k in {e['set_no'] for e in listed['sets']}}
-            lost = sorted(set(lost or ()) | set(picks))        # choosing a copy for a set is ticking it
-        lines = {line['key']: line for line in (pull.get('lists') or {}).get('preview', ())}
-        lists = {k.removeprefix('list:'): v for k, v in form.items() if k.startswith('list:') and k.removeprefix('list:') in lines}
-        if wanted or lost or picks or any(v not in ('keep', 'skip') for v in lists.values()):
-            try:
-                result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, via=via, actor=actor)
-                effective = {k: lists.get(k, line['action']) for k, line in lines.items()}
-                stages['pull'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted),
-                                      lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']))   # distinct lists, as the preview names them
-                events.append(result['event_id'])
-            except FAILURES as exc:
-                stages['pull'] = dict(status='failed', message=_message(exc, source))
-        else:
-            stages['pull'] = dict(status='none')
+    if not pull:
+        return None
+    stages, source = run['stages'], run.get('source', SOURCE)
+    wanted = [k for k, v in form_data['chosen'].items() if v in ('pull', 'take')]
+    lost, picks, lists = form_data['lost'], form_data['copies'], form_data['lists']
+    lines = {line['key']: line for line in (pull.get('lists') or {}).get('preview', ())}
+    kept = [k for k, v in form_data['chosen'].items() if v == 'keep']       # the conflicts the person chose to Keep: remembered (#686)
+    kept_covered, kept_skipped = keep_scope(run)
+    if wanted or lost or picks or any(v not in ('keep', 'skip') for v in lists.values()):
+        try:
+            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_skipped=kept_skipped, via=via, actor=actor)
+            effective = {k: lists.get(k, line['action']) for k, line in lines.items()}
+            stages['pull'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted),
+                                  lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']))
+        except WaitingForBudget as exc:
+            stages['pull'] = dict(status='waiting' if raise_budget else 'failed', message=_message(exc, source))
+            if raise_budget:
+                sync._store_plan(db, run)
+                raise
+        except FAILURES as exc:
+            stages['pull'] = dict(status='failed', message=_message(exc, source))
+    else:
+        stages['pull'] = dict(status='none')
+    sync._store_plan(db, run)
+    return stages['pull']
+
+
+def stage_parts(db, run, plans, form_data, *, via=None, actor=None, raise_budget=False):
+    """Run the part-list stage and store its outcome on `run`."""
+    if not plans['parts']:
+        return None
+    stages = run['stages']
+    wanted, lots = form_data['part'], form_data['lots']
+    if wanted:
+        try:
+            result = part_lists.apply(db, plans['parts']['id'], wanted, lots=lots or None, via=via, actor=actor)
+            stages['parts'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted))
+        except WaitingForBudget as exc:
+            stages['parts'] = dict(status='waiting' if raise_budget else 'failed', message=_message(exc))
+            if raise_budget:
+                sync._store_plan(db, run)
+                raise
+        except FAILURES as exc:
+            stages['parts'] = dict(status='failed', message=_message(exc))
+    else:
+        stages['parts'] = dict(status='none')
+    sync._store_plan(db, run)
+    return stages['parts']
+
+
+def stage_send(db, run, plans, form_data, *, http=None, per_key=False, should_stop=None, on_call=None):
+    """Run the send stage either as one call (`run.apply`) or one call per wanted key (`run_job`)."""
+    if not plans['send']:
+        return None
+    stages, source = run['stages'], run.get('source', SOURCE)
+    wanted = [k for k, v in form_data['chosen'].items() if v in ('send', 'remove')]
+    if not wanted:
+        stages['send'] = dict(status='none')
         sync._store_plan(db, run)
-    if plans['parts']:
-        wanted = [k for k in form.getlist('part') if k in {r['key'] for r in part_rows(plans)}]
-        lots = {k.removeprefix('lot:'): v for k, v in form.items() if k.startswith('lot:') and v and k.removeprefix('lot:') in wanted}
-        if wanted:
-            try:
-                result = part_lists.apply(db, plans['parts']['id'], wanted, lots=lots or None, via=via, actor=actor)
-                stages['parts'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted))
-                events.append(result['event_id'])
-            except FAILURES as exc:
-                stages['parts'] = dict(status='failed', message=_message(exc))
-        else:
-            stages['parts'] = dict(status='none')
+        return stages['send']
+    if not per_key:
+        try:
+            result = sync.apply_send(db, plans['send']['id'], wanted, http=http)
+            stages['send'] = dict(status='done', counts=result['counts'], rows=len(wanted), results=result['rows'])
+        except FAILURES as exc:
+            stages['send'] = dict(status='failed', message=_message(exc, source))
         sync._store_plan(db, run)
-    if plans['send']:
-        wanted = [k for k, v in chosen.items() if v in ('send', 'remove')]
-        if wanted:
-            try:
-                result = sync.apply_send(db, plans['send']['id'], wanted, http=http)
-                stages['send'] = dict(status='done', counts=result['counts'], rows=len(wanted), results=result['rows'])
-            except FAILURES as exc:
-                stages['send'] = dict(status='failed', message=_message(exc, source))
-        else:
-            stages['send'] = dict(status='none')
-        sync._store_plan(db, run)
+        return stages['send']
+
+    plan_id = plans['send']['id']
+    send_plan = sync.load_plan(db, plan_id, 'send')
+    existing = send_plan.get('results') or {}
+    went = ('sent', 'unchanged')
+    if source == 'brickset':      # one call per set number, as `apply_send` makes it: a set's owned and wanted rows go together
+        by_key = {r['key']: r for r in send_plan['rows']}
+        grouped = {}
+        for key in wanted:
+            grouped.setdefault(by_key[key]['remote_no'], []).append(key)
+        units = list(grouped.values())
+    else:
+        units = [[key] for key in wanted]
+    done_count = sum(1 for k in wanted if existing.get(k, {}).get('result') in went)
+    stopped, paused_retry_at, paused_exc, stopped_keys, failure = False, None, None, {}, None
+    for idx, unit in enumerate(units):
+        key = unit[0]
+        later = [k for u in units[idx + 1:] for k in u]
+        if all(existing.get(k, {}).get('result') in went for k in unit):
+            continue
+        if should_stop and should_stop():
+            stopped = True
+            for rem in [k for u in units[idx:] for k in u]:
+                if existing.get(rem, {}).get('result') not in went:
+                    stopped_keys[rem] = dict(result='stopped', detail='Stopped at your request')
+            break
+        if on_call:
+            on_call('before', key, done_count)
+        try:
+            reply = sync.apply_send(db, plan_id, unit, http=http)
+        except WaitingForBudget as exc:
+            paused_exc = exc
+            paused_retry_at = exc.retry_at
+            send_plan = sync.load_plan(db, plan_id, 'send')
+            res_map = send_plan.setdefault('results', {})
+            for k in unit:
+                res_map[k] = dict(result='paused', detail=_message(exc, source), retry_at=exc.retry_at)
+            for rem in later:
+                if res_map.get(rem, {}).get('result') not in went:
+                    res_map[rem] = dict(result='paused', detail=None)
+            sync._store_plan(db, send_plan)
+            if on_call:
+                on_call('paused', key, done_count, retry_at=paused_retry_at)
+            break
+        except FAILURES as exc:
+            failure = _message(exc, source)
+            break
+        row_res = next((r for r in reply['rows'] if r['key'] in unit and r['result'] in ('paused', 'key_rejected')), None)
+        if row_res:
+            stop_kind = row_res['result']
+            send_plan = sync.load_plan(db, plan_id, 'send')
+            res_map = send_plan.setdefault('results', {})
+            for rem in later:
+                if res_map.get(rem, {}).get('result') not in went:
+                    res_map[rem] = dict(result=stop_kind, detail=None)
+            sync._store_plan(db, send_plan)
+            if stop_kind == 'paused':
+                paused_retry_at = row_res.get('retry_at')
+                if on_call:
+                    on_call('paused', key, done_count, retry_at=paused_retry_at)
+            else:
+                done_count = len(wanted)
+                if on_call:
+                    on_call('after', key, done_count)
+            break
+        done_count += len(unit)
+        if on_call:
+            on_call('after', key, done_count)
+
+    res_map = sync.load_plan(db, plan_id, 'send').get('results') or {}
+    agg_rows = []
+    for key in wanted:
+        if key in stopped_keys:
+            agg_rows.append(dict(key=key, **stopped_keys[key]))
+        elif key in res_map:
+            agg_rows.append(dict(key=key, **res_map[key]))
+        elif failure:
+            agg_rows.append(dict(key=key, result='failed', detail=failure))
+    counts = {}
+    for row in agg_rows:
+        counts[row['result']] = counts.get(row['result'], 0) + 1
+    if failure:
+        stages['send'] = dict(status='failed', message=failure, counts=counts, rows=len(wanted), results=agg_rows)
+    elif counts.get('paused'):
+        exc = paused_exc or WaitingForBudget(None, paused_retry_at)
+        stages['send'] = dict(status='waiting', counts=counts, rows=len(wanted), results=agg_rows, message=_message(exc, source))
+    elif stopped:
+        stages['send'] = dict(status='stopped', counts=counts, rows=len(wanted), results=agg_rows)
+    else:
+        stages['send'] = dict(status='done', counts=counts, rows=len(wanted), results=agg_rows)
+    sync._store_plan(db, run)
+    return stages['send']
+
+
+def stage_lost_out(db, run, form_data, *, http=None, per_key=False, should_stop=None, on_call=None):
+    """Run the Lost Parts out stage either as one call (`run.apply`) or one call per wanted key (`run_job`)."""
     section = lost_out(run)
-    if section:
-        wanted = [k for k in form.getlist('lostsend') if k in {r['key'] for r in section['rows'] if r.get('tickable')}]
-        stages['lost_out'] = _apply_lost_out(db, run, wanted, http) if wanted else dict(status='none')
+    if not section:
+        return None
+    stages = run['stages']
+    wanted = form_data['lostsend']
+    if not wanted:
+        stages['lost_out'] = dict(status='none')
         sync._store_plan(db, run)
+        return stages['lost_out']
+    if not per_key:
+        stages['lost_out'] = _apply_lost_out(db, run, wanted, http)
+        sync._store_plan(db, run)
+        return stages['lost_out']
+
+    planned = run['lost_out']
+    sent_keys = {r['key'] for r in planned['rows'] if r.get('outcome') == 'sent'}
+    done_count = sum(1 for k in wanted if k in sent_keys)
+    stopped, paused, paused_retry_at, key_rejected_msg, failed_msg, called = False, False, None, None, None, False
+    for idx, key in enumerate(wanted):
+        if key in sent_keys:
+            continue
+        if should_stop and should_stop():
+            stopped = True
+            break
+        if on_call:
+            on_call('before', key, done_count)
+        called = True
+        result, meta = _lost_out_calls(db, run, [key], http)
+        if result['status'] == 'failed':
+            if meta['retry_at'] is not None or meta['budget_error']:
+                paused = True
+                paused_retry_at = meta['retry_at']
+                for row in planned['rows']:
+                    if row['key'] in set(wanted[idx:]) and row.get('outcome') != 'sent':
+                        row['outcome'] = 'waiting'
+                if on_call:
+                    on_call('paused', key, done_count, retry_at=paused_retry_at)
+            else:
+                failed_msg = result['message']
+            break
+        if meta['key_rejected']:
+            key_rejected_msg = result['message']
+            for row in planned['rows']:
+                if row['key'] in set(wanted[idx + 1:]) and row.get('outcome') != 'sent':
+                    row['outcome'] = 'failed'
+                    row['reason'] = key_rejected_msg
+            done_count = len(wanted)
+            if on_call:
+                on_call('after', key, done_count)
+            break
+        if result['counts']['waiting']:
+            paused = True
+            paused_retry_at = meta['retry_at']
+            for row in planned['rows']:
+                if row['key'] in set(wanted[idx + 1:]) and row.get('outcome') != 'sent':
+                    row['outcome'] = 'waiting'
+            if on_call:
+                on_call('paused', key, done_count, retry_at=paused_retry_at)
+            break
+        done_count += 1
+        if on_call:
+            on_call('after', key, done_count)
+
+    if failed_msg and not called:
+        stages['lost_out'] = dict(status='failed', message=failed_msg)
+    elif failed_msg and not any(r.get('outcome') in ('sent', 'failed', 'waiting') for r in planned['rows'] if r['key'] in set(wanted)):
+        stages['lost_out'] = dict(status='failed', message=failed_msg)
+    else:
+        by_key = {r['key']: r for r in planned['rows'] if r['key'] in set(wanted)}
+        sent_rows = [by_key[k] for k in wanted if by_key.get(k, {}).get('outcome') == 'sent']
+        failed_rows = [by_key[k] for k in wanted if by_key.get(k, {}).get('outcome') == 'failed']
+        waiting_rows = [by_key[k] for k in wanted if by_key.get(k, {}).get('outcome') == 'waiting']
+        counts = dict(sent=len(sent_rows), failed=len(failed_rows), waiting=len(waiting_rows))
+        message = key_rejected_msg
+        if counts['waiting'] and not message:
+            message = 'Rebrickable is paused: the daily budget is used up. ' + ('1 Lost Part waits.' if counts['waiting'] == 1 else f"{counts['waiting']} Lost Parts wait.")
+        if stopped and not message:
+            message = 'Stopped at your request'
+        if called or any(counts.values()):
+            _audit_lost_out(db, run, counts)
+        status = 'waiting' if paused else 'stopped' if stopped else 'done' if not counts['failed'] else 'partial'
+        stages['lost_out'] = dict(status=status, counts=counts, message=message, unsaved=bool(run.get('progress_unsaved')),
+                                      failed=[dict(key=r['key'], set_no=r['set_no'], part_no=r['part_no'], reason=r.get('reason')) for r in failed_rows])
+    sync._store_plan(db, run)
+    return stages['lost_out']
+
+
+def keep_scope(run):
+    """What the run's preview covers, for the Keep memory (#686): the kinds whose direction is not Off, and the sets it skips (the ones it could
+    touch that were not picked)."""
+    d, picked = run['directions'], picked_ids(run)
+    skipped = set() if picked is None else {c['item_id'] for c in run['candidates']} - picked
+    return tuple(kind for kind, direction in (('owned', 'owned'), ('wanted', 'wishlist')) if d[direction] != 'off'), skipped
+
+
+def remember_choices(db, run, plans, form_data):
+    """The conflicts the person chose to Keep are remembered (#686) before any stage runs, so a stage with nothing to do (or one that fails) cannot
+    lose them. The pairs are the counts of the preview rows the person saw, for the kinds the run shows. Not fatal: a Keep that could not be
+    written is only forgotten."""
+    if not (plans['pull'] or plans['send']):
+        return
+    covered, skipped = keep_scope(run)
+    try:
+        sync.remember_kept(db, run.get('source', SOURCE), rows(db, run, plans), [k for k, v in form_data['chosen'].items() if v == 'keep'], covered, skipped)
+    except FAILURES as exc:
+        LOG.warning('The Keep choices of a run could not be written: %s', type(exc).__name__)
+
+
+def _stages(db, run, plans, form, chosen, http, via, actor):
+    form_data = _extract_form(run, plans, form, chosen)
+    remember_choices(db, run, plans, form_data)
+    stage_pull(db, run, plans, form_data, via=via, actor=actor)
+    stage_parts(db, run, plans, form_data, via=via, actor=actor)
+    stage_send(db, run, plans, form_data, http=http)
+    stage_lost_out(db, run, form_data, http=http)
+    events = [run['stages'][s]['event'] for s in ('pull', 'parts') if (run['stages'].get(s) or {}).get('event') is not None]
+    source = run.get('source', SOURCE)
     with transaction(db):
         audit(db, 'sync:' + source, 'run', None, dict(run=run['id'], events=events), via=via, actor=actor)
     run['applied_events'] = events
@@ -581,6 +845,7 @@ class _Recorder:
 
     def __init__(self, client, db, run):
         self.client, self.db, self.run = client, db, run
+        self.retry_at = None
 
     def _note(self, entry):
         self.run.setdefault('lost_calls', []).append(entry)
@@ -591,12 +856,20 @@ class _Recorder:
             self.run['progress_unsaved'] = True
 
     def lost_part_add(self, inv_part_id, quantity):
-        reply = self.client.lost_part_add(inv_part_id, quantity)
+        try:
+            reply = self.client.lost_part_add(inv_part_id, quantity)
+        except WaitingForBudget as exc:
+            self.retry_at = exc.retry_at
+            raise
         self._note(['add', inv_part_id, quantity])
         return reply
 
     def lost_part_remove(self, lost_part_id):
-        reply = self.client.lost_part_remove(lost_part_id)
+        try:
+            reply = self.client.lost_part_remove(lost_part_id)
+        except WaitingForBudget as exc:
+            self.retry_at = exc.retry_at
+            raise
         self._note(['remove', lost_part_id])
         return reply
 
@@ -604,18 +877,23 @@ class _Recorder:
         return getattr(self.client, name)
 
 
-def _apply_lost_out(db, run, wanted, http):
+def _lost_out_calls(db, run, wanted, http):
+    """Run Lost Parts out calls for `wanted` and update `run['lost_out']` without writing the stage audit."""
     planned = run['lost_out']
-    message = None
+    message, key_rejected = None, False
+    recorder = _Recorder(adapters.adapter(db, SOURCE, http), db, run)
     try:
-        reply = lost_parts_send.apply(db, _Recorder(adapters.adapter(db, SOURCE, http), db, run), planned, wanted)
+        reply = lost_parts_send.apply(db, recorder, planned, wanted)
     except KeyRejected as exc:
         reply = dict(getattr(exc, 'partial', dict(sent=[], failed=[], remaining=[])))
         message = _message(exc)
+        key_rejected = True
         reply['failed'] = list(reply['failed']) + [dict(r, reason=message) for r in reply['remaining']]     # refused, not paused: what was not tried failed
         reply['remaining'] = []
+    except WaitingForBudget as exc:
+        return dict(status='failed', message=_message(exc)), dict(retry_at=exc.retry_at, key_rejected=False, budget_error=True)
     except (SourceError, ValueError) as exc:
-        return dict(status='failed', message=_message(exc))
+        return dict(status='failed', message=_message(exc)), dict(retry_at=None, key_rejected=False, budget_error=False)
     for part in ('sent', 'failed', 'remaining'):
         for row in reply[part]:
             for i, old in enumerate(planned['rows']):
@@ -629,10 +907,26 @@ def _apply_lost_out(db, run, wanted, http):
     except OSError as exc:
         LOG.warning('Lost Parts progress could not be written to the run: %s', type(exc).__name__)
         run['progress_unsaved'] = True
+    result = dict(status='done' if not (counts['failed'] or counts['waiting']) else 'partial', counts=counts, message=message, unsaved=bool(run.get('progress_unsaved')),
+                  failed=[dict(key=r['key'], set_no=r['set_no'], part_no=r['part_no'], reason=r.get('reason')) for r in reply['failed']])
+    return result, dict(retry_at=recorder.retry_at, key_rejected=key_rejected, budget_error=False)
+
+
+def _audit_lost_out(db, run, counts):
     with transaction(db):
         audit(db, 'sync:' + SOURCE, 'send', None, dict(plan=run['id'], kind='lost_parts', counts={k: v for k, v in dict(sent=counts['sent'], failed=counts['failed'], paused=counts['waiting']).items() if v}))
-    return dict(status='done' if not (counts['failed'] or counts['waiting']) else 'partial', counts=counts, message=message, unsaved=bool(run.get('progress_unsaved')),
-                failed=[dict(key=r['key'], set_no=r['set_no'], part_no=r['part_no'], reason=r.get('reason')) for r in reply['failed']])
+
+
+def _apply_lost_out(db, run, wanted, http):
+    result, _ = _lost_out_calls(db, run, wanted, http)
+    if 'counts' in result:
+        _audit_lost_out(db, run, result['counts'])
+    return result
+
+
+def pull_events(run):
+    """The pull events of a run (the pull and the part-list pull), the ones its Undo takes back."""
+    return [run['stages'][s]['event'] for s in ('pull', 'parts') if (run['stages'].get(s) or {}).get('event') is not None]
 
 
 def undo_run(db, event_id):
@@ -651,19 +945,36 @@ def undo_run(db, event_id):
     return ids
 
 
-def retry_send(db, run_id, *, http=None):
+def retry_send(db, run_id, *, http=None, also=()):
     """Send again the rows of the run's send stage that did not go through (failed, paused or refused). The send plan keeps what was sent. Under
-    the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry."""
+    the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry. A row whose result is `unknown` (a send a
+    restart cut off: it may have gone out) is sent again only when its key is in `also`; by default it is left."""
     with _Claim(db, run_id):
         run, plans = load(db, run_id)
         send = plans['send']
         stage = (run.get('stages') or {}).get('send')
+        if run.get('job') and not run.get('applied'):
+            raise errors.ValidationFailed('This run is still running')
         if not send or not stage or not stage.get('results'):
             raise errors.ValidationFailed('This run sent nothing that can be retried')
-        again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged')]
+        again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged') and (r['result'] != 'unknown' or r['key'] in set(also))]
         if not again:
+            if any(r['result'] == 'unknown' for r in stage['results']):
+                raise errors.ValidationFailed('Only a row that may have gone out is left. Check it, then choose Send it too on that row')
             raise errors.ValidationFailed('Everything this run sent went through')
         result = sync.apply_send(db, send['id'], again, http=http)
-        run['stages']['send'] = dict(status='done', counts=result['counts'], rows=len(result['rows']), results=result['rows'])
+        kept_unknown = [r for r in stage['results'] if r['result'] == 'unknown' and r['key'] not in again]    # a row left out stays as it was, whatever the send plan says of it
+        left_keys = {r['key'] for r in kept_unknown}
+        rows = [r for r in result['rows'] if r['key'] not in left_keys] + kept_unknown
+        counts = {}
+        for r in rows:
+            counts[r['result']] = counts.get(r['result'], 0) + 1
+        left = len(kept_unknown)
+        if left:     # a row that may have gone out is still unchecked: the run stays interrupted, here and in the sync log
+            run['stages']['send'] = dict(status='failed', message=INTERRUPTED_MESSAGE, counts=counts, rows=len(rows), results=rows)
+            with transaction(db):
+                audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id, pulls=pull_events(run)))
+        else:
+            run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
         sync._store_plan(db, run)
         return run

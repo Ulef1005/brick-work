@@ -57,8 +57,8 @@ def test_hub_renders_four_site_cards_in_order_and_sections(client, remote):
         assert 'Never' in card.select_one('.sh-meta').get_text()
         btn = card.select_one('a.bk-btn')
         assert btn.get_text(strip=True) == 'Connect'
-        assert btn['href'].endswith('/manage/catalogues')
-    imp = page.select_one('[data-sync-import]')
+        assert btn['href'].endswith('/workbench/sync/bricklink/connect' if key == 'bricklink' else '/manage/catalogues')   # BrickLink has its page (#521), Brick Owl not yet
+    imp =page.select_one('[data-sync-import]')
     assert imp.select_one('.sh-name').get_text(strip=True) == 'Import & export'
     assert imp.select_one('a.bk-btn').get_text(strip=True) == 'Open'
     assert imp.select_one('a.bk-btn')['href'].endswith('/manage/import-legacy')
@@ -68,7 +68,7 @@ def test_hub_renders_four_site_cards_in_order_and_sections(client, remote):
     assert page.select_one('link[href*="bw-sync-hub.css"]')
 
 
-def test_rebrickable_shows_connect_before_token_and_open_after(client, remote):
+def test_rebrickable_shows_connect_before_token_and_open_after(client, remote, pair):
     before = soup(client.get('/workbench/sync')).select_one('[data-sync-site=rebrickable]')
     assert before.select_one('.sh-tag.sh-tag-dash').get_text(strip=True) == 'Not connected'
     assert before.select_one('a.bk-btn').get_text(strip=True) == 'Connect'
@@ -83,6 +83,12 @@ def test_rebrickable_shows_connect_before_token_and_open_after(client, remote):
     assert tag.get_text(strip=True) == 'Connected' and 'sh-tag-dash' not in tag.get('class', [])
     assert after.select_one('a.bk-btn').get_text(strip=True) == 'Open'
     assert after.select_one('a.bk-btn')['href'].endswith('/workbench/sync/rebrickable')
+    assert 'Linked' in after.select_one('.sh-meta').get_text()                    # a pasted token has no account name
+    with closing(connect(pair)) as db:                                              # #686: the name, once it is known, takes the place of "Linked"
+        db.execute("INSERT OR REPLACE INTO setting(key, value) VALUES('rebrickable_account_name', 'synthetic_user')")
+        db.commit()
+    named = soup(client.get('/workbench/sync')).select_one('[data-sync-site=rebrickable]')
+    assert 'synthetic_user' in named.select_one('.sh-meta').get_text() and 'Linked' not in named.select_one('.sh-meta').get_text()
 
 
 def test_legacy_manage_sync_redirects(client, remote):
@@ -98,7 +104,8 @@ def test_site_page_restricts_source_has_back_link_and_404s_unknown(client, remot
     assert rb.select_one('h1').get_text(strip=True) == 'Rebrickable'
     back = rb.select_one('a.bw-back')
     assert back['href'].endswith('/workbench/sync') and back.get_text(strip=True) == 'Sync'
-    assert client.get('/workbench/sync/bricklink').status_code == 404
+    assert client.get('/workbench/sync/bricklink').status_code == 200      # its own page since #521
+    assert client.get('/workbench/sync/brickowl').status_code == 404
     assert client.get('/workbench/sync/unknown').status_code == 404
 
 
@@ -158,3 +165,13 @@ def test_undo_refuses_a_pull_of_another_site(client, remote, pair):
     assert client.post('/manage/sync/rebrickable/undo', data={'csrf_token': csrf, 'event': '9' * 30}).status_code == 400
     with closing(connect(pair)) as db:
         assert db.execute('SELECT COUNT(*) FROM event_undo WHERE event_id=?', (pull,)).fetchone()[0] == 0
+
+
+def test_the_key_day_is_the_last_good_call_and_a_replaced_key_does_not_inherit_it():
+    """#686: "checked 18 Nov" on the Rebrickable page is the newest successful call, never older than the key's save time."""
+    from brickwork.web.sync_site import _key_checked_day
+    assert _key_checked_day({'saved_at': '2026-11-10T09:00:00.000Z'}, '2026-11-18T12:00:00+00:00') == '18 Nov'
+    assert _key_checked_day({'saved_at': '2026-11-20T09:00:00+00:00'}, '2026-11-18T12:00:00.000Z') is None      # the key was replaced after the last call
+    assert _key_checked_day({'saved_at': None}, '2026-11-18T12:00:00Z') == '18 Nov'                         # no save time known: the call counts
+    assert _key_checked_day({'saved_at': 'not a time'}, '2026-11-18T12:00:00Z') is None                      # a save time that cannot be read hides it
+    assert _key_checked_day({'saved_at': '2026-11-10T09:00:00Z'}, None) is None and _key_checked_day(None, 'x') is None

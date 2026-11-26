@@ -12,8 +12,9 @@ const ticks=[new Node()];ticks[0].checked=true;
 const listpick=new Node();listpick.value='keep';
 const search=new Node(),submit=new Node({syVerb:'Run'}),total=new Node({syOf:'4'});
 const form=new Node();form.dataset.syDirection='run';
-form.querySelectorAll=s=>({'[data-sy-row]':rows,'[data-sy-tab]':tabs,'[data-sy-tick]:checked':ticks.filter(t=>t.checked),'[data-sy-card]':cards,'[data-sy-listpick]':[listpick],'[data-sy-send]:checked':[]})[s]||[];
-form.querySelector=s=>({'[data-sy-search]':search,'[data-sy-submit]':submit,'[data-sy-total]':total,'[data-sy-requests]':null})[s]||null;
+const sends=[],requestsNode=new Node();
+form.querySelectorAll=s=>({'[data-sy-row]':rows,'[data-sy-tab]':tabs,'[data-sy-tick]:checked':ticks.filter(t=>t.checked),'[data-sy-card]':cards,'[data-sy-listpick]':[listpick],'[data-sy-send]:checked':sends.filter(t=>t.checked)})[s]||[];
+form.querySelector=s=>({'[data-sy-search]':search,'[data-sy-submit]':submit,'[data-sy-total]':total,'[data-sy-requests]':requestsNode})[s]||null;
 vm.runInNewContext(fs.readFileSync('static/web/toni/bw-sync.js','utf8'),{document:{querySelectorAll:s=>s==='[data-sy-plan]'?[form]:[]},setTimeout});
 const hidden=()=>rows.map(r=>r.hidden);
 assert.equal(submit.textContent,'Run 1 change');assert.equal(total.textContent,'1 of 4 chosen');
@@ -30,4 +31,8 @@ listpick.value='rename';form.events.change();             // a renamed list is a
 assert.equal(submit.textContent,'Run 1 change');assert.equal(submit.disabled,false);
 listpick.value='drop';form.events.change();assert.equal(submit.disabled,false);
 listpick.value='skip';form.events.change();assert.equal(submit.disabled,true);
+const send=(set)=>{const n=new Node(set?{sySet:set}:{});n.checked=true;return n;};
+sends.push(send('7'),send('7'),send('8'),send());form.events.change();   // Brickset takes one call per set: two rows of set 7 are one request
+assert.equal(requestsNode.textContent,'3');
+sends[3].checked=false;form.events.change();assert.equal(requestsNode.textContent,'2');
 console.log('Rebrickable preview: tabs, cards and list choices passed');

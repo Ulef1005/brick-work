@@ -331,11 +331,17 @@ def run_agree(chrome: str, parallel: int = 4) -> tuple[list[str], int]:
     return [f'Serial against {parallel}-process render: {total} captures compared, {len(differ)} differ'] + [f'  differs: {d}' for d in differ], total
 
 
+def refused_off_linux() -> bool:
+    if sys.platform.startswith('linux'):
+        return False
+    print(f'Refused: baselines are written on Linux only (ADR 0022), not on {sys.platform}. Run the `baselines` workflow and commit its artifact.')
+    return True
+
+
 def capture(selected: list[str], chrome: str) -> int:
     """Write the candidate baselines. Linux only: the baselines are Linux renders (ADR 0022). A Mac draws text and line art differently, and
     references written there never match the Linux gate (#503: 708 files of 2026-11-23). Run the `baselines` workflow instead."""
-    if not sys.platform.startswith('linux'):
-        print(f'Refused: baselines are written on Linux only (ADR 0022), not on {sys.platform}. Run the `baselines` workflow and commit its artifact.')
+    if refused_off_linux():
         return 2
     states = load()
     todo = [e for e in states['states'] if e['built'] and (not selected or e['screen'] in selected or e['screen'].split('-')[0] in selected)]
@@ -353,6 +359,8 @@ def main(argv: list[str]) -> int:
     if mode == 'summary':
         print('\n'.join(summary_lines(load(), 0, [])))
         return 0
+    if mode == 'capture' and refused_off_linux():   # before Chrome: a refused run downloads nothing, and says why where no pinned Chrome exists
+        return 2
     chrome = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'chrome.py'), 'pinned'], capture_output=True, text=True)
     if chrome.returncode:
         print(chrome.stderr.strip())

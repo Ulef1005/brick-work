@@ -14,8 +14,18 @@ def test_capture_writes_no_baseline_off_linux(platform, monkeypatch, capsys):
     assert 'Linux only' in capsys.readouterr().out
 
 
-def test_capture_renders_on_linux(monkeypatch):
+@pytest.mark.parametrize('platform', ['darwin', 'win32'])
+def test_the_command_refuses_before_it_looks_for_chrome(platform, monkeypatch, capsys):
+    monkeypatch.setattr(gate.sys, 'platform', platform)
+    monkeypatch.setattr(gate.subprocess, 'run', lambda *a, **k: pytest.fail('chrome.py was started'))
+    assert gate.main(['capture']) == 2
+    assert 'Linux only' in capsys.readouterr().out
+
+
+def test_capture_renders_a_state_not_yet_approved_on_linux(monkeypatch):
     seen = []
+    states = {'states': [{'screen': '09-Collection', 'section': 'x', 'state': '', 'built': True, 'approved': False}]}
     monkeypatch.setattr(gate.sys, 'platform', 'linux')
-    monkeypatch.setattr(gate, 'render', lambda entries, out_for, chrome: seen.append(chrome) or [])
-    assert gate.capture(['no-such-screen'], 'chrome') == 0 and seen == ['chrome']
+    monkeypatch.setattr(gate, 'load', lambda: states)
+    monkeypatch.setattr(gate, 'render', lambda entries, out_for, chrome: seen.append(entries) or [])
+    assert gate.capture(['09'], 'chrome') == 0 and seen == [states['states']]

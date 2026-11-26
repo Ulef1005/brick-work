@@ -1776,7 +1776,7 @@ def bw_collection(kind):
     response = current_app.make_response(render_template('web/toni/web/bw_collection.html',
         title='Lot Sorter' if request.endpoint == 'web.bw_lot_sorter' else collection.TYPES[kind], kind=kind, rows=rows, records=ui.bw_collection_records(rows), choices=choices, error=error,
         storage_index=collection.storage_index(rows, choices['storages']) if kind == 'S' else [],
-        source_chips=collection.source_chips(rows) if kind == 'S' else ([], []),
+        source_chips=collection.source_chips(rows), source_words=collection.source_words(),
         lot_total=ui.lot_total(rows) if kind == 'P' else 0,
         csrf_token=bw_add_token(), can_edit=bw_collection_editable(), detail=None,
         first_run=setup_state.first_run(bw_collection_editable()) if kind == 'S' and not rows and not error else None))
@@ -2053,6 +2053,7 @@ def bw_collection_wishes():
         error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_collection.html',
         title='Wishlist', kind='wish', rows=rows, records=ui.bw_collection_records(rows), choices=choices, error=error, csrf_token=bw_add_token(),
+        source_chips=collection.source_chips(rows), source_words=collection.source_words(),
         can_edit=bw_collection_editable(), detail=None))
     response.headers['Cache-Control']='no-store'
     return response
@@ -2496,6 +2497,7 @@ def bw_planning(screen):
     response=current_app.make_response(render_template('web/toni/web/bw_figures.html' if figures_tab else 'web/toni/web/bw_prices.html' if screen=='prices' else 'web/toni/web/bw_planning.html',
         figure_page=figure_page,
         screen=screen,title={'wishlist':'Wishlist','prices':'Prices','complete-sets':'Complete sets'}[screen],
+        source_chips=collection.source_chips(rows)[0] if screen=='wishlist' else [],
         rows=rows,settings=settings,error=error,kind=kind,types=collection.TYPES,available_types=available_types, wishlists=lists, list_id=list_id,
         can_edit=bw_collection_editable(),csrf_token=bw_add_token()))
     response.headers['Cache-Control']='no-store'

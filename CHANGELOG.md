@@ -21,6 +21,7 @@
 - **Filter Sets by where a copy came from** (#551, second part). Two chip rows on the Sets page, **Added via** and **Last synced from**, each with its count of sets. They combine with each other and with the status tabs, and a pressed chip clears its row. The stock lists, loose stock and wishes follow.
 
 - **Where a copy came from** (#551, first part). A copy's page shows a Source row under its tags: **Added via** (fixed: by hand, a site, a file, an import) and **Last synced from** with the site, the list and the date. Rows from before this release read "Before this release". The Source filter on Sets follows.
+- **Where loose stock and wishes came from** (#551). The loose-stock lists and the Wishlist have the Added via filter, and each row names its origin.
 
 - **A Brick Owl key** (#522). The keys step takes a Brick Owl API key (collection, wishlist and orders permissions), and the first Brick Owl code reads your sets and wishlists. The Brick Owl sync page follows.
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The demo's real sets carry element ids** (#676). The seven real sets and their figures now bring Rebrickable's element id for each part and colour (ids only, from `elements.csv`), so the demo's Pick a Brick file and the Lot Sorter can show real element ids. The demo still builds from the repository alone; `not-mit/NOTICE.md` says where the ids come from.
+
 - **The Rebrickable and Brickset run page follows the job** (#685). Run now queues the job and opens step 5: the pull shows as "Applying the pull" with no count, the sends show "N of M", the time left and the day's budget, and Stop after this one works between calls. You can close the page; the run goes on and shows in Jobs. If the server restarted while a send was going out, the page shows what went out, marks the row in flight "Not known" and offers Send again, which leaves that row out unless you tick Send it too on it. Last runs shows the run as Interrupted, with a link back, and keeps it and its pull listed until the pull is undone (within the site's newest 200 log entries). A run that waits for the daily budget says so and goes on by itself. No schema change.
 
 - **The Sync hub shows your account name, and the key says when it last worked** (#686). A connected Rebrickable or Brickset card shows the username you typed instead of "Linked". The API key line reads "checked 18 Nov", the day of its newest successful call; a replaced key shows no day until it is used. No schema change.

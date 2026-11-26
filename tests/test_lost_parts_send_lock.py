@@ -81,6 +81,29 @@ def test_a_run_planned_before_the_lock_sends_no_lost_parts(client, remote, pair,
     assert remote.lost_writes == []
 
 
+@pytest.mark.parametrize('stop', [False, True])
+def test_a_job_paused_on_lost_parts_before_the_lock_ends_without_waiting_ones(client, remote, pair, monkeypatch, stop):  # noqa: F811
+    monkeypatch.setattr(lost_parts_send, 'SEND_LOCKED', False)
+    csrf = connected(client, pair)
+    owing(pair, remote)
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, MultiDict([('lostsend', KEY)]))
+        run = sync_run.load(db, run_id)[0]
+        run['stages'] = {'lost_out': dict(status='waiting', counts=dict(sent=0, failed=0, waiting=1), message='1 Lost Part waits.')}
+        sync._store_plan(db, run)
+        db.execute("UPDATE job SET state='waiting_for_budget', retry_at='2026-01-01T00:00:00.000Z' WHERE id=?", (job_id,))
+        db.execute("UPDATE job_step SET state='waiting_for_budget' WHERE job_id=?", (job_id,))
+        db.commit()
+        monkeypatch.setattr(lost_parts_send, 'SEND_LOCKED', True)
+        if stop:
+            run_job.request_stop(db, run_id)
+        run_job.drain(db)
+        assert sync_run.load(db, run_id)[0]['stages']['lost_out'] == dict(status='none')
+        assert tuple(db.execute('SELECT state, count = total FROM job_step WHERE job_id=?', (job_id,)).fetchone()) == ('done', 1)
+    assert remote.lost_writes == []
+
+
 def test_the_settings_routes_refuse_to_switch_it_on(client, remote, pair):  # noqa: F811
     with db_of(pair) as db:
         with pytest.raises(errors.ValidationFailed, match='not available'):      # the API's PATCH /settings, the CLI and MCP go through here

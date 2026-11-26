@@ -36,6 +36,11 @@ SEGMENT_LABELS_BY = {'rebrickable': SEGMENT_LABELS, 'brickset': dict(SEGMENT_LAB
 MODE_LABELS = (('all', 'All linked'), ('list', 'By list'), ('theme', 'By theme'), ('year', 'By year'), ('one', 'One by one'))
 MODES = tuple(m for m, _ in MODE_LABELS)
 MODE_LABELS_BY = {'rebrickable': MODE_LABELS, 'brickset': tuple(m for m in MODE_LABELS if m[0] != 'list')}      # Brickset has no lists to pick by
+def segments():
+    """`SEGMENTS` as offered now: without a way out for Lost Parts while their send is locked."""
+    return dict(SEGMENTS, lost=('into', 'off')) if lost_parts_send.SEND_LOCKED else SEGMENTS
+
+
 KINDS_BY = {'rebrickable': tuple(SEGMENTS), 'brickset': ('owned', 'wishlist')}       # the kinds of data each site has a direction for
 LIST_WORDS = {'rename': 'Rename it', 'keep': 'Keep', 'drop': 'Drop the name', 'skip': 'Skip'}
 LOG = logging.getLogger(__name__)
@@ -85,8 +90,10 @@ def save_choices(db, form, source=SOURCE):
     raises ValidationFailed and nothing is saved."""
     if source == 'brickset':
         return _save_brickset_choices(db, form)
+    if lost_parts_send.SEND_LOCKED and form.get('lost_dir') in ('to', 'both'):
+        raise errors.ValidationFailed(lost_parts_send.LOCKED_MESSAGE)
     for kind in SEGMENTS:
-        if form.get(kind + '_dir') not in SEGMENTS[kind]:
+        if form.get(kind + '_dir') not in segments()[kind]:
             raise errors.ValidationFailed('Choose a direction for ' + kind)
     try:
         lost_parts.valid_rule(form['lost_rule'])
@@ -429,7 +436,7 @@ def lost_in(run, plans):
 
 def lost_out(run):
     """The Lost Parts send plan, narrowed to the sets picked (None when Lost Parts do not go out)."""
-    section = run.get('lost_out')
+    section = None if lost_parts_send.SEND_LOCKED else run.get('lost_out')      # a run planned before the lock keeps its plan and sends nothing of it
     picked = picked_ids(run)
     if not section:
         return None

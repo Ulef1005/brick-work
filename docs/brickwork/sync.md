@@ -56,6 +56,8 @@ The plan is a file under `data/sync/` and expires after 24 hours.
 
 ## Lost parts from Rebrickable
 
+**The send is locked** (`lost_parts_send.SEND_LOCKED`, #469): no page, API call or command can switch it on, a stored setting reads as off, and a run planned earlier sends no Lost Parts. The planner cannot yet name the inventory id of a part that Rebrickable does not list, and a restart between a change's removal and its add names nothing. What this page says about Lost Parts out describes the code behind the lock.
+
 A Rebrickable pull plan also reads `GET /users/{token}/lost_parts/` (`page`, `page_size`) through the same budgeted, recorded transport, unless the switch is off. The switch is the link option `lost_parts` (`PUT /sync/rebrickable/link`, true or false, on when never set). The plan carries a `lost` object: `on`, `rule`, `status` (`off`, `read`, `failed`), `message`, `unreadable`, `clearing`, `sets` (per set: `copies`, `copy_id`, `state` `ready`, `pick` or `new`, `preview` with the parts, the counts that change, the cleared marks and the unmatched parts), `unmatched_sets` and a `summary`. A failed read (an error, a throttle) sets `status: failed` and never stops the set comparison.
 
 The reply's items are not described in Rebrickable's OpenAPI file. The parser (`parse_lost_part` in `core/sync/adapters.py`) assumes `{lost_part_id, lost_quantity, inv_part: {part: {part_num}, color: {id}, set_num, is_spare}}`. A row it cannot read is counted in `unreadable`, and a plan with such a row clears nothing.

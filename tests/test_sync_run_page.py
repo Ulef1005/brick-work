@@ -12,6 +12,12 @@ from werkzeug.datastructures import MultiDict
 from tests.app4 import app4, client  # noqa: F401
 from tests.test_sync_rebrickable_page import apply_run, connected, db_of, pair, remote, soup, start  # noqa: F401
 from tests.test_sync_run_job import form_for, three_sends  # noqa: F401
+from brickwork.core.sync import lost_parts_send
+
+@pytest.fixture(autouse=True)
+def _lost_parts_send_unlocked(monkeypatch):
+    """The send is locked for now (#469); these tests cover the code behind the lock. `test_lost_parts_send_lock.py` covers the lock."""
+    monkeypatch.setattr(lost_parts_send, 'SEND_LOCKED', False)
 
 
 def page_of(client, run_id):

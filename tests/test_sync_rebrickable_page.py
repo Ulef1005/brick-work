@@ -20,6 +20,11 @@ from tests.test_bw_sync_lost_parts import Remote, copy_of, marks, raw, two_copie
 from tests.test_rebrickable_part_lists import WithParts
 from tests.web_fixtures import ROOT  # noqa: F401
 
+@pytest.fixture(autouse=True)
+def _lost_parts_send_unlocked(monkeypatch):
+    """The send is locked for now (#469); these tests cover the code behind the lock. `test_lost_parts_send_lock.py` covers the lock."""
+    monkeypatch.setattr(lost_parts_send, 'SEND_LOCKED', False)
+
 
 class Full(Remote):
     """The fake Rebrickable with Lost Parts and the part lists of test_rebrickable_part_lists, and POST/DELETE answered for Lost Parts."""

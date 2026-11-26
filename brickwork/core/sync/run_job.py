@@ -217,7 +217,24 @@ def _set_step(db, job_id, name, state, *, count=None, error=None, error_code=Non
                    (state, count, error, error_code, retry_at, stamp, job_id, name))
 
 
+def _drop_unsent_lost_parts(db, job_id, run):
+    """A job queued before the send was locked still has Lost Parts out: nothing of it is sent, so its stage waits for nothing and its
+    step is closed. A stage that already has an outcome keeps it."""
+    if not run.get('lost_out') or sync_run.lost_out(run) is not None:
+        return
+    stage = run['stages'].get('lost_out') or {}
+    if stage.get('status') in ('done', 'failed', 'partial', 'stopped', 'none'):
+        return
+    # a stage that had begun keeps its counts, failures and message (what was sent, what may be gone); it is stopped, not erased
+    run['stages']['lost_out'] = dict(stage, status='stopped') if stage else dict(status='none')
+    _refresh_plans(db, run)
+    with transaction(db):
+        db.execute("UPDATE job_step SET state='done', count=total, error=NULL, error_code=NULL, retry_at=NULL, updated_at=? WHERE job_id=? AND name='lost_out'",
+                   (jobs._stamp(now()), job_id))
+
+
 def _finish_stopped(db, job, run, plans, form_data, start_idx):
+    _drop_unsent_lost_parts(db, job['id'], run)
     for name in STAGES[start_idx:]:
         existing = run['stages'].get(name)
         if existing and existing.get('status') in ('done', 'none', 'failed', 'stopped'):
@@ -320,6 +337,8 @@ def _run_one(db, job, http):
                     _set_step(db, job_id, name, 'failed', error=INTERRUPTED_MESSAGE)
             continue
         if not _has_plan(run, plans, name):
+            if name == 'lost_out':
+                _drop_unsent_lost_parts(db, job_id, run)
             continue
         total = _stage_total(run, plans, form_data, name)
         if total == 0:

@@ -11,6 +11,11 @@ from tests.app4 import Coll
 from tests.test_bw_sync import pair, store  # noqa: F401
 from tests.test_bw_sync_lost_parts import copy_of
 
+@pytest.fixture(autouse=True)
+def _lost_parts_send_unlocked(monkeypatch):
+    """The send is locked for now (#469); these tests cover the code behind the lock. `test_lost_parts_send_lock.py` covers the lock."""
+    monkeypatch.setattr(lost_parts_send, 'SEND_LOCKED', False)
+
 
 def remote_row(set_no, part_no, color_id, quantity, *, is_spare=False, ids=(101,), inv_part_id=501):
     return dict(set_no=set_no, part_no=str(part_no), color_id=int(color_id), is_spare=bool(is_spare),

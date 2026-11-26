@@ -312,9 +312,24 @@ def rows_of(page):
     return {r.get('data-name', '').split(' ')[0]: r for r in page.select('[data-sy-row]')}
 
 
+def drain_jobs():
+    from pathlib import Path
+    from brickwork.core.sync import run_job
+    with closing(connect(Path(os.environ['BW_DB_PATH']))) as db:
+        run_job.drain(db)
+
+
+def _post_run(client, csrf, run_id, data):
+    response = client.post(f'/workbench/sync/rebrickable/run/{run_id}/run', data={'csrf_token': csrf, **data})
+    drain_jobs()                        # the page queues a job; the embedded worker is off in tests
+    if response.status_code == 302 and response.location.endswith('/progress'):
+        return client.get(response.location)         # the run page sends a finished run on to its result
+    return response
+
+
 def apply_run(client, csrf, run_id, page=None, **extra):
     page = page or preview_of(client, run_id)
-    return client.post(f'/workbench/sync/rebrickable/run/{run_id}/run', data={'csrf_token': csrf, **run_data(page, **extra)})
+    return _post_run(client, csrf, run_id, run_data(page, **extra))
 
 
 def copies(pair, number):
@@ -382,9 +397,9 @@ def test_an_unticked_row_changes_nothing_and_a_second_post_does_not_run_again(cl
     page = preview_of(client, run_id)
     data = run_data(page)
     data.pop('choice:owned:1')
-    first = client.post(f'/workbench/sync/rebrickable/run/{run_id}/run', data={'csrf_token': csrf, **data})
+    first = _post_run(client, csrf, run_id, data)
     assert first.location.endswith('/result') and copies(pair, '1000-1') == 0 and copies(pair, '1000-2') == 1
-    assert client.post(f'/workbench/sync/rebrickable/run/{run_id}/run', data={'csrf_token': csrf, **run_data(page)}).location.endswith('/result')
+    assert _post_run(client, csrf, run_id, run_data(page)).location.endswith('/result')
     assert copies(pair, '1000-1') == 0                              # the run was already applied: nothing more happened
     assert preview_of_redirect(client, run_id).endswith('/result')
 
@@ -948,11 +963,9 @@ def test_a_budget_pause_shows_as_waiting_not_failed(client, remote, pair, monkey
     def pause(self, inv, quantity):
         raise base.WaitingForBudget(None, '2026-11-25T00:00:00+00:00')
     monkeypatch.setattr(adapters.RebrickableUser, 'lost_part_add', pause)
-    apply_run(client, csrf, run_id, lostsend=[lost_parts_send.row_key('1000-1', '3001', 4, False)])
-    page = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result'))
-    there = page.select_one('[data-rb-there]')
-    assert [t.get_text(strip=True) for t in there.select('.sr-tag')] == ['1 waiting'] and 'the daily budget is used up' in there.get_text()
-    assert 'failed' not in page.select_one('.sr-head p').get_text() and '1 waiting' in page.select_one('.sr-head p').get_text()
+    page = soup(apply_run(client, csrf, run_id, lostsend=[lost_parts_send.row_key('1000-1', '3001', 4, False)]))       # the run page: the job waits, it did not fail
+    assert 'waiting for the daily budget' in page.select_one('[data-rb-send]').get_text() and not page.select('.bk-warning')
+    assert client.get(f'/workbench/sync/rebrickable/run/{run_id}/result').location.endswith('/progress')
     with db_of(pair) as db:
         assert sync_run.load(db, run_id)[0]['stages']['lost_out']['counts'] == dict(sent=0, failed=0, waiting=1)
 
@@ -1089,7 +1102,7 @@ def test_a_kept_difference_with_a_missing_baseline_side_comes_back_as_the_card(c
     assert rows_of(page)['1000-3'].select_one('input[type=checkbox]').has_attr('checked')              # new: ticked
     data = run_data(page)
     data.pop('choice:owned:3')
-    client.post(f'/workbench/sync/rebrickable/run/{run_id}/run', data={'csrf_token': csrf, **data})
+    _post_run(client, csrf, run_id, data)
     assert copies(pair, '1000-4') == 2
     page = preview_of(client, start(client, csrf))
     row = rows_of(page)['1000-3']
@@ -1172,11 +1185,10 @@ def test_a_data_folder_that_stays_unwritable_after_the_send_is_a_message_not_a_5
         return real(db, plan)
     monkeypatch.setattr(sync, '_store_plan', full)
     page = preview_of(client, run_id)
-    response = client.post(f'/workbench/sync/rebrickable/run/{run_id}/run',
-                           data={'csrf_token': csrf, **run_data(page), 'lostsend': lost_parts_send.row_key('1000-1', '3001', 4, False)})
-    assert response.status_code == 302 and response.location.endswith('/workbench/sync/rebrickable')
+    response = _post_run(client, csrf, run_id, {**run_data(page), 'lostsend': lost_parts_send.row_key('1000-1', '3001', 4, False)})
+    assert response.status_code == 200
     assert [w[0] for w in remote.lost_writes] == ['POST', 'DELETE']
-    landing = client.get('/workbench/sync/rebrickable').get_data(as_text=True)
+    landing = response.get_data(as_text=True)                     # the run page of the failed job says it
     assert 'could not write down this run' in landing and '/secret/path' not in landing
 
 
@@ -1187,9 +1199,10 @@ def test_a_database_that_cannot_be_written_during_a_run_is_not_reported_as_rebri
 
     def locked(*args, **kwargs):
         raise sqlite3.OperationalError('database or disk is full: /secret/db')
-    for name in ('apply', 'retry_send'):
-        monkeypatch.setattr(sync_run, name, locked)
-        response = client.post(f'/workbench/sync/rebrickable/run/{run_id}/{"run" if name == "apply" else "retry"}', data={'csrf_token': csrf})
+    from brickwork.core.sync import run_job
+    for module, name in ((run_job, 'queue'), (sync_run, 'retry_send')):
+        monkeypatch.setattr(module, name, locked)
+        response = client.post(f'/workbench/sync/rebrickable/run/{run_id}/{"run" if name == "queue" else "retry"}', data={'csrf_token': csrf})
         assert response.status_code == 302 and response.location.endswith('/workbench/sync/rebrickable')
         landing = client.get('/workbench/sync/rebrickable').get_data(as_text=True)
         assert 'could not write down this run' in landing and 'could not be reached' not in landing and '/secret/db' not in landing
@@ -1395,7 +1408,7 @@ def test_a_keep_only_job_stopped_before_it_starts_writes_nothing(client, remote,
         run_job.request_stop(db, run_id)
         run_job.drain(db)
         assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {})
-        assert tuple(db.execute("SELECT state, error FROM job WHERE kind='sync_run'").fetchone()) == ('done', 'Stopped at your request')
+        assert tuple(db.execute("SELECT state, error FROM job WHERE kind='sync_run' ORDER BY id DESC").fetchone()) == ('done', 'Stopped at your request')
 
 
 def test_kept_rows_covers_only_what_the_run_covers():

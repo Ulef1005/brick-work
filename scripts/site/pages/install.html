@@ -6,29 +6,26 @@ description: Install Brick Work with Docker Compose in about five minutes, or wi
 <div class="site">
 <div class="sec"><div class="inner">
 <div class="head"><span class="label">Home / Install</span><h1 class="display page">Install Brick Work in about five minutes.</h1><p class="lede">It runs in a container on your own computer or server. Your data stays in one folder you back up.</p></div>
-<div class="grid g2" style="align-items:start">
-<div class="head"><h2>Docker Compose</h2><p class="lede">Pulls the published image for amd64 and arm64. Then open it in the browser.</p>
+<div class="head"><h2>Docker Compose</h2><p class="lede">Pulls the published image for amd64 and arm64. Then open it in the browser.</p></div>
 <pre class="code">git clone --branch v{version} https://github.com/{repository}.git &amp;&amp; cd brick-work
 mkdir -p data &amp;&amp; sudo chown 1000:1000 data
 cp .env.sample data/.env # set BW_AUTHENTICATION_PASSWORD
 docker compose pull
 docker compose up -d</pre>
-<p class="small">Then open <span class="mono">http://localhost:3333</span> and sign in with your password.</p></div>
+<p class="small">Then open <span class="mono">http://localhost:3333</span> and sign in with your password.</p>
 <div class="note-box warn"><b>Single user, home network</b>Brick Work is meant for a home network or a VPN, not the open internet. Without a password the server refuses to start, because anyone who can reach it could edit the collection.</div>
-</div>
 </div></div>
 
 <div class="sec alt"><div class="inner">
 <div class="head"><span class="label">No server, no Git</span><h2>Docker Desktop on Windows or Mac</h2><p class="lede">About 15 minutes and a few GB of disk space. Tested on macOS; the Windows steps are the same, typed in PowerShell, but no test on a real Windows computer is recorded yet.</p></div>
-<ol class="steps"><li><span class="n">1</span><div><b>Install Docker Desktop</b></div></li><li><span class="n">2</span><div><b>Make a Brick Work folder</b></div></li><li><span class="n">3</span><div><b>Add two files</b></div></li><li><span class="n">4</span><div><b>Start Brick Work</b></div></li><li><span class="n">5</span><div><b>Open it</b></div></li></ol>
+<ol class="steps titles"><li><span class="n">1</span><div><b>Install Docker Desktop</b></div></li><li><span class="n">2</span><div><b>Make a Brick Work folder</b></div></li><li><span class="n">3</span><div><b>Add two files</b></div></li><li><span class="n">4</span><div><b>Start Brick Work</b></div></li><li><span class="n">5</span><div><b>Open it</b></div></li></ol>
 <div class="btns"><a class="btn" href="{up}docs/how-to/install-docker-desktop/">Docker Desktop guide</a></div>
 </div></div>
 
 <div class="sec"><div class="inner">
-<div class="grid g2">
-<div class="card"><h3>Unraid</h3><p class="small">Find Brick Work in Community Applications and fill in the port, the data folder and a password. The template sets the user to <span class="mono">99:100</span>, the ids Unraid gives a shared folder.</p><a class="link" href="{up}docs/how-to/install-unraid/">Unraid guide</a></div>
-<div class="card"><h3>NAS and Portainer</h3><p class="small">Paste one compose file into Synology Container Manager or a Portainer stack and set a password. No Git, no ownership change. To keep the data in a shared folder, set the user to the folder owner's ids. Put the pictures on the NAS with <span class="mono">BW_MEDIA_PATH</span> and keep the database on fast local storage.</p><a class="link" href="{up}docs/how-to/install-nas/">NAS and Portainer guide</a></div>
-</div>
+<div class="head"><h2>On your NAS or home server</h2><p class="lede">Pick your system and follow its guide.</p></div>
+<div class="grid g3 opts"><div class="card"><div class="opt-head"><div class="slot"><h3 class="optname">Unraid</h3></div></div><p class="small">Install it from Community Applications and set a password; the template sets the user to <span class="mono">99:100</span>, the ids Unraid gives a shared folder. Not yet tested on a real device.</p><a class="link" href="{up}docs/how-to/install-unraid/">Unraid guide</a></div><div class="card"><div class="opt-head"><div class="slot"><h3 class="optname">Synology Container Manager</h3></div></div><p class="small">Paste one compose file into Synology Container Manager and set a password. No Git, no ownership change. Not yet tested on a real device.</p><a class="link" href="{up}docs/how-to/install-nas/">NAS and Portainer guide</a></div><div class="card"><div class="opt-head"><div class="slot"><h3 class="optname">Portainer</h3></div></div><p class="small">Paste one compose file into a Portainer stack and set a password. No Git, no ownership change. Not yet tested on a real device.</p><a class="link" href="{up}docs/how-to/install-nas/">NAS and Portainer guide</a></div></div>
+<p class="small">With Synology Container Manager or Portainer: To keep the data in a shared folder, set the user to the folder owner's ids. Put the pictures on the NAS with <span class="mono">BW_MEDIA_PATH</span> and keep the database on fast local storage.</p>
 </div></div>
 
 <div class="sec alt"><div class="inner">
@@ -41,4 +38,5 @@ docker compose up -d</pre>
 </div>
 <div class="btns"><a class="btn primary" href="{up}demo/">Try the demo first</a><a class="link" href="{up}coming-from/">Moving an old collection over?</a><a class="link" href="{up}docs/how-to/upgrade/">Upgrade and back up</a></div>
 </div></div>
+
 </div>

@@ -449,7 +449,7 @@ def listing(db, type_letter, *, wishes=False):
                 row['list_labels'] = found
         else:
             for row in rows:
-                _row_sources(row, [i.get('added_via') for i in row['instances']])
+                _row_sources(row, [i.get('added_via') for i in row['instances'] if i.get('quantity') != 0])   # an emptied stock row holds nothing
         in_sets = []
         if kind == 'part':
             in_sets = [dict(r) for r in db.execute('''SELECT p.item_id,p.color_id,sum(p.quantity) AS quantity,sum(p.missing) AS missing,sum(p.damaged) AS damaged

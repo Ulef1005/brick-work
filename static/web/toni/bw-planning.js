@@ -96,5 +96,7 @@
     const left=result.summary.skipped;
     message.textContent='Exported'+(left.length?' · '+left.length+' left out: '+left.map(n=>[n.item_no,n.color,n.reason].filter(Boolean).join(' · ')).join('; '):'');
   }).finally(syncExport));
+  // #551: a restored Added via value that no chip offers any more would filter with nothing pressed: drop it.
+  controls.filter(c=>c.type==='hidden'&&c.value&&![...root.querySelectorAll('[data-bp-pick]')].some(b=>b.dataset.bpPick===c.dataset.bpFilter&&b.dataset.value===c.value)).forEach(c=>c.value='');
   render();
 })();

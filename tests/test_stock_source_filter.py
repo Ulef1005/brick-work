@@ -52,10 +52,22 @@ def test_a_row_with_nothing_owned_has_no_chip_and_counts_nowhere():
     assert collection.source_chips([row, dict(via=['hand']), dict(via=['before'])])[0] == [('hand', 'By hand', 1), ('before', 'Before this release', 1)]
 
 
+def test_an_emptied_stock_row_names_no_origin(tmp_path):
+    tmp_path.mkdir(exist_ok=True)
+    store = tmp_path / 'brickwork.db'
+    screen_gate.build_store('frames-source', store)
+    with database(store) as db:
+        row = next(r for r in collection.listing(db, 'P') if len(r['ids']) == 1 and r['quantity'])
+        db.execute('UPDATE stock SET quantity=0 WHERE id=?', (row['ids'][0],))
+        after = next((r for r in collection.listing(db, 'P') if r['ids'] == row['ids']), None)
+        assert after is None or (not after.get('via') and not after.get('source_chips'))
+        db.rollback()
+
+
 def test_every_list_row_carries_the_origins_of_its_owned_instances(tmp_path):
     for letter, options in (('P', {}), ('M', {}), ('S', dict(wishes=True))):
         for row in listing(tmp_path / (letter + str(len(options))), letter, **options):
-            owned = [row.get('added_via')] if options else [i.get('added_via') for i in row['instances']]
+            owned = [row.get('added_via')] if options else [i.get('added_via') for i in row['instances'] if i.get('quantity') != 0]
             if not owned:                                                    # a part that is only inside sets
                 assert not row.get('via') and not row.get('source_chips')
                 continue

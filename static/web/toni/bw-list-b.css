@@ -61,9 +61,11 @@
 }
 
 /* #551, frames 78 and 79: the Added via chip row (as on Sets, frame 45) and the chip on each row. */
-:is(#bw-collection[data-b-list]):not(#_):not(#_) .bc-fchips {display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
-:is(#bw-collection[data-b-list]):not(#_):not(#_) .bc-fchips-label {margin-right:4px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
-:is(#bw-collection[data-b-list]):not(#_):not(#_) .bc-fchip {display:inline-flex;align-items:center;gap:6px;height:auto;min-height:34px;max-width:100%;padding:4px 12px;border:1.5px solid var(--tw-divider);border-radius:3px;background:transparent;box-shadow:none;overflow-wrap:anywhere;text-align:left;font:500 13.5px var(--tw-font);color:var(--tw-text-2);cursor:pointer}
-:is(#bw-collection[data-b-list]):not(#_):not(#_) .bc-fchip .mono {font-size:12px;color:inherit}
-:is(#bw-collection[data-b-list]):not(#_):not(#_) .bc-fchip[aria-pressed=true] {border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent-text)}
-:is(#bw-collection[data-b-list]):not(#_):not(#_) .bc-source-chip {display:inline-block;justify-self:start;align-self:flex-start;width:max-content;margin:4px 6px 0 0;max-width:100%;padding:2px 6px;border:1.5px solid var(--tw-text);border-radius:3px;overflow-wrap:anywhere;font:600 11px/14px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text)}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-source {grid-column:1/-1}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-source[hidden] {display:none}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchips {display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchips-label {margin-right:4px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchip {display:inline-flex;align-items:center;gap:6px;height:auto;min-height:34px;max-width:100%;padding:4px 12px;border:1.5px solid var(--tw-divider);border-radius:3px;background:transparent;box-shadow:none;overflow-wrap:anywhere;text-align:left;font:500 13.5px var(--tw-font);color:var(--tw-text-2);cursor:pointer}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchip .mono {font-size:12px;color:inherit}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchip[aria-pressed=true] {border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent-text)}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-source-chip {display:inline-block;justify-self:start;align-self:flex-start;width:max-content;margin:4px 6px 0 0;max-width:100%;padding:2px 6px;border:1.5px solid var(--tw-text);border-radius:3px;overflow-wrap:anywhere;font:600 11px/14px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text)}

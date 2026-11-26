@@ -561,6 +561,9 @@
           quick.forEach(b=>{const total=b.querySelector('.mono'),[k,v]=b.dataset.bcQuick.split(':');if(total)total.textContent=String(filterRows(records,'',{stock:scope,...(k?{[k]:v}:{})}).length);});
         }
       }
+      // #551: the Added via row of a loose-stock list is about loose stock: under In sets it is gone and filters nothing.
+      const sourceRow=list.querySelector('[data-bc-source]');
+      if(sourceRow){sourceRow.hidden=scope==='sets';if(scope==='sets')sourceRow.querySelector('input').value='';}
       const result=filterRows(records,search?.value||'',filters(),sort?sort.value:'index',direction?.value,group?.value,bpRank);
       if(pageSize)page=Math.min(Math.max(1,page),Math.max(1,Math.ceil(result.length/pageSize)));
       const focused=document.activeElement,focusedRow=focused?.closest?.('[data-bc-row]');

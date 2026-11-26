@@ -65,37 +65,57 @@ def test_every_list_row_carries_the_origins_of_its_owned_instances(tmp_path):
 
 def test_the_chip_counts_are_list_rows_and_the_server_filter_matches_them(tmp_path):
     rows = listing(tmp_path)
+    collection._row_sources(rows[0], ['rebrickable'])                                          # a second origin: one chip alone is not shown
     chips, lists = collection.source_chips(rows)
-    assert lists == []
+    assert lists == [] and len(chips) > 1
     for value, _label, count in chips:
         assert len(json.loads(str(list_records.payload(rows, filters={'via': value})))['rows']) == count
 
 
 def test_the_pages_write_the_chip_row_once_there_are_two_origins_and_the_lot_sorter_never():
     with screen_gate.world('frames') as base:
-        for path, table, where in (('/collection/wishes', 'wish', '1'), ('/collection/P', 'stock', "kind='part'")):
+        for path, table, where in (('/planning/wishlist', 'wish', '1'), ('/collection/P', 'stock', "kind='part'")):
             assert page(base, path).select_one('[data-bc-source]') is None, path                 # one origin: no row
             second_origin(table, where)
             row = page(base, path).select_one('[data-bc-source]')
             assert row.select_one('.bc-fchips-label').get_text() == 'Added via', path
-            assert row.select_one('input[data-bc-filter]')['data-bc-filter'] == 'via'
-            offered = [b['data-bc-src'] for b in row.select('button')]
+            if path == '/planning/wishlist':
+                assert row.select_one('input[data-bp-filter]')['data-bp-filter'] == 'via'
+                offered = ['via:' + b['data-value'] for b in row.select('button')]
+            else:
+                assert row.select_one('input[data-bc-filter]')['data-bc-filter'] == 'via'
+                offered = [b['data-bc-src'] for b in row.select('button')]
             assert len(offered) == 2 and 'via:rebrickable' in offered, (path, offered)
         assert page(base, '/workbench/lot-sorter').select_one('[data-bc-source]') is None
 
 
-@rendered.group
-def test_a_wishlist_chip_filters_the_cards_and_each_card_says_where_it_came_from(tmp_path):
+def render(tmp_path, path, script, table='wish', where='1'):
     chrome = rendered.chrome()
-    script = ("const cards=()=>document.querySelectorAll('.bc-card').length,wait=()=>new Promise(r=>setTimeout(r,300));"
-              "return (async()=>{const n=cards(),b=document.querySelector('[data-bc-src=\"via:rebrickable\"]');"
-              "if(!n||!b)throw new Error('no wishes or no chip in this world');"
-              "if(document.querySelectorAll('.bc-card .bc-source-chip').length!==n)throw new Error('chips on cards');"
-              "b.click();await wait();if(cards()!==Number(b.querySelector('.mono').textContent))throw new Error('filtered: '+cards());"
-              "b.click();await wait();if(cards()!==n)throw new Error('cleared: '+cards()+' of '+n);})();")
     with screen_gate.world('frames') as base:
-        second_origin('wish')
-        jobs = {'jobs': [{'url': base + '/collection/wishes', 'out': str(tmp_path / 'a.png'), 'width': 1440, 'theme': 'light', 'wait': 'main', 'script': script}]}
+        second_origin(table, where)
+        jobs = {'jobs': [{'url': base + path, 'out': str(tmp_path / 'a.png'), 'width': 1440, 'theme': 'light', 'wait': 'main', 'script': script}]}
         (tmp_path / 'jobs.json').write_text(json.dumps(jobs))
         result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome, str(tmp_path / 'jobs.json')], capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@rendered.group
+def test_a_wishlist_chip_filters_the_rows_and_each_row_says_where_it_came_from(tmp_path):
+    render(tmp_path, '/planning/wishlist',
+           "const rows=()=>[...document.querySelectorAll('[data-bp-row]')].filter(n=>!n.hidden).length,wait=()=>new Promise(r=>setTimeout(r,300));"
+           "return (async()=>{const n=rows(),b=document.querySelector('[data-bp-pick=\"via\"][data-value=\"rebrickable\"]');"
+           "if(!n||!b)throw new Error('no wishes or no chip');"
+           "if(document.querySelectorAll('[data-bp-row] .bc-source-chip').length!==n)throw new Error('chips on rows');"
+           "b.click();await wait();if(rows()!==Number(b.querySelector('.mono').textContent))throw new Error('filtered: '+rows());"
+           "b.click();await wait();if(rows()!==n)throw new Error('cleared: '+rows()+' of '+n);})();")
+
+
+@rendered.group
+def test_under_in_sets_the_row_is_gone_and_filters_nothing(tmp_path):
+    render(tmp_path, '/collection/P',
+           "const row=()=>document.querySelector('[data-bc-source]'),wait=()=>new Promise(r=>setTimeout(r,400));"
+           "return (async()=>{document.querySelector('[data-bc-src=\"via:rebrickable\"]').click();await wait();"
+           "const s=document.querySelector('[data-bc-filter=\"stock\"]');s.value='sets';s.dispatchEvent(new Event('change',{bubbles:true}));await wait();"
+           "if(!row().hidden||row().querySelector('input').value)throw new Error('still filtering under In sets');"
+           "if(row().getClientRects().length)throw new Error('still drawn');"
+           "if(!document.querySelector('.bc-card'))throw new Error('nothing listed under In sets');})();", table='stock', where="kind='part'")

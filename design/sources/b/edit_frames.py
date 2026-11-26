@@ -97,7 +97,7 @@ def edit_set(phone):
             + field('Place', 'Not recorded', ph=True)
             + money('Estimate', 'EUR', 'From prices', ph=True)
             + field('Stored in', 'Shelf A1 &#8211; Castle')
-            + fs('Owners', '<div class="chips2"><span class="on">Ulf</span><span>Sandra</span></div>')
+            + fs('Owners', '<div class="chips2"><span class="on">Ulf</span><span>Alex</span></div>')
             + fs('Tags', '<div class="chips2"><span>Gift</span><span>Display</span></div>')
             + fs('Note', '<div class="input note"><span class="ph2">Add a note</span></div>')
             + footer('Delete set'))

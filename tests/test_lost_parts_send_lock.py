@@ -99,7 +99,8 @@ def test_a_job_paused_on_lost_parts_before_the_lock_ends_without_waiting_ones(cl
         if stop:
             run_job.request_stop(db, run_id)
         run_job.drain(db)
-        assert sync_run.load(db, run_id)[0]['stages']['lost_out'] == dict(status='none')
+        kept = sync_run.load(db, run_id)[0]['stages']['lost_out']
+        assert kept == dict(status='stopped', counts=dict(sent=0, failed=0, waiting=1), message='1 Lost Part waits.')      # nothing it recorded is lost
         assert tuple(db.execute('SELECT state, count = total FROM job_step WHERE job_id=?', (job_id,)).fetchone()) == ('done', 1)
     assert remote.lost_writes == []
 

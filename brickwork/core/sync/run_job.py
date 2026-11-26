@@ -225,7 +225,8 @@ def _drop_unsent_lost_parts(db, job_id, run):
     stage = run['stages'].get('lost_out') or {}
     if stage.get('status') in ('done', 'failed', 'partial', 'stopped', 'none'):
         return
-    run['stages']['lost_out'] = dict(status='none')
+    # a stage that had begun keeps its counts, failures and message (what was sent, what may be gone); it is stopped, not erased
+    run['stages']['lost_out'] = dict(stage, status='stopped') if stage else dict(status='none')
     _refresh_plans(db, run)
     with transaction(db):
         db.execute("UPDATE job_step SET state='done', count=total, error=NULL, error_code=NULL, retry_at=NULL, updated_at=? WHERE job_id=? AND name='lost_out'",

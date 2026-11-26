@@ -52,6 +52,11 @@ def test_a_row_with_nothing_owned_has_no_chip_and_counts_nowhere():
     assert collection.source_chips([row, dict(via=['hand']), dict(via=['before'])])[0] == [('hand', 'By hand', 1), ('before', 'Before this release', 1)]
 
 
+def test_the_page_sends_the_chip_words_once_not_on_every_record():
+    assert collection.source_words()['hand'] == 'Added via By hand' and collection.source_words()['before'] == 'Before this release'
+    assert 'source_chips' not in list_records.FIELDS
+
+
 def test_an_emptied_stock_row_names_no_origin(tmp_path):
     tmp_path.mkdir(exist_ok=True)
     store = tmp_path / 'brickwork.db'

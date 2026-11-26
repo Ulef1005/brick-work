@@ -98,7 +98,7 @@
     if(secondary)identity.append(el('span','secondary',secondary));
     if(r.unresolved)identity.append(el('span','status',r.number?'To check':'Unidentified'));
     // #551 (frames 78, 79): where the row came from, one chip per origin; the pieces inside sets have none of their own.
-    if(config.bList!==undefined&&r.scope!=='sets')(r.source_chips||[]).forEach(text=>identity.append(el('span','bc-source-chip',text)));
+    if(config.bList!==undefined&&r.scope!=='sets'){const words=JSON.parse(config.sourceWords||'{}');(r.via||[]).forEach(v=>identity.append(el('span','bc-source-chip',words[v]||v)));}
     link.append(identity);row.append(link);
     if(r.unresolved){const unresolved=el('a','','Unresolved items');unresolved.href=config.unresolvedUrl;row.append(unresolved);}
     if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),(r.max_price?el('strong','mono',r.max_price):el('span','bc-wish-max-none','No max set')));row.append(max);}

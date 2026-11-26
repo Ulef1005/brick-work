@@ -1747,7 +1747,16 @@ def _row_sources(row, added):
     found = sorted({v or 'before' for v in added}, key=_source_order)
     row['via'] = found
     # Frames 78 and 79 draw a list row's chip with the lead also for a row added by hand (design, 2026-11-26); the copy page (frame 44) is unchanged.
-    row['source_chips'] = ['Added via ' + origins.label(v) if v == origins.HAND else origins.chip(None if v == 'before' else v) for v in found]
+    row['source_chips'] = [_row_chip(v) for v in found]
+
+
+def _row_chip(value):
+    return 'Added via ' + origins.label(value) if value == origins.HAND else origins.chip(None if value == 'before' else value)
+
+
+def source_words():
+    """A list row's chip words per Added via value: the collection lists send them once for the page, not on every record."""
+    return {value: _row_chip(value) for value in (*origins.ORIGINS, 'before')}
 
 
 def _source_order(value):

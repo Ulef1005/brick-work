@@ -199,14 +199,11 @@ class RebrickableUser(Rebrickable):
 
         Checked live on 2026-11-26 (#469): `POST /users/{token}/lost_parts/` with form fields `inv_part_id` and `lost_quantity` answers the new
         row with `lost_part_id`. For a part that is already listed it answers a list of messages ("... already exists. Use PUT/PATCH ...")
-        and changes nothing; `PATCH` on the row answered 405. A dict without `lost_part_id` is not treated as a failure."""
+        and changes nothing; `PATCH` on the row answered 405. Only a row with `lost_part_id` counts as added: an error with an empty body
+        arrives here as `{}`, and a listed part cannot be added twice."""
         reply = self.user_call('/lost_parts/', method='POST',
                                data={'inv_part_id': int(inv_part_id), 'lost_quantity': int(quantity)})
-        if (isinstance(reply, list) and reply) or isinstance(reply, dict) and (
-            'detail' in reply
-            or 'non_field_errors' in reply
-            or any(k in reply and not (type(reply[k]) is int and reply[k] >= 1) for k in ('inv_part_id', 'lost_quantity'))
-        ):
+        if not isinstance(reply, dict) or _optional_id(reply.get('lost_part_id')) is None or 'detail' in reply or 'non_field_errors' in reply:
             raise SourceError('Rebrickable refused the Lost Part')
         return reply
 

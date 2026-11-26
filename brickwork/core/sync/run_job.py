@@ -53,6 +53,11 @@ def _interrupted(db, run, plans, form_data, name):
     that set's rows together): its result is `unknown`, because Brick Work cannot tell whether the call arrived. Rows with no kept result are
     `failed`, they did not go. `run.retry_send` sends again the `failed` ones, and an `unknown` one only when the person asks for that row."""
     stage = {'status': 'failed', 'message': INTERRUPTED_MESSAGE}
+    if name == 'lost_out':
+        wanted = set(form_data.get('lostsend') or ())
+        saved = [r for r in (run.get('lost_out') or {}).get('rows', ()) if r.get('key') in wanted and r.get('outcome') == 'sent']
+        if wanted and len(saved) == len(wanted):      # the restart came after the last Lost Part was saved: nothing is left to check
+            return dict(status='done', counts=dict(sent=len(saved), failed=0, waiting=0))
     if name == 'send' and plans.get('send'):
         plan = sync.load_plan(db, plans['send']['id'], 'send')
         kept = plan.get('results') or {}
@@ -304,7 +309,7 @@ def _run_one(db, job, http):
                 gone_out = sum(1 for r in (run.get('lost_out') or {}).get('rows', ()) if r.get('outcome') == 'sent')
                 with transaction(db):
                     audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None,
-                          dict(plan=run_id + ':lost', kind='lost_parts', counts=dict(sent=gone_out), interrupted=True, run=run_id, pulls=sync_run.pull_events(run)))
+                          dict(plan=run_id, kind='lost_parts', counts=dict(sent=gone_out), interrupted=True, run=run_id, pulls=sync_run.pull_events(run)))
             with transaction(db):
                 if finished:
                     _set_step(db, job_id, name, 'done')

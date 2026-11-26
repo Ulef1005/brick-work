@@ -473,15 +473,17 @@ def test_the_result_with_one_of_two_pulls_undone_still_offers_undo(three_sends, 
 
 def test_a_run_where_only_lost_parts_were_cut_off_shows_in_last_runs(client, remote, pair):  # noqa: F811
     from brickwork.core.sync import lost_parts_send
-    from tests.test_bw_sync_lost_parts import copy_of
+    from tests.test_bw_sync_lost_parts import copy_of, raw
     csrf = connected(client, pair)
     with db_of(pair) as db:
         copy_of(db, '1000-1', marks=[('3001', '4', 3)])
     remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]      # a listed part carries its inventory id, so the row can be ticked
     run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
     key = lost_parts_send.row_key('1000-1', '3001', 4, False)
     with db_of(pair) as db:
         job_id = run_job.queue(db, run_id, MultiDict([('lostsend', key)]))
+        assert [s[0] for s in db.execute('SELECT name FROM job_step WHERE job_id=?', (job_id,))] == ['lost_out']
         run = sync_run.load(db, run_id)[0]
         run['stages'] = {'lost_out': {'status': 'started'}}
         sync._store_plan(db, run)
@@ -491,3 +493,24 @@ def test_a_run_where_only_lost_parts_were_cut_off_shows_in_last_runs(client, rem
         run_job.drain(db)
     runs = [text(r) for r in soup(client.get('/workbench/sync/rebrickable')).select('[data-rb-runs] .sr-run')]
     assert any('Lost Parts: ' in r and 'Interrupted' in r for r in runs), runs
+
+
+def test_send_again_keeps_the_job_error_while_another_stage_is_partly_failed(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    order, _ = _interrupt(pair, run_id)
+    with db_of(pair) as db:
+        run = sync_run.load(db, run_id)[0]
+        run['stages']['lost_out'] = dict(status='partial', counts=dict(sent=0, failed=1, waiting=0))
+        sync._store_plan(db, run)
+        db.execute("UPDATE job SET error='Some changes were not made; see the result' WHERE id=?", (run['job'],))
+        db.commit()
+    client.post(f'/workbench/sync/rebrickable/run/{run_id}/retry', data={'csrf_token': _csrf(client), 'also': order[0]})
+    with db_of(pair) as db:
+        assert db.execute('SELECT error FROM job WHERE id=?', (sync_run.load(db, run_id)[0]['job'],)).fetchone()[0]
+
+
+def test_lost_parts_saved_before_the_restart_are_not_called_interrupted():
+    run = dict(lost_out=dict(rows=[dict(key='a', outcome='sent'), dict(key='b', outcome='sent')]))
+    assert run_job._interrupted(None, run, {}, dict(lostsend=['a', 'b']), 'lost_out')['status'] == 'done'
+    run['lost_out']['rows'][1].pop('outcome')
+    assert run_job._interrupted(None, run, {}, dict(lostsend=['a', 'b']), 'lost_out')['status'] == 'failed'

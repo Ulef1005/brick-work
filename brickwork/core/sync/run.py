@@ -952,11 +952,14 @@ def undo_run(db, event_id):
     return ids
 
 
-def _job_send_done(db, job_id):
-    """Send again sent what the job could not: its send step is done, and the job keeps no error unless another step still failed."""
+def _job_send_done(db, run):
+    """Send again sent what the job could not: its send step is done, and the job keeps no error unless another stage still failed, in
+    whole or in part."""
+    job_id = run['job']
+    left = any(st.get('status') in ('failed', 'partial') or (st.get('counts') or {}).get('key_rejected') for st in run['stages'].values())
     with transaction(db):
         db.execute("UPDATE job_step SET state='done', count=total, error=NULL, error_code=NULL, retry_at=NULL WHERE job_id=? AND name='send'", (job_id,))
-        if not db.execute("SELECT 1 FROM job_step WHERE job_id=? AND state='failed'", (job_id,)).fetchone():
+        if not left:
             db.execute("UPDATE job SET error=NULL, error_code=NULL WHERE id=? AND state='done'", (job_id,))
 
 
@@ -991,7 +994,7 @@ def retry_send(db, run_id, *, http=None, also=()):
                 audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id, pulls=pull_events(run)))
         else:
             run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
-            if run.get('job') and all(r['result'] in ('sent', 'unchanged') for r in rows):
-                _job_send_done(db, run['job'])
-        sync._store_plan(db, run)
+        sync._store_plan(db, run)      # the run first: if this fails, the job must not say more than the run does
+        if run.get('job') and all(r['result'] in ('sent', 'unchanged') for r in run['stages']['send']['results']):
+            _job_send_done(db, run)
         return run

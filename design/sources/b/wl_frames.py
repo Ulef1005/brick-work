@@ -1,4 +1,4 @@
-"""Wishlist (#654) and the Wishlist set detail (#655), milestone U: drafts for Ulf's review (not approved).
+"""Wishlist (#654) and the Wishlist set detail (#655), milestone U: redrawn to the built app and approved by Ulf on 2026-11-23 (design/APPROVALS.md).
 
 A wanted set answers one question: can I buy it now at a price I accept? Per set: the picture, number, name, theme and year, what I want
 (condition, count), my max, the price now for that condition with the gap to the max, and one state word. The min/avg/max strip and the
@@ -172,7 +172,7 @@ def detail_cards():
                 f'<div style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--tw-text-2)">{ic("chev", 14)}Wish details</div>', 'Edit')
     prices = card('Prices',
                   '<div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 15px var(--tw-font);flex:1">Used</span><span class="big" style="font-size:24px;line-height:28px">€79.14</span><span class="mono" style="font-size:12px;color:var(--tw-text-muted)">avg</span></div>'
-                  + strip(46) + '<div class="mono" style="display:flex;justify-content:space-between;font-size:12px;color:var(--tw-text-2)"><span>min €5.44</span><span>max €280.00</span></div>'
+                  + strip(27) + '<div class="mono" style="display:flex;justify-content:space-between;font-size:12px;color:var(--tw-text-2)"><span>min €5.44</span><span>max €280.00</span></div>'
                   '<div class="mono" style="font-size:11.5px;color:var(--tw-text-muted)">2 sold · 6 months · 4 Nov · fresh</div>'
                   + money_row('New', 'No sales', '') .replace('font-weight:600', 'font-weight:400;color:var(--tw-text-muted)')
                   + '<div style="font-size:13px;color:var(--tw-text-2)">One price so far, from 4 Nov. Update price adds another, and a trend line follows.</div>'

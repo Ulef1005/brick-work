@@ -18,3 +18,9 @@ The decks are Slides artifacts on claude.ai (private to the owner); the PDFs her
 | V — Question pages on the site | Seven question pages on the site that answer a search and end in the demo | Built before v1.2, live with the v1.2.0 tag on 23 Nov | [deck](https://claude.ai/artifact/3YgdKdCfJV94jHwNV3X64t) | [status report PDF](v-question-pages.pdf) |
 
 Milestone U's handoff for the next agent is [u-brand-and-redesign-handoff.md](u-brand-and-redesign-handoff.md).
+
+## Handoffs
+
+Dated records of a milestone built by several agents. A record is not kept up to date: the live status is on the GitHub issues.
+
+- [N: Sync and files, as of 22 November 2026](n-handoff.md), gate #525

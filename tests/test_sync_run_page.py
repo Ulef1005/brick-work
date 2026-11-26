@@ -495,6 +495,32 @@ def test_a_run_where_only_lost_parts_were_cut_off_shows_in_last_runs(client, rem
     assert any('Lost Parts: ' in r and 'Interrupted' in r for r in runs), runs
 
 
+@pytest.mark.parametrize('saved', [True, False])
+def test_a_cut_off_lost_parts_stage_keeps_a_record_whether_or_not_every_row_was_saved(client, remote, pair, saved):  # noqa: F811
+    from brickwork.core.sync import lost_parts_send
+    from tests.test_bw_sync_lost_parts import copy_of, raw
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
+    key = lost_parts_send.row_key('1000-1', '3001', 4, False)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, MultiDict([('lostsend', key)]))
+        run = sync_run.load(db, run_id)[0]
+        run['stages'] = {'lost_out': {'status': 'started'}}
+        if saved:
+            run['lost_out']['rows'][0]['outcome'] = 'sent'
+        sync._store_plan(db, run)
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
+        db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
+        db.commit()
+        run_job.drain(db)
+    row = text(soup(client.get('/workbench/sync/rebrickable')).select_one('[data-rb-runs] .sr-run'))
+    assert 'Lost Parts: ' in row and ('Interrupted' in row) is not saved, row
+
+
 def test_send_again_keeps_the_job_error_while_another_stage_is_partly_failed(three_sends, client):  # noqa: F811
     pair, run_id, keys = three_sends
     order, _ = _interrupt(pair, run_id)
@@ -514,3 +540,17 @@ def test_lost_parts_saved_before_the_restart_are_not_called_interrupted():
     assert run_job._interrupted(None, run, {}, dict(lostsend=['a', 'b']), 'lost_out')['status'] == 'done'
     run['lost_out']['rows'][1].pop('outcome')
     assert run_job._interrupted(None, run, {}, dict(lostsend=['a', 'b']), 'lost_out')['status'] == 'failed'
+
+
+def test_a_second_send_again_repairs_a_job_the_first_one_could_not_write(three_sends, client, monkeypatch):  # noqa: F811
+    pair, run_id, keys = three_sends
+    order, _ = _interrupt(pair, run_id)
+    real = sync_run._job_send_done
+    monkeypatch.setattr(sync_run, '_job_send_done', lambda db, run: None)       # the job write is lost
+    url = f'/workbench/sync/rebrickable/run/{run_id}/retry'
+    client.post(url, data={'csrf_token': _csrf(client), 'also': order[0]})
+    monkeypatch.setattr(sync_run, '_job_send_done', real)
+    client.post(url, data={'csrf_token': _csrf(client)})
+    with db_of(pair) as db:
+        job_id = sync_run.load(db, run_id)[0]['job']
+        assert db.execute("SELECT state FROM job_step WHERE job_id=? AND name='send'", (job_id,)).fetchone()[0] == 'done'

@@ -305,11 +305,13 @@ def _run_one(db, job, http):
                     record.update(interrupted=True, run=run_id, pulls=sync_run.pull_events(run))
                 with transaction(db):
                     audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None, record)
-            if name == 'lost_out' and not finished:      # the same way back when only Lost Parts were cut off; counted from the rows known to have gone out
+            if name == 'lost_out':      # its record in the sync log, as for the sends; counted from the rows known to have gone out
                 gone_out = sum(1 for r in (run.get('lost_out') or {}).get('rows', ()) if r.get('outcome') == 'sent')
+                record = dict(plan=run_id, kind='lost_parts', counts=dict(sent=gone_out))
+                if not finished:
+                    record.update(interrupted=True, run=run_id, pulls=sync_run.pull_events(run))
                 with transaction(db):
-                    audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None,
-                          dict(plan=run_id, kind='lost_parts', counts=dict(sent=gone_out), interrupted=True, run=run_id, pulls=sync_run.pull_events(run)))
+                    audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None, record)
             with transaction(db):
                 if finished:
                     _set_step(db, job_id, name, 'done')

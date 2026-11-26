@@ -979,6 +979,8 @@ def retry_send(db, run_id, *, http=None, also=()):
         if not again:
             if any(r['result'] == 'unknown' for r in stage['results']):
                 raise errors.ValidationFailed('Only a row that may have gone out is left. Check it, then choose Send it too on that row')
+            if run.get('job'):
+                _job_send_done(db, run)      # an earlier Send again may have stored the run and then failed to write the job
             raise errors.ValidationFailed('Everything this run sent went through')
         result = sync.apply_send(db, send['id'], again, http=http)
         kept_unknown = [r for r in stage['results'] if r['result'] == 'unknown' and r['key'] not in again]    # a row left out stays as it was, whatever the send plan says of it

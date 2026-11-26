@@ -493,7 +493,7 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
 
         def _warn():
             if state == 'change' and (removed or removed_ids) and not added:      # something of the old count is gone and the new one is not there
-                row['gone'] = _gone(row)
+                row['gone'] = _gone(row, tried=bool(row.get('put_back_failed')))
 
         try:
             if state == 'add':
@@ -514,16 +514,19 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
                     try:
                         added_id = _reply_lost_part_id(client.lost_part_add(row['inv_part_id'], row['after']))
                         added = True
+                        row.pop('put_back_failed', None)
                     except (adapters.KeyRejected, adapters.RemoteBudgetExceeded, adapters.WaitingForBudget):
                         raise
                     except Exception:
                         back = _put_back(client, row)
                         if back is None:
+                            row['put_back_failed'] = True      # a retry that stops again must not say that nothing tried
                             reason = row['gone'] = _gone(row, tried=True)      # kept on the row: a later pause or refused key shows it again
                         else:      # the old count is there again, under a new id: a retry starts over from it
                             reason = f"Rebrickable did not take the new count. The old count, {row['before']}, was put back."
                             row['ids'], row['ids_complete'] = [back], True
                             removed, removed_ids = False, []
+                            row.pop('put_back_failed', None)
                             row.pop('removed_ids', None)
                         _save_progress()
                         row['ticked'] = True

@@ -1137,6 +1137,29 @@ def test_a_key_refused_on_a_second_pass_still_names_what_an_earlier_pass_removed
     assert 'it had 1' in [f['reason'] for f in stage['failed'] if f['part_no'] == '3023'][0]
 
 
+def test_a_paused_send_still_names_a_row_that_already_failed_in_the_same_run(client, remote, pair, monkeypatch):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3), ('3023', '15', 2)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1), raw('1000-1', '3023', 15, 1, number=2)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
+    calls = []
+
+    def add(self, inv, quantity):                      # the first row: the new count and the put-back fail; the second row: the budget pauses
+        calls.append(quantity)
+        if len(calls) <= 2:
+            raise base.SourceError('Rebrickable refused the Lost Part')
+        raise base.WaitingForBudget(None, '2026-11-25T00:00:00+00:00')
+    monkeypatch.setattr(adapters.RebrickableUser, 'lost_part_add', add)
+    keys = [lost_parts_send.row_key('1000-1', '3001', 4, False), lost_parts_send.row_key('1000-1', '3023', 15, False)]
+    apply_run(client, csrf, run_id, lostsend=keys)
+    with db_of(pair) as db:
+        stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
+    assert stage['counts']['failed'] == 1 and stage['counts']['waiting'] == 1
+    assert 'could not put it back' in stage['message'] and 'stopped before putting it back' in stage['message']
+
+
 def test_a_refused_key_makes_what_was_not_tried_failed_not_waiting(client, remote, pair, monkeypatch):
     csrf = connected(client, pair)
     with db_of(pair) as db:

@@ -482,7 +482,7 @@ def step_progress(source, run_id):
         rows = {r['key']: r for r in sync_run.rows(db, run, plans)} if interrupted else {}
         undo_listed = bool(interrupted) and _undo_listed(_runs(db, source), run_id)
         events = sync_run.pull_events(run)
-        pull_undone = bool(interrupted and events and db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (events[0],)).fetchone())
+        pull_undone = bool(interrupted and events and all(db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (e,)).fetchone() for e in events))      # one of two undone: not "the pull"
     stages = {s['name']: s for s in info['stages']}
     send = run['stages'].get('send') or {}
     sent_rows = [r for r in send.get('results', ()) if r['result'] in ('sent', 'unchanged')]

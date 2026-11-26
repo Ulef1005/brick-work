@@ -270,7 +270,7 @@
 {% if pull_done and pull_bad and not pull_good %}<h2>The pull was not applied {{ tag('Failed', true, true) }}</h2>
 <p class="sr-lede">Nothing here changed. The result page says why.</p>
 {% elif pull_done and pull_bad %}<h2>The pull was applied in part {{ tag('Failed', true, true) }}</h2>
-<p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes were applied here. One part was not. The result page says which and why.</p>
+<p class="sr-lede">{% if pull_undone %}This pull was undone. One part had not been applied. The result page says which and why.{% else %}{{ '{:,}'.format(pull_changes) }} changes were applied here. One part was not. The result page says which and why.{% endif %}</p>
 {% elif pull_done %}<h2>Pull applied {{ tag('Done') }}</h2>
 <p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes applied here, in one step. {% if interrupted and pull_undone %}This pull was undone.{% elif interrupted %}They stay done.{% if undo_in_last_runs and can_edit %} Undo for this pull is in Last runs, where this run is listed as Interrupted.{% endif %}{% else %}Undo for the run stays on the result page.{% endif %}</p>
 {% else %}<h2>Applying the pull</h2>

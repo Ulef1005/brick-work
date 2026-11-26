@@ -60,7 +60,7 @@ Cloud thread, 22.11.2026. Written so another agent could pick up the rest of N; 
 
 - BrickLink API store registration (#521) and Brick Owl per-endpoint quotas (#522).
 - The file type of "Part Runner and order files" (#523).
-- Each page still needs its check against a real account on lego-test (the #457 pattern). No cloud session has keys.
+- Each page still needs its check against a real account on the test instance (the #457 pattern). No cloud session has keys.
 
 ## How to run the gate in a cloud container
 

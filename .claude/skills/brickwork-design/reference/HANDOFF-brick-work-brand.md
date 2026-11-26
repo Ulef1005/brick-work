@@ -16,7 +16,7 @@ Answers `2026-10-brick-work-brand-handoff`. The owner chose **D, Courses in prog
 - `manifest.webmanifest`, `brick-work.css`.
 - `README-brick-work.md` for the kit.
 - `skills/brick-work-brand/SKILL.md`: Claude skill so later sessions apply the brand correctly.
-- `Brick Work Specimen.dc.html`: A to D, light and dark, with favicon, home-screen, lockup and top-bar use.
+- `Brick Work Specimen.dc.html`: A to D, light and dark, with favicon, home-screen, lockup and top-bar use (removed from `design/components/` with `BW Panel.dc.html` on 2026-11-26, Ulf: "Delete both (Recommended)"; git history keeps them).
 
 ## For Phase 2b
 - Top bar: 24 px mark + "Brick Work" in Inter 600, clay controls on the right. The mark is the only teal on screen.
@@ -27,4 +27,3 @@ Answers `2026-10-brick-work-brand-handoff`. The owner chose **D, Courses in prog
 - Contrast not measured numerically: confirm AA for any text on `--bw-accent` in a rendered build.
 - Lockup SVGs use live Patrick Hand text; outline them if shipped without the font.
 - 16 px favicon: studs blur into the edge; confirm on device.
-- The `Brick Work Specimen` page still has A to C for reference; delete when no longer needed.

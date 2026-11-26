@@ -53,12 +53,12 @@ step() {
 }
 
 # Repo Gates phase 1 (ai-wiki wiki/projects/repo-gates.md): one test or browser run at a time on this machine.
-# heavy <cmd...> runs <cmd> under the machine lock ~/.cache/gate.lock, outside CI and only where /usr/bin/lockf
-# exists (macOS); a nested gate (GATE_LOCK_HELD set by the outer one) does not lock again. Waiting is announced,
-# and a wait longer than GATE_WAIT seconds (default 1800) fails the step instead of hanging.
+# heavy <program...> runs a program (not a shell function) under the machine lock ~/.cache/gate.lock, outside CI and
+# only where /usr/bin/lockf exists (macOS); a nested gate (GATE_LOCK_HELD set by the outer one) does not lock again.
+# Waiting is announced, and a step that waits longer than GATE_WAIT seconds (default 1800) fails instead of hanging.
 heavy() {
   if [[ -n ${CI:-} || -n ${GATE_LOCK_HELD:-} || ! -x /usr/bin/lockf ]]; then "$@"; return; fi
-  local lock="$HOME/.cache/gate.lock" wait=${GATE_WAIT:-1800} rc=0
+  local lock="$HOME/.cache/gate.lock" wait="${GATE_WAIT:-1800}" rc=0
   mkdir -p "$HOME/.cache" || return
   /usr/bin/lockf -k -t 0 "$lock" true 2>/dev/null || rc=$?
   if (( rc == 75 )); then

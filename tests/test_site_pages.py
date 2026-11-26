@@ -865,14 +865,14 @@ def test_coming_from_pages_carry_breadcrumb_data_and_the_old_collection_links_po
 
 
 def test_install_options_footer_marks_and_no_unapproved_names(site):
-    """#727: /install/ and the home install section name Unraid, Synology Container Manager and Portainer (text only); the two untested cards say so;
-    every built page carries both trademark lines; no unapproved platform name appears anywhere."""
+    """#727: /install/ and the home install section name Unraid, Synology Container Manager and Portainer (text only); all three cards say they are untested on a real device (#529);
+    every built page carries both trademark lines; no unapproved platform name appears on a built site page."""
     page = (site / 'install/index.html').read_text()
     home = (site / 'index.html').read_text()
     for text in (page, home):
         for name in ('Unraid', 'Synology Container Manager', 'Portainer'):
             assert f'class="optname">{name}</h' in text, name
-        assert text.count('Not yet tested on a real device.') == 2
+        assert text.count('Not yet tested on a real device.') == 3
         assert 'Pick your system and follow its guide.' in text
     assert 'On your NAS or home server' in page and 'Docker Desktop on Windows or Mac' in page and 'After you install' in page
     assert '<h2>Docker Compose</h2>' in page and '<h3>Docker Compose</h3>' in home

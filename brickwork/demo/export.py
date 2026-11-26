@@ -302,8 +302,9 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True, world='s
             .replace('/*MANIFEST*/null', json.dumps({k: manifest[k] for k in ('base', 'note', 'pages', 'gets', 'pictures') if k in manifest})))
     (out / 'demo-shim.js').write_text(shim, encoding='utf-8')
     start = base + manifest['pages']['/collection/sets']
-    (out / 'index.html').write_text(f'<!doctype html><meta charset="utf-8"><title>Brick Work demo</title>'
-                                    f'<meta http-equiv="refresh" content="0; url={start}"><a href="{start}">Open the demo</a>\n',
+    (out / 'index.html').write_text(f'<!doctype html><html lang="en"><meta charset="utf-8"><title>Brick Work demo: try it in your browser</title>'
+                                    f'<meta name="viewport" content="width=device-width, initial-scale=1">'
+                                    f'<meta http-equiv="refresh" content="0; url={start}"><h1>Brick Work demo</h1><p><a href="{start}">Open the demo</a></p>\n',
                                     encoding='utf-8')
     (out / 'demo-manifest.json').write_text(json.dumps(manifest, indent=1), encoding='utf-8')
     findings = check(out)

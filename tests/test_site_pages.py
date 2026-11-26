@@ -553,6 +553,10 @@ def test_robots_and_sitemaps_point_at_this_sites_address(site):
     base = origin() + site_base()
     assert (site / 'robots.txt').read_text() == (f'User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\n'
                                                 f'Sitemap: {base}sitemap.xml\n')
+    assert (site / 'favicon.ico').read_bytes() == (site / 'assets/favicon.ico').read_bytes()
+    security = (site / '.well-known/security.txt').read_text()
+    assert f'Canonical: {base}.well-known/security.txt' in security and 'Contact: https://github.com/' in security and '@' not in security
+    assert security.count('Expires: ') == 1
     ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
     index = ET.fromstring((site / 'sitemap.xml').read_text())
     assert [e.find(ns + 'loc').text for e in index] == [f'{base}sitemap-pages.xml', f'{base}docs/sitemap.xml']

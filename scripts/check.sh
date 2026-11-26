@@ -121,8 +121,13 @@ runtimes() {
 
 secrets() {
   if [[ -n ${GITHUB_ACTIONS:-} ]]; then
-    echo "Secret scan: the workflow's gitleaks action (shard 1) is this run's one scan (Repo Gates)."
-    return 0
+    # the step after the gitleaks action (shard 1, where this step runs) sets the marker only when the scan succeeded
+    if [[ ${GATE_SECRET_SCAN:-} == "done" ]]; then
+      echo "Secret scan: the workflow's gitleaks action (shard 1) is this run's one scan (Repo Gates)."
+      return 0
+    fi
+    echo "ERROR: on GitHub the secret scan is the workflow's gitleaks step, and it did not run or did not pass (no GATE_SECRET_SCAN marker)"
+    return 1
   fi
   if ! command -v gitleaks >/dev/null 2>&1; then
     echo "NOTE: gitleaks is not installed; skipping secret scan."

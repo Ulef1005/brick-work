@@ -231,20 +231,25 @@ def long_applying(ph):
     return head('Rebrickable', 'Running 4,000 changes, started 19 Nov, 15:02', ph) + N.steps('Run', ph) + done + top
 
 
-# ---- 96 an interrupted run (#685, brick-work-n's build, 24.11.) ----------------------------------------------------------
-# After a restart, finished stages stay done and a send in flight is never repeated (a send is not safe to repeat). The run shows as interrupted with
-# the rows that went out; Send again sends only the rows not sent, and a Not known row stays out until the person chooses Send it too or Leave it.
+# ---- 96 an interrupted run (#685, redrawn to the build in #718; Ulf, 25.11.: "Redraw to the app") -------------------------------
+# After a restart, finished stages stay done and a send in flight is never repeated (a send is not safe to repeat). The run lists only the rows that
+# did not go out, the Not known row first with a "Send it too" checkbox (off); rows that went out are counted. The app lists the first 20 rows and then
+# "and N more not sent"; the frame draws the first three and counts the rest.
 def interrupted(ph):
     done = card(f'Pull applied {tag("Done")}', '<p class="n">3,200 changes applied here, in one step. They stay done. Undo for this pull is in Last runs, where this run is listed as Interrupted.</p>')
-    sent = ''.join(f'<div class="nrow"><div class="id"><b>{a}</b><span>{b}</span></div>{"" if ph else tag(c, k)}</div>' if not ph else
-                   f'<div class="nrow"><div class="id"><b>{a}</b><span>{b}</span><div style="margin-top:6px">{tag(c, k)}</div></div></div>'
-                   for a, b, c, k in (('7213-1 · Off-Road Fire Truck & Fireboat', 'Quantity 2 sent to Rebrickable', 'Sent', ''),
-                                      ('7938-1 · Passenger Train', 'Lost Parts: 2 parts removed', 'Sent', ''),
-                                      ('10254-1 · Winter Holiday Train', 'Add 1 to Main collection · the server restarted while this was going out', 'Not known', 'hatch')))
-    choice = f'<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 4px">{btn("Send it too", "sec sm")}{btn("Leave it", "q sm")}</div>'
-    out = card(f'Sending {tag("Interrupted", "hatch")}', f'<p class="mono" style="{small}">640 of 800 sent · 1 not known · 159 not sent</p>' + sent + choice
-               + '<div class="ninfo">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on Rebrickable, then choose Send it too or Leave it. Send again sends the 159 not sent; the Not known row stays out until you choose.</div>'
-               f'<div style="display:flex;gap:10px;flex-wrap:wrap">{btn("Send again", "sec sm")}{btn("Open Jobs", "q sm")}</div>')
+    also = ('<label style="display:flex;align-items:center;gap:8px;min-height:44px;font:500 15px var(--tw-font)">'
+            '<span aria-hidden="true" style="width:20px;height:20px;border:2px solid var(--tw-text);border-radius:3px;background:var(--tw-surface);flex:none"></span>Send it too</label>')
+    rows = ''
+    for name, sub, state, kind, extra in (('Winter Holiday Train', '10254-1 · add 1 to main collection', 'Not known', 'hatch', also),
+                                          ('Fire Station', '60320-1 · add 1 to main collection', 'Not sent', 'dash', ''),
+                                          ('Lighthouse Point', '31051-1 · add 1 to main collection', 'Not sent', 'dash', '')):
+        who = f'<div class="id"><b>{name}</b><span>{sub}</span>' + (f'<div style="margin-top:6px">{tag(state, kind)}</div>' if ph else '') + extra + '</div>'
+        rows += f'<div class="nrow">{who}{"" if ph else tag(state, kind)}</div>'
+    link = 'font:600 15px var(--tw-font);color:var(--tw-accent-text);display:inline-flex;align-items:center;min-height:44px'
+    out = card(f'Sending {tag("Interrupted", "hatch")}', f'<p class="mono" style="{small}">640 of 800 sent · 1 not known · 159 not sent</p>' + rows
+               + f'<p class="mono" style="{small}">and 157 more not sent</p>'
+               + '<div class="ninfo">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on Rebrickable. Tick Send it too only if it is not there, then send the rest again.</div>'
+               f'<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">{btn("Send again", "sec sm")}<span style="{link}">Open Jobs</span><span style="{link}">Open the result</span></div>')
     return head('Rebrickable', 'Interrupted 19 Nov, 15:31 · the server restarted', ph) + N.steps('Run', ph) + done + out
 
 

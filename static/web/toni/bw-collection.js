@@ -396,6 +396,7 @@
     const picks=[...list.querySelectorAll('[data-bc-pick]')],groupPicks=[...list.querySelectorAll('[data-bc-group-pick]')];
     // Quick chips (Parts, kit 7a) set one of a small family of filters; All clears the family.
     const quick=[...list.querySelectorAll('[data-bc-quick]')],quickKeys=[...new Set(quick.map(b=>b.dataset.bcQuick.split(':')[0]).filter(Boolean))];
+    const srcButtons=[...list.querySelectorAll('[data-bc-src]')],srcPair=b=>{const t=b.dataset.bcSrc,i=t.indexOf(':');return [t.slice(0,i),t.slice(i+1)];};
     const tabs=[...list.querySelectorAll('[data-bc-tab]')],statusButtons=[...list.querySelectorAll('[data-bc-status]')];
     const more=list.querySelector('[data-bc-more]'),loaded=list.querySelector('[data-bc-loaded]');let limit=60,selecting=false,missingExpanded=false;
     /* Paging (4.8d): optional, switched on per list by data-bc-page-size. The main list saves its page with its scroll offset so Back returns to the same page. */
@@ -473,6 +474,8 @@
     const params=new URLSearchParams(location.search);
     if(tabs.length){const requested=params.get('inventory')||saved?.filters?.inventory;if(tabs.some(t=>t.dataset.bcTab===requested))inventory=requested;}
     filterControls.forEach(c=>{if(params.has(c.dataset.bcFilter)){c.value=params.get(c.dataset.bcFilter);if(!c.value)c.value=preset(c);}});
+    // #551: a Source filter that no chip offers any more (a set archived, a run undone, a stale link) is dropped, not kept invisible; a select drops it by itself.
+    filterControls.forEach(c=>{if(c.type==='hidden'&&c.value&&!srcButtons.some(b=>{const [k,v]=srcPair(b);return k===c.dataset.bcFilter&&v===c.value;}))c.value='';});
     function filters(){return {...Object.fromEntries(filterControls.map(c=>[c.dataset.bcFilter,c.value])),...(tabs.length && inventory!=='extras'?{inventory}:{})};}
     function selection(){if(virtual)return selectedInstances(records.map(r=>({checked:r.selected,entity:r.entity,ids:r.ids})));return selectedInstances([...list.querySelectorAll('[data-bc-selected]')].map(c=>({checked:c.checked,hidden:c.closest('[data-bc-row]').hidden,entity:c.dataset.entity,ids:JSON.parse(c.value)})));}
     if(virtual)mainSelection=selection;
@@ -623,10 +626,11 @@
       const apply=list.querySelector('[data-bc-apply]');if(apply)apply.textContent='Show '+resultCount(result.length,listNoun(root.dataset.type),singularNoun(root.dataset.type));if(loaded)loaded.textContent='Loaded '+Math.min(limit,result.length)+' of '+result.length;
       if(more)more.hidden=limit>=result.length;updatePager(result.length);
       const empty=list.querySelector('[data-bc-empty]');if(empty)empty.hidden=result.length>0;
-      if(chips){chips.replaceChildren();const active=[...(search?.value?[{label:'Search: '+search.value,clear:()=>search.value=''}]:[]),...filterControls.filter(c=>c.value&&c.value!==preset(c)).map(c=>({label:c.parentElement.firstChild.textContent.trim()+': '+c.options[c.selectedIndex].textContent,clear:()=>c.value=preset(c)}))];active.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a.label+' ×';b.setAttribute('aria-label','Remove '+a.label);b.addEventListener('click',()=>{a.clear();render(true);});chips.append(b);});}
+      if(chips){chips.replaceChildren();const active=[...(search?.value?[{label:'Search: '+search.value,clear:()=>search.value=''}]:[]),...filterControls.filter(c=>c.options&&c.value&&c.value!==preset(c)).map(c=>({label:c.parentElement.firstChild.textContent.trim()+': '+c.options[c.selectedIndex].textContent,clear:()=>c.value=preset(c)}))];active.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a.label+' ×';b.setAttribute('aria-label','Remove '+a.label);b.addEventListener('click',()=>{a.clear();render(true);});chips.append(b);});}
       picks.forEach(b=>b.setAttribute('aria-pressed',String(filters()[b.dataset.bcPick]===b.dataset.value)));
       groupPicks.forEach(b=>b.setAttribute('aria-pressed',String((group?.value||'')===b.dataset.bcGroupPick)));
       quick.forEach(b=>{const [k,v]=b.dataset.bcQuick.split(':');b.setAttribute('aria-pressed',String(k?filters()[k]===v:quickKeys.every(x=>!filters()[x])));});
+      srcButtons.forEach(b=>{const [k,v]=srcPair(b);b.setAttribute('aria-pressed',String((filters()[k]||'')===v));});
       statusButtons.forEach(b=>{const on=b.dataset.bcStatus===(filters().status||'');b.setAttribute('aria-pressed',String(on));if(bpSets)b.classList.toggle('on',on);});
       list.querySelectorAll('[data-bc-view]').forEach(b=>{const on=b.dataset.bcView===container.dataset.view;b.setAttribute('aria-pressed',String(on));if(bpSets)b.classList.toggle('on',on);});
       if(bpSets)bpState(result);
@@ -673,6 +677,8 @@
       const setFilter=(k,v)=>{const control=filterControls.find(c=>c.dataset.bcFilter===k);if(control)control.value=v;};
       quickKeys.forEach(k=>setFilter(k,''));const [k,v]=b.dataset.bcQuick.split(':');if(k)setFilter(k,v);render(true);
     }));
+    // #551 (frame 45): the two Source chip rows, Added via and Last synced from, combine with each other and with the status tabs; a pressed chip clears its row.
+    srcButtons.forEach(b=>b.addEventListener('click',()=>{const [k,v]=srcPair(b),control=filterControls.find(c=>c.dataset.bcFilter===k);if(control){const on=control.value===v;srcButtons.forEach(o=>{if(srcPair(o)[0]===k)o.setAttribute('aria-pressed','false');});control.value=on?'':v;}render(true);}));
     statusButtons.forEach(b=>b.addEventListener('click',()=>{const control=filterControls.find(c=>c.dataset.bcFilter==='status');if(control)control.value=b.dataset.bcStatus;render(true);}));
     tabs.forEach(b=>b.addEventListener('click',()=>{inventory=b.dataset.bcTab;render(true);const query=new URLSearchParams(location.search);query.set('inventory',inventory);try{window.history?.replaceState(null,'',location.pathname+'?'+query.toString()+ (location.hash||''));}catch(_){}}));
     list.querySelector('[data-bc-reset]')?.addEventListener('click',()=>{filterControls.forEach(c=>c.value=preset(c));if(search)search.value='';render(true);});

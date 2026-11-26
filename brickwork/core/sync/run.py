@@ -25,6 +25,7 @@ from ..transaction import transaction
 from .. import sync
 from . import adapters, lost_parts, lost_parts_send, part_lists
 
+INTERRUPTED_MESSAGE = 'Interrupted: check what was sent and run again.'     # the message of a stage a restart cut off (`run_job`, `retry_send`)
 SOURCE = 'rebrickable'
 SOURCES = ('rebrickable', 'brickset')
 DIRECTIONS_KEY = 'rebrickable_sync_directions'
@@ -923,6 +924,11 @@ def _apply_lost_out(db, run, wanted, http):
     return result
 
 
+def pull_events(run):
+    """The pull events of a run (the pull and the part-list pull), the ones its Undo takes back."""
+    return [run['stages'][s]['event'] for s in ('pull', 'parts') if (run['stages'].get(s) or {}).get('event') is not None]
+
+
 def undo_run(db, event_id):
     """Undo a pull and the part-list pull of the same run in one step (the run is found by either event). Raises UndoBlocked, and undoes
     nothing, when something it wrote changed since."""
@@ -939,9 +945,10 @@ def undo_run(db, event_id):
     return ids
 
 
-def retry_send(db, run_id, *, http=None):
+def retry_send(db, run_id, *, http=None, also=()):
     """Send again the rows of the run's send stage that did not go through (failed, paused or refused). The send plan keeps what was sent. Under
-    the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry."""
+    the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry. A row whose result is `unknown` (a send a
+    restart cut off: it may have gone out) is sent again only when its key is in `also`; by default it is left."""
     with _Claim(db, run_id):
         run, plans = load(db, run_id)
         send = plans['send']
@@ -950,10 +957,24 @@ def retry_send(db, run_id, *, http=None):
             raise errors.ValidationFailed('This run is still running')
         if not send or not stage or not stage.get('results'):
             raise errors.ValidationFailed('This run sent nothing that can be retried')
-        again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged')]
+        again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged') and (r['result'] != 'unknown' or r['key'] in set(also))]
         if not again:
+            if any(r['result'] == 'unknown' for r in stage['results']):
+                raise errors.ValidationFailed('Only a row that may have gone out is left. Check it, then choose Send it too on that row')
             raise errors.ValidationFailed('Everything this run sent went through')
         result = sync.apply_send(db, send['id'], again, http=http)
-        run['stages']['send'] = dict(status='done', counts=result['counts'], rows=len(result['rows']), results=result['rows'])
+        kept_unknown = [r for r in stage['results'] if r['result'] == 'unknown' and r['key'] not in again]    # a row left out stays as it was, whatever the send plan says of it
+        left_keys = {r['key'] for r in kept_unknown}
+        rows = [r for r in result['rows'] if r['key'] not in left_keys] + kept_unknown
+        counts = {}
+        for r in rows:
+            counts[r['result']] = counts.get(r['result'], 0) + 1
+        left = len(kept_unknown)
+        if left:     # a row that may have gone out is still unchecked: the run stays interrupted, here and in the sync log
+            run['stages']['send'] = dict(status='failed', message=INTERRUPTED_MESSAGE, counts=counts, rows=len(rows), results=rows)
+            with transaction(db):
+                audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id, pulls=pull_events(run)))
+        else:
+            run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
         sync._store_plan(db, run)
         return run

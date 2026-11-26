@@ -481,6 +481,8 @@ def step_progress(source, run_id):
             return redirect(_to(source, 'result', run_id=run_id))
         rows = {r['key']: r for r in sync_run.rows(db, run, plans)} if interrupted else {}
         undo_listed = bool(interrupted) and _undo_listed(_runs(db, source), run_id)
+        events = sync_run.pull_events(run)
+        pull_undone = bool(interrupted and events and db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (events[0],)).fetchone())
     stages = {s['name']: s for s in info['stages']}
     send = run['stages'].get('send') or {}
     sent_rows = [r for r in send.get('results', ()) if r['result'] in ('sent', 'unchanged')]
@@ -490,7 +492,7 @@ def step_progress(source, run_id):
     return _render(source, screen='progress', title=LABEL[source], run=run, info=info, unsaved=_unsaved(source), pstages=stages, interrupted=bool(interrupted), unsent=unsent,
                  sent_count=len(sent_rows), send_total=send.get('rows', 0), unknown_count=sum(1 for u in unsent if u['state'] == 'not known'),
                  unsent_count=sum(1 for u in unsent if u['state'] == 'not sent'), lost_interrupted=_interrupted_stage(run['stages'], 'lost_out'),
-                 undo_in_last_runs=undo_listed, send_it_when=send_it_when,
+                 undo_in_last_runs=undo_listed, pull_undone=pull_undone, send_it_when=send_it_when,
  **_steps(5))
 
 

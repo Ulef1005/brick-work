@@ -934,7 +934,7 @@ def undo_run(db, event_id):
     nothing, when something it wrote changed since."""
     from .. import undo as undoing
     ids = [event_id]
-    for row in db.execute("SELECT new_value FROM event WHERE entity_kind='sync' AND field='run' ORDER BY id DESC LIMIT 200"):
+    for row in db.execute("SELECT new_value FROM event WHERE entity_kind='sync' AND field='run' ORDER BY id DESC"):      # no limit: an older run must not be undone by half
         events = (json.loads(row['new_value']) or {}).get('events', []) if row['new_value'] else []
         if event_id in events:
             ids = list(events)

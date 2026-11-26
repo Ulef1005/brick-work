@@ -376,3 +376,26 @@ def test_the_note_says_when_to_tick_send_it_too(three_sends, client, choice, wor
 def test_send_it_when_matches_what_the_row_would_show(client, unknown, words):  # noqa: F811     the app is built first: importing the web module alone changes the route order
     from brickwork.web.sync_site import _send_it_when
     assert _send_it_when('Brickset', [(a, dict(options=[dict(id=a, label=label)])) for a, label in unknown]) == words
+
+
+def test_after_the_pull_is_undone_the_interrupted_run_says_so(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    _interrupt(pair, run_id)
+    with db_of(pair) as db:
+        events = sync_run.pull_events(sync_run.load(db, run_id)[0])
+    before = text(soup(page_of(client, run_id)))
+    if not events:
+        pytest.skip('this run pulled nothing')
+    assert 'They stay done' in before
+    client.post('/workbench/sync/rebrickable/undo', data={'csrf_token': _csrf(client), 'event': events[0]})
+    after = text(soup(page_of(client, run_id)))
+    assert 'This pull was undone' in after and 'They stay done' not in after
+
+
+def test_with_only_the_unknown_row_left_the_note_asks_for_send_again(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    _interrupt(pair, run_id)
+    assert 'then send the rest again' in text(soup(page_of(client, run_id)))
+    client.post(f'/workbench/sync/rebrickable/run/{run_id}/retry', data={'csrf_token': _csrf(client)})
+    note = text(soup(page_of(client, run_id)))
+    assert 'then choose Send again' in note and 'send the rest again' not in note

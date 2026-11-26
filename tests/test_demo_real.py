@@ -175,3 +175,8 @@ def test_the_invented_worlds_keep_an_empty_element_table(tmp_path):
     dataset.build(tmp_path / 'plain' / 'x.db')
     catalogue = sqlite3.connect(tmp_path / 'plain' / 'catalogue.db')
     assert catalogue.execute('SELECT count(*) FROM element').fetchone()[0] == 0
+
+
+def test_the_design_frames_worlds_keep_the_lines_without_element_ids():
+    from brickwork.demo import frames
+    assert real.Layer.element_ids is True and frames.Layer.element_ids is False

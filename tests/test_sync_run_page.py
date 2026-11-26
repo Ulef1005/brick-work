@@ -408,18 +408,22 @@ def test_one_of_two_pulls_undone_does_not_say_the_pull_was_undone(three_sends, c
         first = sync_run.pull_events(sync_run.load(db, run_id)[0])[0]
     monkeypatch.setattr(sync_run, 'pull_events', lambda run: [first, first + 100000])      # a second pull that is still live
     client.post('/workbench/sync/rebrickable/undo', data={'csrf_token': _csrf(client), 'event': first})
+    with db_of(pair) as db:
+        assert db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (first,)).fetchone()
     assert 'This pull was undone' not in text(soup(page_of(client, run_id)))
 
 
-def test_undo_run_finds_a_run_behind_many_newer_ones(three_sends):  # noqa: F811
+def test_undo_run_finds_a_run_behind_many_newer_ones(three_sends, monkeypatch):  # noqa: F811
+    from brickwork.core import undo
     from brickwork.core.admin import audit
     from brickwork.core.transaction import transaction
     pair, run_id, keys = three_sends
-    _interrupt(pair, run_id)
+    undone = []
+    monkeypatch.setattr(undo, 'undo_event', lambda db, event: undone.append(event))
     with db_of(pair) as db:
-        events = sync_run.pull_events(sync_run.load(db, run_id)[0])
         with transaction(db):
-            audit(db, 'sync:rebrickable', 'run', None, dict(run=run_id, events=events), via='app')
+            audit(db, 'sync:rebrickable', 'run', None, dict(run=run_id, events=[900001, 900002]), via='app')
             for n in range(205):
                 audit(db, 'sync:rebrickable', 'run', None, dict(run=f'later-{n}', events=[]), via='app')
-        assert sync_run.undo_run(db, events[0]) == events
+        assert sync_run.undo_run(db, 900001) == [900001, 900002]      # not found would give [900001] alone
+    assert undone == [900002, 900001]

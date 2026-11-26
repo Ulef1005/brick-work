@@ -53,8 +53,16 @@ UNDO_NOTE = 'Undo cannot reverse a remote change on Rebrickable.'
 
 ADD_ONLY_CHANGE = 'Rebrickable cannot change a count in place, and Add only removes nothing.'
 
+# Locked for 1.2.1 (the owner, 2026-11-26, #469): the planner cannot name the inventory id of a part that is not listed yet, and a restart
+# between a change's removal and its add names nothing. While True the setting reads off, a run planned earlier sends no Lost Parts, and no
+# route can switch the send on. Pulling Lost Parts in is not affected. The code below stays for the release that fixes both.
+SEND_LOCKED = True
+LOCKED_MESSAGE = 'Sending Lost Parts to Rebrickable is not available in this version.'
+
 def enabled(db):
-    """Whether sending Lost Parts to Rebrickable is switched on in `main.setting` (off by default)."""
+    """Whether sending Lost Parts to Rebrickable is switched on in `main.setting` (off by default; never while `SEND_LOCKED`)."""
+    if SEND_LOCKED:
+        return False
     row = db.execute('SELECT value FROM main.setting WHERE key=?', (KEY,)).fetchone()
     return bool(row and str(row[0]).strip().lower() in ('1', 'true', 'yes', 'on'))
 

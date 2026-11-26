@@ -148,12 +148,12 @@
 </div>
 <div class="sr-col">
 <section class="sr-card" data-rb-lost><h2>Lost Parts</h2>{{ segment('lost_dir', 'lost', directions.lost) }}
-<p class="sr-lede">Marks the parts on your Lost Parts list as missing on the matching copy, and sends the parts you find or newly miss here back.</p>
+<p class="sr-lede">Marks the parts on your Lost Parts list as missing on the matching copy{% if not send_locked %}, and sends the parts you find or newly miss here back{% endif %}.</p>
 <h3 class="sr-sub">Into Brick Work: which count wins</h3>
 <div class="sr-radios">{% for value, label, note in lost_rules %}<label class="sr-radio"><input type="radio" name="lost_rule" value="{{ value }}" {{ 'checked' if value == lost_rule }}><span><b>{{ label }}</b><span>{{ note }}</span></span></label>{% endfor %}</div>
-<h3 class="sr-sub">To Rebrickable</h3>
+{% if send_locked %}<input type="hidden" name="send_rule" value="{{ send_rule }}">{% else %}<h3 class="sr-sub">To Rebrickable</h3>
 <p class="sr-lede">Parts newly missing here are added to Lost Parts there; parts found here are removed there. Removals are unticked until you tick them.</p>
-<label class="bk-field">Which count wins<select name="send_rule">{% for value, label, note in send_rules %}<option value="{{ value }}" {{ 'selected' if value == send_rule }}>{{ label }}</option>{% endfor %}</select></label></section>
+<label class="bk-field">Which count wins<select name="send_rule">{% for value, label, note in send_rules %}<option value="{{ value }}" {{ 'selected' if value == send_rule }}>{{ label }}</option>{% endfor %}</select></label>{% endif %}</section>
 <section class="sr-card"><h2>When both sides differ</h2><p class="sr-lede sr-fixed">Ask me each time</p></section>
 </div></div>
 <div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_connect') }}">‹ Back</a><span class="sr-foot-actions">{% if can_edit %}<button class="bk-btn bk-quiet" name="start" value="0">Save</button><button class="bk-btn bk-outline" data-busy-label="Checking {{ label }}">Next: pick sets</button>{% endif %}</span></div>

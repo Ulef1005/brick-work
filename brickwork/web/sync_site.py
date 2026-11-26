@@ -192,11 +192,11 @@ def step_choose(source):
             return redirect(_to(source, 'connect'))
         if source == 'brickset':       # owned and wanted sets with counts: two directions and the wishlist here that takes the wanted sets
             return _render(source, screen='choose', title=LABEL[source], subtitle='Choose what to sync, and in which direction. You can change it later.',
-                           link=status['link'], directions=sync_run.directions(db, source), segments=sync_run.SEGMENTS, segment_labels=sync_run.SEGMENT_LABELS_BY[source],
+                           link=status['link'], directions=sync_run.directions(db, source), segments=sync_run.segments(), send_locked=sync_run.lost_parts_send.SEND_LOCKED, segment_labels=sync_run.SEGMENT_LABELS_BY[source],
                            wish_lists=wishlists.listing(db), **_steps(2))
         lists, sets_error, part_lists, parts_error = _lists(db)
         return _render(source, screen='choose', title=LABEL[source], subtitle='Choose what to sync, and in which direction. You can change it later.',
-                     link=status['link'], directions=sync_run.directions(db), segments=sync_run.SEGMENTS, segment_labels=sync_run.SEGMENT_LABELS,
+                     link=status['link'], directions=sync_run.directions(db), segments=sync_run.segments(), send_locked=sync_run.lost_parts_send.SEND_LOCKED, segment_labels=sync_run.SEGMENT_LABELS,
                      lists=lists, part_lists=part_lists, set_error=sets_error, parts_error=parts_error, wish_lists=wishlists.listing(db), keep_names=sync.keep_list_names_on(db, SOURCE),
                      lost_rules=lost_parts.RULES, lost_rule=lost_parts.rule(db), send_rules=lost_parts_send.RULES, send_rule=lost_parts_send.send_rule(db),
                      **_steps(2))

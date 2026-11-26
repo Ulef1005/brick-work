@@ -277,6 +277,10 @@ def patch_settings(db, data):
             raise errors.ValidationFailed('Choose ' + ', '.join(RULE_VALUES) + ' for rebrickable_lost_parts_rule') from None
     if 'rebrickable_lost_parts_send' in data and type(data['rebrickable_lost_parts_send']) is not bool:
         raise errors.ValidationFailed('rebrickable_lost_parts_send is true or false')
+    if data.get('rebrickable_lost_parts_send') is True:
+        from .sync import lost_parts_send as lost_send
+        if lost_send.SEND_LOCKED:
+            raise errors.ValidationFailed(lost_send.LOCKED_MESSAGE)
     if 'rebrickable_lost_parts_send_rule' in data:
         from .sync.lost_parts_send import RULE_VALUES as SEND_RULES, valid_rule as valid_send_rule
         try:
@@ -389,6 +393,8 @@ def save_settings(db, country, priority, freshness, part_list_grouping=None, par
         lost_parts_send.valid_rule(rebrickable_lost_parts_send_rule)
     if rebrickable_lost_parts_send is not None and type(rebrickable_lost_parts_send) is not bool:
         raise ValueError('rebrickable_lost_parts_send is true or false')
+    if rebrickable_lost_parts_send and lost_parts_send.SEND_LOCKED:
+        raise ValueError(lost_parts_send.LOCKED_MESSAGE)
     moves = None if part_group_overrides is None else encode_overrides(part_group_overrides)     # ValueError on a move that does not fit
     if country not in COUNTRIES:
         raise ValueError('Choose a supported retail country')

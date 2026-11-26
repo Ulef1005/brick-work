@@ -27,9 +27,10 @@ export BW_RENDERED_SKIPS=$skips BW_GATE_SUMMARY=$gate_summary
 mode=${BW_CHECK_MODE:-full}
 if [[ $mode != full && $mode != docs ]]; then echo "BW_CHECK_MODE must be full or docs, not $mode"; exit 2; fi
 echo "Check mode: $mode"
-# The tests run in parallel (pytest-xdist; ADR 0024): one worker per core, and the tests of the xdist group `rendered` (Chrome, the screen gate's
+# The tests run in parallel (pytest-xdist; ADR 0024): one worker per core in CI, 4 locally (Repo Gates: the M1), and the tests of the xdist group `rendered` (Chrome, the screen gate's
 # shared world folder; tests/rendered.py) one at a time on one worker. BW_TEST_WORKERS overrides the count (1 runs them serially).
-pytest_args=(-q -n "${BW_TEST_WORKERS:-auto}" --dist loadgroup)
+if [[ -n ${CI:-} ]]; then workers_default=auto; else workers_default=4; fi
+pytest_args=(-q -n "${BW_TEST_WORKERS:-$workers_default}" --dist loadgroup)
 # BW_SHARD=I/N (CI runs N jobs, #364): this run is the I-th. Every shard runs its share of the pytest tests (`--shard`, tests/xdist_groups.py: whole
 # xdist groups, deterministic, a test file or group is never split, tests/test_shard.py checks the shards add up to the suite). Shard 1 alone runs every
 # other step except the browser step, so each of them still runs once per pull request; every shard runs the browser step and pytest.
@@ -49,6 +50,24 @@ step() {
   local name=$1
   shift
   "$@" || failed+=("$name")
+}
+
+# Repo Gates phase 1 (ai-wiki wiki/projects/repo-gates.md): one test or browser run at a time on this machine.
+# heavy <program...> runs a program (not a shell function) under the machine lock ~/.cache/gate.lock, outside CI and
+# only where /usr/bin/lockf exists (macOS); a nested gate (GATE_LOCK_HELD set by the outer one) does not lock again.
+# Waiting is announced, and a step that waits longer than GATE_WAIT seconds (default 1800) fails instead of hanging.
+heavy() {
+  if [[ -n ${CI:-} || -n ${GATE_LOCK_HELD:-} || ! -x /usr/bin/lockf ]]; then "$@"; return; fi
+  local lock="$HOME/.cache/gate.lock" wait="${GATE_WAIT:-1800}" rc=0
+  mkdir -p "$HOME/.cache" || return
+  /usr/bin/lockf -k -t 0 "$lock" true 2>/dev/null || rc=$?
+  if (( rc == 75 )); then
+    echo "gate: waiting up to ${wait}s for the machine lock ($lock: another gate is running tests; holder: lsof $lock)" >&2
+  fi
+  rc=0
+  GATE_LOCK_HELD=1 /usr/bin/lockf -k -t "$wait" "$lock" "$@" || rc=$?
+  if (( rc == 75 )); then echo "gate: gave up after ${wait}s waiting for the machine lock $lock" >&2; fi
+  return "$rc"
 }
 
 browser() {
@@ -89,7 +108,7 @@ runtimes() {
     return 1
   fi
   for harness in "${harnesses[@]}"; do
-    node "$harness" || { echo "FAILED: $harness"; rc=1; }
+    heavy node "$harness" || { echo "FAILED: $harness"; rc=1; }
   done
   return $rc
 }
@@ -165,7 +184,7 @@ docs() {
 if [[ $mode == docs ]]; then
   if (( ! shard_first )); then echo "NOTE: docs mode runs on shard 1 only."; exit 0; fi
   step names "$python" scripts/check_names.py
-  step docs-tests "$python" -m pytest tests/test_docs_*.py tests/test_vale.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
+  step docs-tests heavy "$python" -m pytest tests/test_docs_*.py tests/test_vale.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
   step secrets secrets
   step docs docs
 else
@@ -182,7 +201,7 @@ else
   fi
   # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice
   # (every step runs whatever the earlier ones did, so an early smoke step brought no earlier failure; #254).
-  step pytest "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}" ${shard_args[@]+"${shard_args[@]}"}   # the + form: bash 3.2 (macOS) fails an empty array under set -u
+  step pytest heavy "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}" ${shard_args[@]+"${shard_args[@]}"}   # the + form: bash 3.2 (macOS) fails an empty array under set -u
   # The screenshot gate (tests/test_screen_gate.py) no longer runs here (Ulf, 2026-11-13: screens are approved from frames in a review artifact).
   # Run it by hand: python -m pytest tests/test_screen_gate.py -q -p no:xdist
   if (( shard_first )); then

@@ -46,7 +46,7 @@ def test_the_pull_shows_as_one_step_without_a_count_and_the_sends_wait_for_it(th
         run_job.queue(db, run_id, form_for(db, run_id))
     page = soup(page_of(client, run_id))
     pull = page.select_one('[data-rb-pull]')
-    assert pull and 'Applying the pull' in text(pull) and 'Waiting to start' in text(pull)
+    assert pull and 'Into Brick Work' in text(pull) and 'Waiting to start' in text(pull)
     with db_of(pair) as db:
         db.execute("UPDATE job SET state='running'")
         db.commit()
@@ -427,3 +427,19 @@ def test_undo_run_finds_a_run_behind_many_newer_ones(three_sends, monkeypatch): 
                 audit(db, 'sync:rebrickable', 'run', None, dict(run=f'later-{n}', events=[]), via='app')
         assert sync_run.undo_run(db, 900001) == [900001, 900002]      # not found would give [900001] alone
     assert undone == [900002, 900001]
+
+
+def test_while_the_pull_is_applied_the_run_the_pull_and_the_sends_are_three_cards_and_stop_waits(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+    queued = soup(page_of(client, run_id))
+    assert not queued.select_one('[data-rb-run] button').has_attr('disabled')      # a run that has not started can be stopped
+    with db_of(pair) as db:
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
+        db.commit()
+    page = soup(page_of(client, run_id))
+    assert text(page.select_one('[data-rb-run] h2')).startswith('Running ') and page.select_one('[data-rb-run] button').has_attr('disabled')
+    assert text(page.select_one('[data-rb-pull] h2')) == 'Into Brick Work' and 'Applying the pull' in text(page.select_one('[data-rb-pull]'))
+    send = page.select_one('[data-rb-send]')
+    assert text(send.h2) == 'To Rebrickable' and f'0 of {len(keys)} sent' in text(send) and send.select_one('[role=progressbar]')['aria-valuenow'] == '0'

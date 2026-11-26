@@ -531,8 +531,8 @@ def step_result(source, run_id):
         rows = {r['key']: r for r in sync_run.rows(db, run, plans)}
         undone = False
         events = run['applied']['events']
-        if events:
-            undone = bool(db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (events[0],)).fetchone())
+        if events:      # a run has up to two pulls; with one still there it is not undone (Undo skips the one that is)
+            undone = all(db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (e,)).fetchone() for e in events)
         pull = (run['stages'].get('pull') or {})
         lost_in = lost_result(db, pull['event']) if pull.get('event') else None
         list_changes = pull.get('lists_changed', 0)                   # distinct lists renamed or dropped, as the preview names them

@@ -952,6 +952,17 @@ def undo_run(db, event_id):
     return ids
 
 
+def _job_send_done(db, run):
+    """Send again sent what the job could not: its send step is done, and the job keeps no error unless another stage still failed, in
+    whole or in part."""
+    job_id = run['job']
+    left = any(st.get('status') in ('failed', 'partial') or (st.get('counts') or {}).get('key_rejected') for st in run['stages'].values())
+    with transaction(db):
+        db.execute("UPDATE job_step SET state='done', count=total, error=NULL, error_code=NULL, retry_at=NULL WHERE job_id=? AND name='send'", (job_id,))
+        if not left:
+            db.execute("UPDATE job SET error=NULL, error_code=NULL WHERE id=? AND state='done'", (job_id,))
+
+
 def retry_send(db, run_id, *, http=None, also=()):
     """Send again the rows of the run's send stage that did not go through (failed, paused or refused). The send plan keeps what was sent. Under
     the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry. A row whose result is `unknown` (a send a
@@ -968,6 +979,8 @@ def retry_send(db, run_id, *, http=None, also=()):
         if not again:
             if any(r['result'] == 'unknown' for r in stage['results']):
                 raise errors.ValidationFailed('Only a row that may have gone out is left. Check it, then choose Send it too on that row')
+            if run.get('job'):
+                _job_send_done(db, run)      # an earlier Send again may have stored the run and then failed to write the job
             raise errors.ValidationFailed('Everything this run sent went through')
         result = sync.apply_send(db, send['id'], again, http=http)
         kept_unknown = [r for r in stage['results'] if r['result'] == 'unknown' and r['key'] not in again]    # a row left out stays as it was, whatever the send plan says of it
@@ -983,5 +996,7 @@ def retry_send(db, run_id, *, http=None, also=()):
                 audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id, pulls=pull_events(run)))
         else:
             run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
-        sync._store_plan(db, run)
+        sync._store_plan(db, run)      # the run first: if this fails, the job must not say more than the run does
+        if run.get('job') and all(r['result'] in ('sent', 'unchanged') for r in run['stages']['send']['results']):
+            _job_send_done(db, run)
         return run

@@ -3,6 +3,7 @@ shares. Owned and wanted sets with counts only: what Brickset's back end here ca
 of test_bw_sync; no network."""
 from contextlib import closing
 import json
+import os
 import re
 import sqlite3
 
@@ -100,9 +101,20 @@ def rows_of(page):
     return {r.get('data-name', '').split(' ')[0]: r for r in page.select('[data-sy-row]')}
 
 
+def drain_jobs():
+    from pathlib import Path
+    from brickwork.core.sync import run_job
+    with closing(connect(Path(os.environ['BW_DB_PATH']))) as db:
+        run_job.drain(db)
+
+
 def apply_run(client, csrf, run_id, page=None, **extra):
     page = page or preview_of(client, run_id)
-    return client.post(f'{BASE}/run/{run_id}/run', data={'csrf_token': csrf, **run_data(page, **extra)})
+    response = client.post(f'{BASE}/run/{run_id}/run', data={'csrf_token': csrf, **run_data(page, **extra)})
+    drain_jobs()                        # the page queues a job; the embedded worker is off in tests
+    if response.status_code == 302 and response.location.endswith('/progress'):
+        return client.get(response.location)         # the run page sends a finished run on to its result
+    return response
 
 
 def copies(pair, number):
@@ -337,16 +349,12 @@ def test_a_failed_send_is_listed_on_the_result_with_a_retry_and_the_daily_budget
     def pause(self, rows, link, state):
         raise base.WaitingForBudget(None, '2026-11-25T00:00:00+00:00')
     monkeypatch.setattr(adapters.BricksetUser, 'send_set', pause)
-    apply_run(client, csrf, run_id)
-    page = soup(client.get(f'{BASE}/run/{run_id}/result'))
-    assert '2 waiting' in page.select_one('.sr-head p').get_text() and 'failed' not in page.select_one('.sr-head p').get_text()
-    assert page.select_one('form[action$="/retry"] button').get_text(strip=True) == 'Retry'
-    assert 'the daily budget' in page.select_one('[data-rb-there]').get_text()
-    site = soup(client.get(BASE))
-    retry_form = site.select_one('[data-rb-runs] form[action$="/manage/sync/brickset/send"]')
-    assert retry_form and retry_form.select_one('input[name=next]')['value'] == 'site'     # on a failed re-plan the user stays on the site page
+    page = soup(apply_run(client, csrf, run_id))                  # the run page: the job waits for the daily budget, it did not fail
+    assert 'waiting for the daily budget' in page.select_one('[data-rb-send]').get_text() and not page.select('.bk-warning')
+    assert client.get(f'{BASE}/run/{run_id}/result').location.endswith('/progress')
     monkeypatch.setattr(adapters.BricksetUser, 'send_set', real)
-    assert client.post(f'{BASE}/run/{run_id}/retry', data={'csrf_token': csrf}).location.endswith('/result')
+    drain_jobs()                                                  # the retry time of the pause has passed: the job goes on by itself
+    assert client.get(f'{BASE}/run/{run_id}/result').status_code == 200
     assert remote.owned['2070-1'] == (1003, 1) and remote.owned['1000-3'] == (1004, 1)
 
 

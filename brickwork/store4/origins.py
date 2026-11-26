@@ -32,6 +32,7 @@ LABELS = {
     'bricktracker': 'BrickTracker import',
     None: 'Before this release',
 }
+SITE_NAMES = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset', 'bricklink': 'BrickLink', 'brickowl': 'Brick Owl'}
 TABLES = {'copy': 'copy_id', 'stock': 'stock_id', 'wish': 'wish_id'}
 
 _current = ContextVar('brickwork_added_via', default=None)
@@ -177,6 +178,22 @@ def sources_of(db, table, ids):
                             f'({",".join("?" * len(chunk))}) ORDER BY synced_at DESC, site, list_key', chunk):
             out[r['rid']].append(dict(site=r['site'], list_key=r['list_key'], list_name=r['list_name'], synced_at=r['synced_at']))
     return out
+
+
+def list_value(entry):
+    """A `last synced from` entry as the Sets filter's value: the site, then the list key (URL-quoted, as a filter chip splits on a colon)."""
+    from urllib.parse import quote
+    return entry['site'] + '|' + quote(entry['list_key'] or '', safe='')
+
+
+def list_label(entry):
+    """The same entry as the filter chip's words: "Rebrickable · Main collection", or the site alone for a row with no list name."""
+    return SITE_NAMES.get(entry['site'], entry['site']) + (' · ' + entry['list_name'] if entry['list_name'] else '')
+
+
+def chip(added_via):
+    """The chip's words (frame 44): the label alone for a row made by hand, through a channel or before 4.8, else "Added via <label>"."""
+    return label(added_via) if added_via in (None, HAND) or added_via in CHANNELS else 'Added via ' + label(added_via)
 
 
 def body(added_via, synced):

@@ -25,7 +25,7 @@ A run is applied in one request, so there is no progress page; the **Run** butto
 
 The **Brickset** page works like the Rebrickable one and has the same six steps. Brickset's side holds owned and wanted sets with counts, and that is all this page syncs. Notes, ratings, flags, wanted priority, new and used counts and loose minifigures are not synced yet. Purchase date and price never leave Brick Work: Brickset has no field for them.
 
-The page shows your account (API key and today's budget, with **Test**, **Change** and **Remove**), the last runs with **Undo this run** and a table of **What syncs**. It reads nothing from Brickset until you start a run. The account name is the username you typed when you connected; Brickset does not return it, so a pasted hash has none.
+The page shows your account (API key and today's budget, with **Test**, **Change** and **Remove**), the last runs with **Undo this run** and a table of **What syncs**. It reads nothing from Brickset until you start a run. The account name is the username you typed when you connected, and the Sync hub shows it on the site's card too. Brickset does not return it, so a pasted hash has none. The API key line says when the key last worked, for example **checked 18 Nov**: the day of the newest call that succeeded with it. A key you replaced shows no day until its first call.
 
 1. **Connect.** The API key and your account. Enter your Brickset **Username** and password and choose **Connect**, or open **Paste a user hash instead**. The password goes to Brickset once and is never stored. **Save and test** keeps a key you paste; a key from the environment can only be changed there. The keys step of **Get started** and the **Needs a Brickset key** line lead to this step.
 2. **Choose what.** A direction for **Owned sets** and one for **Wanted sets**: **Into Brick Work**, **Both ways**, **To Brickset** or **Off**. **Wishlist here** is the Brick Work wishlist that takes the wanted sets. **When both sides differ** is fixed: the preview asks each time.
@@ -73,6 +73,17 @@ A set becomes one **copy** per missing unit, with the part list the set has. Its
 **Undo this pull** (shown on the sync page right after a pull) archives the copies, takes the stock and wish quantities back and removes the tag. It is refused once you have changed any of them (**Something from this sync has changed since**).
 
 **Where each row came from.** Every copy, loose-stock row and wish records how it arrived: **By hand**, **Rebrickable sync**, **Brickset sync**, a file or an import from another app. A row made through the API, the CLI or MCP reads **Via the API**, **Via the CLI** or **Via MCP**. That value never changes. A pull also records, on each copy, stock row and wish whose set the site holds, that it was **last synced from** that site, with the date. This holds for rows you added by hand too. Rows from before version 4.8 of the data read **Before this release**. Undo of a pull takes its "last synced from" dates back as well. The API returns both as `source` on a copy, a stock row and a wish.
+
+## Where a copy came from
+
+Open a copy and look under its tags: the **Source** row says how it got here and when a site last met it.
+
+- **Added via** is one fixed value that never changes. It reads *By hand*, *Via the API*, *Via the CLI* or *Via MCP*. It can also name a site (*Rebrickable sync*, *Brickset sync*, *BrickLink sync* or *Brick Owl sync*). It can name a file (*BrickLink file*, *Rebrickable file*, *Brickset file*, *Brick Owl file* or *Brick Work export*). A row can also come from an import of the earlier app this one grew out of. Rows that exist from before this release read *Before this release*.
+- **Last synced from** is a separate line per site and list, such as *Last synced from Rebrickable: Main collection · 18 Nov, 21:40*. It changes with every sync that matches the row. A set you added by hand can show it too: a later sync matched it to a set on the site, which does not change how it was added. A set in two Rebrickable lists shows one line for each.
+
+On the Sets page, two chip rows under the status tabs filter by the same records: **Added via** and **Last synced from**, each chip with its count of sets. Press a chip to filter and press it again to clear it. The two rows combine with each other and with the status tabs. A set with several copies counts under every value its copies have.
+
+Undo of a sync run uses these records to take back exactly what the run did.
 
 ## Rebrickable list names
 

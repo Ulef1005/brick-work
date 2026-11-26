@@ -101,7 +101,7 @@ def test_every_documentation_page_links_the_complete_favicon_set(site):
     from scripts.build_site import MOVED, NAV
 
     # The stub pages at the old /api/ and /mcp/ URLs are built here too.
-    for href in [''] + [href for _, href in NAV if '#' not in href] + ['coming-from/' + n + '/' for n in ('rebrickable', 'bricklink', 'bricktracker', 'other')] + [folder + '/' for folder, _, _ in MOVED]:
+    for href in [''] + [href for _, href in NAV if '#' not in href] + ['coming-from/' + n + '/' for n in ('rebrickable', 'bricklink', 'bricktracker', 'brickie', 'other')] + ['coming-from/'] + [folder + '/' for folder, _, _ in MOVED]:
         if href.startswith(('demo/', 'docs/')):  # The demo uses the app's own icon links; Zensical builds the docs.
             continue
         page = site / href / 'index.html'
@@ -482,15 +482,21 @@ def test_copied_demo_html_root_paths_use_demo_base(site, name):
 def test_install_and_coming_from_pages_exist_and_cross_link(site):
     expected = {'install/': 'Install Brick Work in about five minutes.', 'coming-from/rebrickable/': 'Coming from Rebrickable or Brickset.',
                 'coming-from/bricklink/': 'Coming from BrickLink.', 'coming-from/bricktracker/': 'Coming from BrickTracker.',
-                'coming-from/other/': 'Coming from another app.'}
+                'coming-from/other/': 'Coming from another app.',
+                'coming-from/': 'Coming from another tool.', 'coming-from/brickie/': 'Coming from Brickie.'}
     for path, heading in expected.items():
         text = (site / path / 'index.html').read_text()
         assert heading in text, path
         assert 'aria-current="page"' in text.split('</header>')[0] or path.startswith('coming-from/'), path
     for path in expected:
         if path.startswith('coming-from/'):
-            rows = (site / path / 'index.html').read_text().split('<div class="rows">')[1].split('</div>')[0]
-            assert rows.count('<a href=') == 4          # the four sibling rows on every coming-from page
+            page = (site / path / 'index.html').read_text()
+            rows = page.split('<div class="rows">')[1].split('</div>')[0]
+            assert rows.count('<a href=') == 5          # the five rows on the hub and every coming-from page
+            label = page.split('<span class="label">')[1].split('</span>')[0]
+            assert 'Coming from another tool' in label
+            if path != 'coming-from/':                  # every sub-page breadcrumb links back to the hub
+                assert re.search(r'<a href="(\.\./)+coming-from/">Coming from another tool</a>', label), path
 
 
 def test_changelog_page_lists_every_release_with_an_anchor_and_an_atom_feed(site):
@@ -521,7 +527,7 @@ def test_every_site_page_has_its_own_description_canonical_and_social_tags_and_n
     from scripts.build_site import origin, site_base
     seen = set()
     for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'use-cases/', 'impressum/', 'privacy/', 'coming-from/rebrickable/',
-                 'coming-from/bricklink/', 'coming-from/bricktracker/', 'coming-from/other/'):
+                 'coming-from/bricklink/', 'coming-from/bricktracker/', 'coming-from/other/', 'coming-from/', 'coming-from/brickie/'):
         text = (site / path / 'index.html').read_text()
         description = re.search(r'<meta name="description" content="([^"]+)"', text)[1]
         assert description not in seen, path
@@ -547,11 +553,15 @@ def test_robots_and_sitemaps_point_at_this_sites_address(site):
     base = origin() + site_base()
     assert (site / 'robots.txt').read_text() == (f'User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\n'
                                                 f'Sitemap: {base}sitemap.xml\n')
+    assert (site / 'favicon.ico').read_bytes() == (site / 'assets/favicon.ico').read_bytes()
+    security = (site / '.well-known/security.txt').read_text()
+    assert f'Canonical: {base}.well-known/security.txt' in security and 'Contact: https://github.com/' in security and '@' not in security
+    assert security.count('Expires: ') == 1
     ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
     index = ET.fromstring((site / 'sitemap.xml').read_text())
     assert [e.find(ns + 'loc').text for e in index] == [f'{base}sitemap-pages.xml', f'{base}docs/sitemap.xml']
     locs = [e.find(ns + 'loc').text for e in ET.fromstring((site / 'sitemap-pages.xml').read_text())]
-    assert base in locs and f'{base}install/' in locs and f'{base}coming-from/other/' in locs and f'{base}demo/' in locs
+    assert base in locs and f'{base}install/' in locs and f'{base}coming-from/other/' in locs and f'{base}coming-from/' in locs and f'{base}coming-from/brickie/' in locs and f'{base}demo/' in locs
     assert all(loc.startswith(base) for loc in locs) and len(locs) == len(set(locs))
     assert (site / 'docs/sitemap.xml').is_file()
 
@@ -829,3 +839,48 @@ def test_the_questions_hub_lists_every_page_passes_the_lego_rule_and_the_structu
         assert '<a href="../../">Home</a> / <a href="../../questions/">Questions</a>' in text, slug
         assert len(ld(text)[types.index('HowTo')]['step']) >= 2, slug
         assert name_use_errors(text) == [], slug
+
+
+def test_coming_from_pages_carry_breadcrumb_data_and_the_old_collection_links_point_at_the_hub(site):
+    """#724: the hub and every coming-from page carry BreadcrumbList data that matches the visible breadcrumb; the home page and install/ link to the hub; llms.txt names the Brickie page."""
+    import json
+    from scripts.build_site import origin, site_base
+    root = origin() + site_base()
+    for path in ('coming-from/', 'coming-from/rebrickable/', 'coming-from/bricklink/', 'coming-from/bricktracker/', 'coming-from/brickie/', 'coming-from/other/'):
+        text = (site / path / 'index.html').read_text()
+        blocks = [json.loads(block) for block in re.findall(r'<script type="application/ld\+json">(.+?)</script>', text)]
+        crumbs = [block for block in blocks if block['@type'] == 'BreadcrumbList']
+        assert len(crumbs) == 1 and [block['@type'] for block in blocks] == ['BreadcrumbList'], path
+        items = crumbs[0]['itemListElement']
+        label = text.split('<span class="label">')[1].split('</span>')[0]
+        assert items[-1]['name'] == re.sub(r'<[^>]+>', '', label).split(' / ')[-1], path
+        assert items[0] == {'@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': root}, path
+        if path == 'coming-from/':
+            assert [item['name'] for item in items] == ['Home', 'Coming from another tool'] and items[-1]['item'] == root + path
+        else:
+            assert len(items) == 3 and items[1]['item'] == root + 'coming-from/' and items[2]['item'] == root + path, path
+    for page in ('index.html', 'install/index.html'):
+        assert 'coming-from/">Moving an old collection over?</a>' in (site / page).read_text(), page
+    assert 'coming-from/brickie/' in (site / 'llms.txt').read_text()
+
+
+def test_install_options_footer_marks_and_no_unapproved_names(site):
+    """#727: /install/ and the home install section name Unraid, Synology Container Manager and Portainer (text only); all three cards say they are untested on a real device (#529);
+    every built page carries both trademark lines; no unapproved platform name appears on a built site page."""
+    page = (site / 'install/index.html').read_text()
+    home = (site / 'index.html').read_text()
+    for text in (page, home):
+        for name in ('Unraid', 'Synology Container Manager', 'Portainer'):
+            assert f'class="optname">{name}</h' in text, name
+        assert text.count('Not yet tested on a real device.') == 3
+        assert 'Pick your system and follow its guide.' in text
+    assert 'On your NAS or home server' in page and 'Docker Desktop on Windows or Mac' in page and 'After you install' in page
+    assert '<h2>Docker Compose</h2>' in page and '<h3>Docker Compose</h3>' in home
+    mark, owners = 'Unraid® is a trademark of Lime Technology, Inc. Not affiliated.', 'Docker, Synology and Portainer are trademarks of their respective owners.'
+    files = sorted(f for f in site.rglob('index.html') if 'demo' not in f.relative_to(site).parts and 'docs' not in f.relative_to(site).parts)   # demo and docs pages are the app's and mkdocs' own
+    assert len(files) > 10
+    for file in files:
+        footer = file.read_text().split('<footer', 1)[1]
+        assert mark in footer and owners in footer, file
+    for file in files:
+        assert not re.search(r'Umbrel|CasaOS|PikaPods', file.read_text()), file

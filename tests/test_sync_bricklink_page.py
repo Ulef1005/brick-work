@@ -334,7 +334,7 @@ def test_cross_site_run_ids_return_404_in_both_directions(client, remote, pair, 
     csrf = token(client)
     with db_of(pair) as db:
         other = sync._save_plan(db, dict(
-            id='b' * 32, created_at='2026-11-24T12:00:00+00:00', direction='run',
+            id='b' * 32, created_at=base.now().isoformat(), direction='run',   # past PLAN_TTL the run reads as expired and redirects instead of answering 404
             source='brickset', candidates=[], picked=None, stages={},
         ))
     other_id = other['id']

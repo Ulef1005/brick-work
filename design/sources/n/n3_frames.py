@@ -54,9 +54,9 @@ def conflicts(ph):
 
 
 def long_run(ph):
-    """A run of 4,000 changes: hours, not seconds. It goes on if the page closes or the server restarts."""
+    """A run of 4,000 changes: hours, not seconds. It goes on if the page closes; if the server restarts it stops safely and shows what went out."""
     main = card('3,840 of 4,000 done', f'{prog(3840, 4000)}<p class="mono" style="{mono}">about 3 min left · 1 request a second · budget today 810 / 1,000</p>'
-                '<div class="ninfo">You can close this page, the browser or the tablet. The run keeps going on the server and shows in Jobs. If the server restarts it goes on from the last saved step.</div>'
+                '<div class="ninfo">You can close this page, the browser or the tablet. The run keeps going on the server and shows in Jobs. If the server restarts, the run stops safely and shows what went out. Finished steps stay done.</div>'
                 f'<div style="display:flex;gap:10px;flex-wrap:wrap">{btn("Stop after this one", "sec sm")}{btn("Open Jobs", "q sm")}</div>')
     return head('Rebrickable', 'Running 4,000 changes, started 19 Nov, 15:02', ph) + steps('Run', ph) + main
 

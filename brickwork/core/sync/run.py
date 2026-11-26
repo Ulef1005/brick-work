@@ -25,6 +25,7 @@ from ..transaction import transaction
 from .. import sync
 from . import adapters, lost_parts, lost_parts_send, part_lists
 
+INTERRUPTED_MESSAGE = 'Interrupted: check what was sent and run again.'     # the message of a stage a restart cut off (`run_job`, `retry_send`)
 SOURCE = 'rebrickable'
 SOURCES = ('rebrickable', 'brickset')
 DIRECTIONS_KEY = 'rebrickable_sync_directions'
@@ -333,7 +334,7 @@ def rows(db, run, plans):
     def row_of(r):
         return merged.setdefault(r['key'], dict(key=r['key'], item_id=r['item_id'], kind=r['kind'], number=r['number'], name=r['name'], remote=r['remote'],
                                                 here=r['here'], remote_no=r['remote_no'], options=[], default=None, state='info', reason=None,
-                                                kept=(r.get('baseline_remote') or 0) == r['remote'] and (r.get('baseline_here') or 0) == r['here'] and r['remote'] != r['here']))
+                                                kept=bool(r.get('kept')) or ((r.get('baseline_remote') or 0) == r['remote'] and (r.get('baseline_here') or 0) == r['here'] and r['remote'] != r['here'])))
     for r in (plans['pull'] or {}).get('rows', ()):
         if picked is not None and r['item_id'] not in picked:
             continue
@@ -558,9 +559,11 @@ def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=
     wanted = [k for k, v in form_data['chosen'].items() if v in ('pull', 'take')]
     lost, picks, lists = form_data['lost'], form_data['copies'], form_data['lists']
     lines = {line['key']: line for line in (pull.get('lists') or {}).get('preview', ())}
+    kept = [k for k, v in form_data['chosen'].items() if v == 'keep']       # the conflicts the person chose to Keep: remembered (#686)
+    kept_covered, kept_skipped = keep_scope(run)
     if wanted or lost or picks or any(v not in ('keep', 'skip') for v in lists.values()):
         try:
-            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, via=via, actor=actor)
+            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_skipped=kept_skipped, via=via, actor=actor)
             effective = {k: lists.get(k, line['action']) for k, line in lines.items()}
             stages['pull'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted),
                                   lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']))
@@ -801,8 +804,30 @@ def stage_lost_out(db, run, form_data, *, http=None, per_key=False, should_stop=
     return stages['lost_out']
 
 
+def keep_scope(run):
+    """What the run's preview covers, for the Keep memory (#686): the kinds whose direction is not Off, and the sets it skips (the ones it could
+    touch that were not picked)."""
+    d, picked = run['directions'], picked_ids(run)
+    skipped = set() if picked is None else {c['item_id'] for c in run['candidates']} - picked
+    return tuple(kind for kind, direction in (('owned', 'owned'), ('wanted', 'wishlist')) if d[direction] != 'off'), skipped
+
+
+def remember_choices(db, run, plans, form_data):
+    """The conflicts the person chose to Keep are remembered (#686) before any stage runs, so a stage with nothing to do (or one that fails) cannot
+    lose them. The pairs are the counts of the preview rows the person saw, for the kinds the run shows. Not fatal: a Keep that could not be
+    written is only forgotten."""
+    if not (plans['pull'] or plans['send']):
+        return
+    covered, skipped = keep_scope(run)
+    try:
+        sync.remember_kept(db, run.get('source', SOURCE), rows(db, run, plans), [k for k, v in form_data['chosen'].items() if v == 'keep'], covered, skipped)
+    except FAILURES as exc:
+        LOG.warning('The Keep choices of a run could not be written: %s', type(exc).__name__)
+
+
 def _stages(db, run, plans, form, chosen, http, via, actor):
     form_data = _extract_form(run, plans, form, chosen)
+    remember_choices(db, run, plans, form_data)
     stage_pull(db, run, plans, form_data, via=via, actor=actor)
     stage_parts(db, run, plans, form_data, via=via, actor=actor)
     stage_send(db, run, plans, form_data, http=http)
@@ -899,6 +924,11 @@ def _apply_lost_out(db, run, wanted, http):
     return result
 
 
+def pull_events(run):
+    """The pull events of a run (the pull and the part-list pull), the ones its Undo takes back."""
+    return [run['stages'][s]['event'] for s in ('pull', 'parts') if (run['stages'].get(s) or {}).get('event') is not None]
+
+
 def undo_run(db, event_id):
     """Undo a pull and the part-list pull of the same run in one step (the run is found by either event). Raises UndoBlocked, and undoes
     nothing, when something it wrote changed since."""
@@ -915,9 +945,10 @@ def undo_run(db, event_id):
     return ids
 
 
-def retry_send(db, run_id, *, http=None):
+def retry_send(db, run_id, *, http=None, also=()):
     """Send again the rows of the run's send stage that did not go through (failed, paused or refused). The send plan keeps what was sent. Under
-    the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry."""
+    the run's lock, so two requests do not send the same row twice: the second finds nothing left to retry. A row whose result is `unknown` (a send a
+    restart cut off: it may have gone out) is sent again only when its key is in `also`; by default it is left."""
     with _Claim(db, run_id):
         run, plans = load(db, run_id)
         send = plans['send']
@@ -926,10 +957,24 @@ def retry_send(db, run_id, *, http=None):
             raise errors.ValidationFailed('This run is still running')
         if not send or not stage or not stage.get('results'):
             raise errors.ValidationFailed('This run sent nothing that can be retried')
-        again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged')]
+        again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged') and (r['result'] != 'unknown' or r['key'] in set(also))]
         if not again:
+            if any(r['result'] == 'unknown' for r in stage['results']):
+                raise errors.ValidationFailed('Only a row that may have gone out is left. Check it, then choose Send it too on that row')
             raise errors.ValidationFailed('Everything this run sent went through')
         result = sync.apply_send(db, send['id'], again, http=http)
-        run['stages']['send'] = dict(status='done', counts=result['counts'], rows=len(result['rows']), results=result['rows'])
+        kept_unknown = [r for r in stage['results'] if r['result'] == 'unknown' and r['key'] not in again]    # a row left out stays as it was, whatever the send plan says of it
+        left_keys = {r['key'] for r in kept_unknown}
+        rows = [r for r in result['rows'] if r['key'] not in left_keys] + kept_unknown
+        counts = {}
+        for r in rows:
+            counts[r['result']] = counts.get(r['result'], 0) + 1
+        left = len(kept_unknown)
+        if left:     # a row that may have gone out is still unchecked: the run stays interrupted, here and in the sync log
+            run['stages']['send'] = dict(status='failed', message=INTERRUPTED_MESSAGE, counts=counts, rows=len(rows), results=rows)
+            with transaction(db):
+                audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id, pulls=pull_events(run)))
+        else:
+            run['stages']['send'] = dict(status='done', counts=counts, rows=len(rows), results=rows)
         sync._store_plan(db, run)
         return run

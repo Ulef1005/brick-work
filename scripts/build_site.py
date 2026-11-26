@@ -193,7 +193,8 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 <nav aria-label="Main">{nav}</nav><a class="gh link" href="https://github.com/{repo}">GitHub</a><button class="js-only" type="button" data-theme-toggle aria-label="Switch theme">Theme</button><details class="menu"><summary>Menu</summary><nav class="menu-list" aria-label="Menu">{menu}</nav></details></header></div>
 <main id="main" class="{main}">{body}</main>
 <div class="site"><footer class="sec foot"><div class="inner"><div class="cols">{footer_cols}</div>
-<p class="small muted fine">Brick Work is an independent project and is not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work is MIT-licensed and inspired by BrickTracker. Part and set images: Rebrickable.</p></div></footer></div>
+<p class="small muted fine">Brick Work is an independent project and is not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work is MIT-licensed and inspired by BrickTracker. Part and set images: Rebrickable.</p>
+<p class="small muted fine">Unraid® is a trademark of Lime Technology, Inc. Not affiliated.<br>Docker, Synology and Portainer are trademarks of their respective owners.</p></div></footer></div>
 <script src="{up}assets/site.js" defer></script>
 {ANALYTICS}
 </body>
@@ -291,9 +292,19 @@ def questions_markup(meta, body):
         if old not in text:
             raise RuntimeError(f'{path}: the breadcrumb label {old!r} is missing, so the page would ship without its links')
         return text.replace(old, new, 1)
-    if not path.startswith('questions/'):
+    section = next((folder for folder in ('questions/', 'coming-from/') if path.startswith(folder)), None)
+    if section is None:
         return body, ''
     root, name = origin() + site_base(), html.unescape(meta['title'])
+    if section == 'coming-from/':       # #724: Home, the hub, then the page's own breadcrumb label; no HowTo or ItemList
+        found = re.search(r'<span class="label">.*? / ([^<>/]+)</span>', body) if path != section else None
+        if path != section and not found:
+            raise RuntimeError(f'{path}: no breadcrumb label found, so the BreadcrumbList would be wrong')
+        label = found[1] if found else None
+        crumbs = [('Home', root), ('Coming from another tool', root + section)] + ([(html.unescape(label), root + path)] if label else [])
+        data = [{'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
+            {'@type': 'ListItem', 'position': n, 'name': text, 'item': url} for n, (text, url) in enumerate(crumbs, 1)]}]
+        return body, ''.join('<script type="application/ld+json">' + json.dumps(item, ensure_ascii=False).replace('</', '<\\/') + '</script>' for item in data)
     crumbs = [('Home', root), ('Questions', root + 'questions/')] + ([] if path == 'questions/' else [(name, root + path)])
     data = [{'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
         {'@type': 'ListItem', 'position': n, 'name': label, 'item': url} for n, (label, url) in enumerate(crumbs, 1)]}]
@@ -386,6 +397,8 @@ def build_seo_files(out):
     """robots.txt and the sitemaps: /sitemap.xml is an index of sitemap-pages.xml (the pages of this site) and docs/sitemap.xml (Zensical's)."""
     base = origin() + site_base()
     (out / 'robots.txt').write_text(f'User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\nSitemap: {base}sitemap.xml\n')
+    (out / '.well-known').mkdir(exist_ok=True)   # RFC 9116: crawlers and scanners ask for it; the report channel is the repository's private advisory form, as in SECURITY.md
+    (out / '.well-known/security.txt').write_text(f'Contact: https://github.com/{repository()}/security/advisories/new\nExpires: 2027-11-24T00:00:00Z\nPolicy: https://github.com/{repository()}/blob/main/SECURITY.md\nCanonical: {base}.well-known/security.txt\nPreferred-Languages: en, de\n')
     urls = ''.join(f'<url><loc>{base}{path}</loc>' + (f'<lastmod>{day}</lastmod>' if (day := lastmod(path)) else '') + '</url>' for path in site_urls(out))
     (out / 'sitemap-pages.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + '</urlset>\n')
     (out / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
@@ -621,6 +634,7 @@ def build(out):
     for name in ('app-icon.svg', 'favicon.svg', 'favicon.ico', 'favicon-16.png', 'favicon-32.png',
                  'lockup-horizontal-light.png', 'lockup-horizontal-dark.png'):
         shutil.copy(static / 'brickwork' / name, out / 'assets' / name)
+    shutil.copy(static / 'brickwork/favicon.ico', out / 'favicon.ico')   # browsers and crawlers ask for /favicon.ico whatever the head says (7 404s a day, 2026-11-24)
     shutil.copy(static / 'brickwork/icons/icon-180.png', out / 'assets/apple-touch-icon.png')
     brand_css = (static / 'brickwork/brick-work.css').read_text().replace(
         '/static/fonts/PatrickHand-Regular.woff2', 'fonts/PatrickHand-Regular.woff2')
@@ -670,7 +684,7 @@ def build(out):
     shim.write_text(own_address(shim.read_text()))
     demo_entry = out / 'demo' / 'index.html'
     entry_text = demo_entry.read_text()
-    title_tag = '<title>Brick Work demo</title>'
+    title_tag = '<title>Brick Work demo: try it in your browser</title>'
     if title_tag not in entry_text:
         raise RuntimeError(f'{demo_entry} is missing {title_tag!r}; cannot inject demo SEO tags')
     demo_head = f'<meta name="description" content="{html.escape(DEMO_DESCRIPTION, quote=True)}">' + seo_head('Brick Work demo', DEMO_DESCRIPTION, 'demo/')

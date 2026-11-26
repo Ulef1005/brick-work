@@ -1,8 +1,13 @@
 # Milestone N: build handoff
 
-Cloud thread, 22.11.2026. The same text is the umbrella comment on gate #525; this file is the copy in the repo. Update both at each natural stop.
+**Historical record: the state on 22.11.2026. It is not kept up to date, and nothing in it is an instruction for today.** The live status is on the GitHub issues and on the gate, #525. What has changed since, as of 26.11.2026:
 
-Written so another agent can pick up the rest of N. Status as of 22.11. 17:40 CET. Ulf's go for the plan: 22.11. in the project thread ("yes" to Phase A now and Phase B after v1.2, one branch per issue `n/<issue>-<slug>`, claim comments on issues).
+- The three pull requests of the stack (#595, #596, #598) are merged.
+- #36, #143, #517, #519, #520, #524 and #551 are closed. #469 is closed with the Lost Parts send **locked**; what is needed to unlock it is #750.
+- The build was later split between two local sessions (the #525 comments of 24.11. and 26.11.), and the schema is now 4.9.
+- The rule in *PR stack* that no agent merges applied to that cloud thread.
+
+Cloud thread, 22.11.2026. Written so another agent could pick up the rest of N; the same text was posted on gate #525. Status as of 22.11. 17:40 CET. Ulf's go for the plan: 22.11. in the project thread ("yes" to Phase A now and Phase B after v1.2, one branch per issue `n/<issue>-<slug>`, claim comments on issues).
 
 ## Plan and why
 

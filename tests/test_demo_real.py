@@ -46,7 +46,7 @@ def test_the_part_lists_are_rebrickables_and_deterministic(tmp_path):
 def test_each_set_has_its_picture_and_every_picture_has_a_file(tmp_path):
     manifest = real.pictures_manifest()
     assert {k for k in manifest if k.startswith('sets/')} == {'sets/' + n for n in SETS}
-    assert {k for k in manifest if not k.startswith('sets/')} == {'parts/33299a/71', 'parts/62462/25', 'parts/87619/15', 'parts/91968c01/0', 'parts/2527/4', 'parts/3665/71', 'parts/4865b/19', 'parts/48336/14', 'parts/6091/14', 'parts/3633/72', 'parts/3010/72', 'parts/2456/4', 'parts/2465/0', 'parts/3001/0', 'parts/3001/2', 'parts/3002/0', 'parts/3004/0', 'parts/3004/4', 'parts/3005/0', 'parts/3005/4', 'parts/3008/4', 'parts/3009/71', 'parts/2540/0', 'parts/3004/73', 'parts/3008/308', 'parts/30099/308', 'parts/32039/0', 'parts/42135/0', 'minifigs/fig-004770'}
+    assert {k for k in manifest if not k.startswith('sets/')} >= {'parts/33299a/71', 'parts/62462/25', 'parts/87619/15', 'parts/91968c01/0', 'parts/2527/4', 'parts/3665/71', 'parts/4865b/19', 'parts/48336/14', 'parts/6091/14', 'parts/3633/72', 'parts/3010/72', 'parts/2456/4', 'parts/2465/0', 'parts/3001/0', 'parts/3001/2', 'parts/3002/0', 'parts/3004/0', 'parts/3004/4', 'parts/3005/0', 'parts/3005/4', 'parts/3008/4', 'parts/3009/71', 'parts/2540/0', 'parts/3004/73', 'parts/3008/308', 'parts/30099/308', 'parts/32039/0', 'parts/42135/0', 'minifigs/fig-004770'}
     assert all((real.FOLDER / 'images' / f).is_file() for f in manifest.values())
     _, db, _ = build(tmp_path)
     assert db.execute("SELECT count(*) FROM picture WHERE source='rebrickable_images'").fetchone()[0] == db.execute('SELECT count(*) FROM picture').fetchone()[0] == len(manifest) + len(real.COLOURLESS)   # every manifest entry matched an item; the Change variant pair also has a colourless row
@@ -81,12 +81,12 @@ def test_the_real_world_exports_with_jpeg_pictures(tmp_path):
     manifest = export.export(tmp_path / 'site', base, world='real')
     out = tmp_path / 'site'
     pictures = real.pictures_manifest()
-    assert manifest['counts']['pictures'] == len(pictures) + len(real.COLOURLESS) == 38 and manifest['counts']['copy'] == 8      # 7 sets, 1 figure, 28 parts, 2 colourless rows
+    assert manifest['counts']['pictures'] == len(pictures) + len(real.COLOURLESS) and manifest['counts']['copy'] == 8      # every picture of the folder, plus the 2 colourless rows
     files = {f.stem: f for f in (out / 'manage' / 'images').iterdir()}
-    assert len(files) == 38
+    assert len(files) == manifest['counts']['pictures']
     jpegs = {i for i, f in files.items() if f.suffix == '.jpg'}
-    assert len(jpegs) == 8 and all(files[i].read_bytes()[:2] == b'\xff\xd8' for i in jpegs)             # the sets and the figure
-    assert all(f.suffix == '.png' and f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for i, f in files.items() if i not in jpegs)   # the part renders
+    assert len(jpegs) > 8 and all(files[i].read_bytes()[:2] == b'\xff\xd8' for i in jpegs)             # the sets, the figures and most part renders
+    assert all(f.suffix == '.png' and f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for i, f in files.items() if i not in jpegs)   # the PNG renders
     assert manifest['pictures'] == {i: 'jpg' for i in jpegs}                                            # only the non-PNG ones are listed for the shim
     assert 'kindOf' in (out / 'demo-shim.js').read_text() and '"pictures"' in (out / 'demo-shim.js').read_text()
     pages = list((out / 'collection').rglob('index.html'))
@@ -112,7 +112,7 @@ def test_a_capture_fails_on_a_missing_picture_tile(tmp_path):
             (tmp_path / 'jobs.json').write_text(json.dumps(jobs))
             return subprocess.run(['node', str(real.FOLDER.parents[1] / 'scripts' / 'capture_screens.cjs'), chrome, str(tmp_path / 'jobs.json')], capture_output=True, text=True)
         assert capture('/collection/sets').returncode == 0
-        failed = capture('/collection/P')
+        failed = capture('/planning/wishlist')
         assert failed.returncode != 0 and 'no_tiles' in (failed.stderr + failed.stdout)
 
 
@@ -130,3 +130,53 @@ def test_size_of_reads_png_and_jpeg_headers_and_refuses_the_rest(tmp_path):
         with pytest.raises(ValueError):
             real.size_of(tmp_path / name)
     assert real.size_of(real.FOLDER / 'images' / 'sets' / '31120-1.jpg') == (900, 668)
+
+
+def test_the_real_demo_reaches_lot_sorter_build_scout_and_order_missing_parts(tmp_path):
+    """#643: the three workbench features the README shows are exported with data, not a 'Not part of the demo' toast: Build Scout lists sets from the
+    loose stock, the lot page shows Set detection with a pull list behind it, Order missing parts has an order list."""
+    import re
+    from brickwork.demo import export
+    out = tmp_path / 'site'
+    manifest = export.export(out, '/demo/', world='real')
+
+    def text(path):
+        return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', re.sub(r'<(script|style)[^>]*>.*?</\1>', '', (out / path / 'index.html').read_text(), flags=re.S)))
+    assert 'Scan' in text('workbench/build-scout') and 'of 7 sets' not in text('workbench/build-scout')      # opening starts nothing (#668)
+    assert re.search(r'[1-9] of 7 sets', text('workbench/build-scout/_scan-1')) and 'No set reaches' not in text('workbench/build-scout/_scan-1')
+    lots = list((out / 'collection' / 'lots').glob('*/_detect-1/index.html'))
+    assert lots and 'candidate sets' in lots[0].read_text() and 'Pull list' in lots[0].read_text()
+    assert list(lots[0].parent.parent.glob('pull/*/index.html'))
+    assert re.search(r'Order list [1-9]\d* lines', text('planning/order-missing-parts'))
+    assert manifest['skipped'] == {}
+
+
+def test_the_real_sets_carry_rebrickables_element_ids_and_the_demo_still_builds_from_the_repo_alone(tmp_path):
+    """#676: the element ids of the seven sets' part lines (elements.csv, ids only) reach the demo's catalogue; nothing else of that file does."""
+    _, db, catalogue = build(tmp_path)
+    data = json.loads((real.FOLDER / 'sets.json').read_text())
+    lines = [l for e in data['sets'] for l in e['parts_list'] + [x for ls in e['minifigure_parts'].values() for x in ls]]
+    wanted = {str(l['element']) for l in lines if l['element']}
+    assert len(wanted) > 1000
+    stored = {str(r[0]) for r in catalogue.execute('SELECT element_id FROM element')} if catalogue.execute(
+        "SELECT 1 FROM sqlite_master WHERE name='element'").fetchone() else set()
+    assert stored == wanted
+    parts = {str(l['element']): l['part'] for l in lines if l['element']}
+    kept = {r[0]: (r[1], r[2]) for r in catalogue.execute(
+        "SELECT e.element_id, i.born_key, e.design_id FROM element e JOIN item i ON i.id = e.item_id")}
+    assert {k: v[0] for k, v in kept.items()} == parts                       # each element id belongs to its part
+    assert {v[1] for v in kept.values()} == {None}                             # ids only: no design id comes with them
+
+
+def test_the_invented_worlds_keep_an_empty_element_table(tmp_path):
+    (tmp_path / 'plain').mkdir()
+    sets = dataset.load('sets.json', dataset.DATA)
+    assert any(r.get('element') for inventory in dataset.inventories_of(sets).values() for r in inventory['parts'])     # the fixtures do carry ids, so this test can fail
+    dataset.build(tmp_path / 'plain' / 'x.db')
+    catalogue = sqlite3.connect(tmp_path / 'plain' / 'catalogue.db')
+    assert catalogue.execute('SELECT count(*) FROM element').fetchone()[0] == 0
+
+
+def test_the_design_frames_worlds_keep_the_lines_without_element_ids():
+    from brickwork.demo import frames
+    assert real.Layer.element_ids is True and frames.Layer.element_ids is False

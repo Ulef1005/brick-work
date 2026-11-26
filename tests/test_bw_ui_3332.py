@@ -97,7 +97,7 @@ def test_grouped_price_range_and_wishlist(coll, client):
     price = soup.select_one('[data-module=prices]').get_text(' ', strip=True)
     assert '€11,408.95' in price and 'min €1,000.00' in price and 'max €15,000.00' in price
     page = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
-    assert page.select_one('.bc-wanted-max strong').get_text() == '€11,408.95'
+    assert page.select_one('[data-module=wanted] [data-bc-wish-limit=max_price] strong').get_text() == '€11,408.95'
 
 
 @pytest.mark.parametrize('missing,damaged', [(1, 0), (0, 1), (1, 1)])

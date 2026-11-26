@@ -1,7 +1,7 @@
 {% extends 'web/toni/base.html' %}
 {% block title %} · API tokens{% endblock %}
 {% block page_assets %}
-<link rel="stylesheet" href="{{ bw_static('web/toni/bw-tokens.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-tokens.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin-b.css') }}">
 <script src="{{ bw_static('web/toni/bw-tokens.js') }}" defer></script>
 {% endblock %}
 {% macro chips(scopes) %}<div class="bw-tk-chips">{% for scope in scopes %}<span class="bw-tk-chip">{{ scope }}</span>{% endfor %}</div>{% endmacro %}

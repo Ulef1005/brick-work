@@ -53,6 +53,8 @@ def runner_path():
 
 
 class Layer(real.Layer):
+    element_ids = False      # the approved frames draw lines without element ids (frame 15: "no element id"); `real.Layer` turns them on
+
     def __init__(self, folder=real.FOLDER, pictures=False, stored=True, pulled=False, runner=False):
         super().__init__(folder, pictures)
         self.stored = stored

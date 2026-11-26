@@ -60,6 +60,7 @@ def write_dump(directory, data=DATA, layer=None):
     sets, wishes = load('sets.json', data), load('wishlist.json', data)
     inventories = inventories_of(sets, data)
     extra = []
+    with_elements = bool(getattr(layer, 'element_ids', False))      # only the real sets carry element ids (#676); the invented worlds keep an empty element table
     if layer is not None:   # the public demo world (showcase.py): only the invented collection, none of the fixture's real-named sets; the gate's world has no layer
         sets, wishes, inventories, extra = layer.sets, [], layer.inventories, layer.catalogue
     # themes: 'City / Police' is two themes; the leaf takes the set's theme id, its parents get invented ones
@@ -76,6 +77,7 @@ def write_dump(directory, data=DATA, layer=None):
     colours = {c['id']: (c['name'], c['rgb'].lstrip('#'), c['transparent']) for c in load('colors.json', data)}
     colours.setdefault(-1, ('[Unknown]', '0033B2', False))
     parts, categories, figures, inventory_rows, inventory_figures, inventory_parts, inventory_ids = {}, {}, {}, [], [], {}, {}
+    elements = {}      # element id -> its part and colour
 
     def lines(inventory_id, rows):
         for row in rows:
@@ -83,6 +85,8 @@ def write_dump(directory, data=DATA, layer=None):
             colours.setdefault(colour['id'], (colour['name'], colour['rgb'].lstrip('#'), colour['transparent']))
             category = categories.setdefault(row.get('category') or 'Other', len(categories) + 1)
             parts.setdefault(row['part'], [row['part'], row['name'], category, 'Plastic'])
+            if with_elements and row.get('element'):
+                elements.setdefault(str(row['element']), [str(row['element']), row['part'], colour['id'], ''])
             key = (inventory_id, row['part'], colour['id'], bool(row.get('spare')))
             inventory_parts[key] = inventory_parts.get(key, 0) + row['quantity']
     for number, inventory in inventories.items():
@@ -101,7 +105,7 @@ def write_dump(directory, data=DATA, layer=None):
         shown.setdefault(row['set'], [row['set'], row['name'], row['year'], themes[theme_path(row)][0], row.get('parts') or 0, ''])
     files = {
         'colors': [[i, n, rgb, str(t), 0, 0, 0, 0] for i, (n, rgb, t) in sorted(colours.items())],
-        'elements': [], 'inventory_sets': [], 'part_relationships': [],
+        'elements': sorted(elements.values(), key=lambda r: (len(r[0]), r[0])), 'inventory_sets': [], 'part_relationships': [],
         'inventories': inventory_rows,
         'inventory_minifigs': inventory_figures,
         'inventory_parts': [[i, p, c, q, str(s), ''] for (i, p, c, s), q in sorted(inventory_parts.items())],

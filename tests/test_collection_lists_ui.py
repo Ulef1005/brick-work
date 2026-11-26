@@ -36,7 +36,7 @@ def test_list_records_carry_subtheme_and_tags_only_as_display_fields(coll, world
     coll.prop(world.keep, 'subtheme', 'Lion Knights')
     with read() as db:
         rows = collection.listing(db, 'S')
-    assert FIELDS[-10:] == ['subtheme', 'tags', 'item_id', 'also', 'source', 'added', 'in_sets_missing', 'in_sets_damaged', 'in_sets_defects', 'bars']
+    assert FIELDS[-12:] == ['subtheme', 'tags', 'item_id', 'also', 'source', 'added', 'in_sets_missing', 'in_sets_damaged', 'in_sets_defects', 'bars', 'via', 'list']
     data = json.loads(payload(rows))
     index = {name: i for i, name in enumerate(data['fields'])}
     castle = next(r for r in data['rows'] if r.get(str(index['item_id'])) == world.keep and r.get(str(index['number'])) == '1000-1')

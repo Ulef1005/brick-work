@@ -204,7 +204,8 @@ def navigation():
             ('Matchmaker', 'web.bw_matcher', 'match', (), {}),
             ('Build Scout', 'web.bw_build_scout', 'scout', (), {}),
             ('Orders', 'web.bw_orders', 'orders', (), {}),
-            ('Storage', 'web.bw_storages', 'storage', ('HIDE_ALL_STORAGES',), {})]),
+            ('Storage', 'web.bw_storages', 'storage', ('HIDE_ALL_STORAGES',), {}),
+            ('Sync', 'web.bw_sync_hub', 'match', (), {})]),
         ('Planning', [
             ('Wishlist', 'web.bw_planning', 'wish', ('HIDE_WISHES',), {'screen':'wishlist'}),
             ('Prices', 'web.bw_planning', 'price', (), {'screen':'prices'}),
@@ -256,6 +257,8 @@ def navigation():
         current = 'Orders'
     elif endpoint.startswith('web.bw_storage'):
         current = 'Storage'
+    elif endpoint in ('web.bw_sync_hub', 'web.bw_sync', 'web.bw_sync_site', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_write') or endpoint.startswith(('web.bw_sync_rb_', 'web.bw_sync_bs_', 'web.bw_sync_bl_')):
+        current = 'Sync'
     elif endpoint in ('web.index', 'web.prices'):
         current = 'Prices'
     elif endpoint in ('web.instructions_collection', 'web.save_loose_instructions',

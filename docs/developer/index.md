@@ -23,16 +23,19 @@ These live at the root of the repository on GitHub:
 
 ## Development checks
 
-Run the tests, then the whole gate:
+Run the gate before you push:
 
 ```sh
-.venv/bin/python -m pytest tests -q
 APP_VENV=.venv bash scripts/check.sh
 ```
 
-The check script includes the naming gate, a standalone smoke test with sockets blocked, the full Python suite, available JavaScript runtime harnesses, and contract consistency checks. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which `scripts/check.sh` runs.
+On your machine the gate runs every check except the test suite. It runs the naming gate, the private patterns check, the design and contract checks, the docs checks, and the secret scan. The pull request's `check` on GitHub runs the tests: the full Python suite with the standalone smoke test (sockets blocked), the Chrome tests and the JavaScript runtime harnesses ([ADR 0043](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0043-tests-on-github-land-tier-on-the-mac.md)). To run the tests locally as well, set `BW_LOCAL_TESTS=1`, or run `.venv/bin/python -m pytest tests -q`. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which the pull request's check runs.
 
 Decisions that bind future work are recorded as ADRs in [`docs/adr/`](https://github.com/Ulef1005/brick-work/tree/main/docs/adr) in the repository.
+
+## Schema 4.7
+
+Schema 4.7 adds one nullable column, `copy.checked_by` (#489). Empty means Brick Work or nobody, and `rebrickable` means a Rebrickable pull set the copy's checked state. A check or a mark by hand clears it. The upgrade is additive and runs in place at the first read/write start of the 1.2 image; existing copies stay empty. It is one way: a 1.1.x image refuses the upgraded file, so the way back is the backup taken before.
 
 ## Instruction previews
 

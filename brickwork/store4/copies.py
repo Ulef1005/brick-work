@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 import json
 import uuid
 
-from . import identity, jobs
+from . import identity, jobs, origins
 from .connect import check_compatible
 from .audit import Events, need_catalogue, transaction
 from .connect import has_catalogue, now
@@ -269,10 +269,10 @@ def create_copy_in(db, set_item_id, choice, *, via, actor=None, condition=None, 
         pending = {'source': 'bricklink', 'job_id': job, 'job_reused': not created}
     db.execute('''INSERT INTO main.copy(id, item_id, inventory_source, inventory_version, fetched_inventory_id, inventory_digest,
                   materialised_at, inventory_pending, pending_job_id, condition, completeness, completeness_source, note,
-                  created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                  created_at, updated_at, added_via) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                (copy_id, set_item_id, target.source, target.version, target.fetched_inventory_id, target.digest, stamp,
                 pending and 'bricklink', pending and pending['job_id'], condition,
-                completeness, 'manual' if completeness else None, note, stamp, stamp))
+                completeness, 'manual' if completeness else None, note, stamp, stamp, origins.current()))
     figure_rows = []
     figure_ids = {}
     for fig in target.figures:
@@ -322,7 +322,7 @@ FIGURE_COLUMNS = ['id', 'item_id', 'inventory_source', 'inventory_version', 'fet
                   'missing', 'retired_at', 'updated_at']
 LINE_COLUMNS = ['id', 'copy_figure_id', 'item_id', 'color_id', 'is_spare', 'quantity', 'missing', 'damaged', 'checked', 'retired_at']
 COPY_COLUMNS = ['inventory_source', 'inventory_version', 'fetched_inventory_id', 'inventory_digest', 'materialised_at',
-                'inventory_pending', 'pending_job_id', 'completeness', 'completeness_source', 'updated_at']
+                'inventory_pending', 'pending_job_id', 'completeness', 'completeness_source', 'checked_by', 'updated_at']
                                                  # completeness_source: a manual choice made after the switch refuses its undo
 FIELD, UNDO_FIELD = 'part_list_switch', 'part_list_switch_undo'
 
@@ -444,12 +444,14 @@ def derived_completeness(db, copy_id):
 
 
 def has_marks(db, copy_id):
-    """Anything on the copy checked or marked: a live line with `checked`, `missing` or `damaged` above 0, or a live figure line
-    with `missing` above 0. Decision F as amended: such a copy is never switched without the user."""
+    """Anything on the copy checked or marked: a live line with `checked`, `missing` or `damaged` above 0, a live figure line
+    with `missing` above 0, or a pull's label on the copy (`checked_by`, #489: it counts the whole list as checked). Decision F as
+    amended: such a copy is never switched without the user."""
     return db.execute(
         '''SELECT 1 FROM main.copy_part WHERE copy_id=? AND retired_at IS NULL AND (checked>0 OR missing>0 OR damaged>0)
-           UNION ALL SELECT 1 FROM main.copy_figure WHERE copy_id=? AND retired_at IS NULL AND missing>0''',
-        (copy_id, copy_id)).fetchone() is not None
+           UNION ALL SELECT 1 FROM main.copy_figure WHERE copy_id=? AND retired_at IS NULL AND missing>0
+           UNION ALL SELECT 1 FROM main.copy WHERE id=? AND checked_by IS NOT NULL''',
+        (copy_id, copy_id, copy_id)).fetchone() is not None
 
 
 def switch_part_list(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None, remember=False, carry_preference=None):
@@ -536,8 +538,9 @@ def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, u
             db.execute('UPDATE main.copy_part SET quantity=?, missing=?, damaged=?, retired_at=? WHERE id=?',
                        (after['quantity'], after['missing'], after['damaged'], after['retired_at'], after['id']))
         line_ops.append([op['op'], None if op['before'] is None else _row(op['before'], LINE_COLUMNS), _row(after, LINE_COLUMNS)])
+    # A pull's label covered the old list only: the new list's lines are not checked (#489; Argon review, 23.11.). Undo puts it back.
     db.execute('''UPDATE main.copy SET inventory_source=?, inventory_version=?, fetched_inventory_id=?, inventory_digest=?,
-                  materialised_at=?, inventory_pending=NULL, pending_job_id=NULL, updated_at=? WHERE id=?''',
+                  materialised_at=?, inventory_pending=NULL, pending_job_id=NULL, checked_by=NULL, updated_at=? WHERE id=?''',
                (target.source, target.version, target.fetched_inventory_id, target.digest, stamp, stamp, copy_id))
     completeness = derived_completeness(db, copy_id)
     if completeness is not None:
@@ -636,6 +639,8 @@ def undo_switch_in(db, event_id, *, via, actor=None):
                   materialised_at=?, inventory_pending=?, pending_job_id=?, completeness=?, updated_at=? WHERE id=?''',
                (old['inventory_source'], old['inventory_version'], old['fetched_inventory_id'], old['inventory_digest'],
                 old['materialised_at'], old['inventory_pending'], old['pending_job_id'], old['completeness'], stamp, copy_id))
+    if 'checked_by' in old:                             # a receipt from before the switch cleared the label has none
+        db.execute('UPDATE main.copy SET checked_by=? WHERE id=?', (old['checked_by'], copy_id))
     completeness = derived_completeness(db, copy_id)    # lines the switch did not touch may have changed since: recompute
     if completeness is not None:
         db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))

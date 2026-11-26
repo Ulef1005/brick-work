@@ -1,0 +1,71 @@
+/* The item lists in B′ (#501 T1: Minifigures, Parts, Instructions, Boxes and the other kinds; T4/T6 reuse it for Planning). Tokens only: each list keeps its layout and
+   every shipped control, and takes the components of the approved Sets frame (R3-01, design/screens-b/04-sets): the eyebrow and the ruled
+   heading, the status tabs (for the Loose / In sets and the quick chips), the outlined small buttons, the ink segment (Flat / By lot and
+   Drawers / Ledger) and the field. `#bw-collection[data-b-list]` is not a `.b-prime` root, so every rule carries `:not(#_)` to beat
+   bw-collection.css. Colours only from the tokens; dark follows from them. */
+
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) {font:400 15px/1.45 var(--tw-font),system-ui,sans-serif;color:var(--tw-text);-webkit-font-smoothing:antialiased}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .mono {font-family:var(--tw-mono),ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+/* Heading: eyebrow, title, the line under it, a 1.5 px rule (R3-01 .head) */
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-heading {display:flex;align-items:flex-end;gap:16px;margin:0 0 4px;padding:0 0 12px;border-bottom:1.5px solid var(--tw-rule)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-heading>div:first-child {min-width:0}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-eyebrow {margin:0 0 6px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-heading h1 {margin:0;font:600 34px/1.15 var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-heading p.secondary {margin:4px 0 0;font:400 15px/1.45 var(--tw-font);color:var(--tw-text-2)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-heading a.button.primary {margin-left:auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;min-height:38px;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);box-shadow:none;font:600 14px var(--tw-font);white-space:nowrap;text-decoration:none}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-heading a.button.primary svg {width:16px;height:16px}
+
+/* Scope and quick chips become status tabs (R3-01 .stabs): underline, text-2, the count muted mono */
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-scope-chips,.bc-quick-chips) {display:flex;flex-wrap:nowrap;gap:24px;margin:12px 0 0;padding:0;border-bottom:1px solid var(--tw-divider);overflow-x:auto;scrollbar-width:none}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-scope-chips,.bc-quick-chips)::-webkit-scrollbar {display:none}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-scope-chips,.bc-quick-chips)>button {flex:none;display:inline-flex;align-items:baseline;justify-content:flex-start;gap:6px;height:auto;min-height:0;min-width:0;padding:10px 0 9px;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;box-shadow:none;color:var(--tw-text-2);font:500 14px/20.3px var(--tw-font);white-space:nowrap;cursor:pointer}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-scope-chips,.bc-quick-chips)>button[aria-pressed=true] {color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent);background:none}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-scope-chips,.bc-quick-chips)>button .mono {font:400 12px/1 var(--tw-mono),ui-monospace,monospace;color:var(--tw-text-muted);padding:0;background:none}
+
+/* Toolbar: the field and the outlined small buttons (R3-01 .input, .btn.sec.sm) */
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar {gap:10px;margin-top:12px;align-items:center}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar .bc-search {min-height:0;height:38px}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar .bc-search svg {width:16px;height:16px;color:var(--tw-text-muted)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar .bc-search input {height:38px;min-height:38px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);box-shadow:none;font:400 15px var(--tw-font);color:var(--tw-text)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar .bc-search input::placeholder {color:var(--tw-text-muted);opacity:1}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar>button,
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar .bc-options>button {display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;min-height:38px;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font);white-space:nowrap;cursor:pointer}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar>button[aria-expanded=true],
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar>button[aria-pressed=true] {background:var(--tw-accent-soft);box-shadow:inset 0 0 0 1.5px var(--tw-accent);color:var(--tw-accent-text)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar>button svg,
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar .bc-options>button svg {width:16px;height:16px}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar>button span,
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-toolbar .bc-options>button span {padding:0;font:inherit;color:inherit}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-list-options {flex-wrap:wrap;row-gap:8px}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-list-options>.mono {min-width:0;white-space:nowrap;font:400 12px var(--tw-mono),ui-monospace,monospace;color:var(--tw-text-2)}
+
+/* Flat / By lot and Drawers / Ledger: the ink segment (R3-01 .seg) */
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-flat-switch,.bc-view-switch) {flex:none;display:inline-flex;gap:0;padding:0;border:1.5px solid var(--tw-text);border-radius:3px;background:none;box-shadow:none;overflow:hidden}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-flat-switch,.bc-view-switch)>button {display:inline-flex;align-items:center;height:auto;min-height:0;width:auto;padding:6px 10px;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--tw-text);font:600 12px/normal var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;cursor:pointer}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-flat-switch,.bc-view-switch)>button+button {border-left:1.5px solid var(--tw-text)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-flat-switch,.bc-view-switch)>button[aria-pressed=true] {background:var(--tw-text);color:var(--tw-bg)}
+
+/* The filter panel keeps its place; its headings are labels, its choices small outlined chips, the chosen one violet soft (R3-01's sheet) */
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-filter-panel h3 {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-filter-panel h4 {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-filter-chips {gap:8px;background:none;padding:0;box-shadow:none}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-filter-chips>button {height:34px;min-height:34px;padding:0 10px;border:1.5px solid var(--tw-text-muted);border-radius:3px;background:transparent;box-shadow:none;color:var(--tw-text);font:500 13px var(--tw-font)}
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-filter-chips>button[aria-pressed=true] {border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent-text)}
+
+/* Rows and group labels: the hairline rows of R3-01's Ledger, the label style for group heads and column heads */
+:is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) :is(.bc-list-head,.bc-group-label,.bc-group-head) {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+
+@media(max-width:1023.98px) {
+  :is(#bw-collection[data-b-list],#bw-planning,#bw-figures,#bw-check-choices):not(#_):not(#_) .bc-heading h1 {font-size:26px}
+}
+
+/* #551, frames 78 and 79: the Added via chip row (as on Sets, frame 45) and the chip on each row. */
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-source {grid-column:1/-1}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-source[hidden] {display:none}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchips {display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchips-label {margin-right:4px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchip {display:inline-flex;align-items:center;gap:6px;height:auto;min-height:34px;max-width:100%;padding:4px 12px;border:1.5px solid var(--tw-divider);border-radius:3px;background:transparent;box-shadow:none;overflow-wrap:anywhere;text-align:left;font:500 13.5px var(--tw-font);color:var(--tw-text-2);cursor:pointer}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchip .mono {font-size:12px;color:inherit}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-fchip[aria-pressed=true] {border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent-text)}
+:is(#bw-collection[data-b-list],#bw-planning):not(#_):not(#_) .bc-source-chip {grid-column:1/-1;display:inline-block;justify-self:start;align-self:flex-start;width:max-content;margin:4px 6px 0 0;max-width:100%;padding:2px 6px;border:1.5px solid var(--tw-text);border-radius:3px;overflow-wrap:anywhere;font:600 11px/14px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text)}

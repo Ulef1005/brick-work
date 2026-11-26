@@ -42,8 +42,13 @@ PORTED |= {'web.bw_orders', 'web.bw_order', 'web.bw_orders_action', 'web.bw_orde
 # history, Instruction files, Unresolved items), API tokens and the database export.
 PORTED |= {'web.bw_tools', 'web.bw_admin', 'web.bw_admin_write', 'web.bw_tokens', 'web.bw_tokens_write', 'web.bw_export', 'web.bw_catalogue_job', 'web.bw_migration_file'}
 # M.8j: Collection sync (sources, link, pull and send plans, their writes) and Import from BrickTracker (upload, plan, apply, Undo).
-PORTED |= {'web.bw_sync', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_write', 'web.bw_import_legacy', 'web.bw_import_upload',
+PORTED |= {'web.bw_sync', 'web.bw_sync_hub', 'web.bw_sync_site', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_write', 'web.bw_import_legacy', 'web.bw_import_upload',
            'web.bw_import_plan', 'web.bw_import_apply', 'web.bw_import_undo'}
+# #519, #520: the Rebrickable and Brickset pages' steps (connect and its key, choose what, pick, preview, apply, result, undo, start, retry).
+PORTED |= {f'web.bw_sync_{site}_{step}' for site in ('rb', 'bs') for step in ('connect', 'key', 'choose', 'choose_save', 'start', 'pick', 'pick_save', 'preview',
+                                                                          'apply', 'result', 'undo', 'retry', 'progress', 'stop')}
+# #521: the BrickLink page's steps (its own module, the same step names; no retry, nothing is sent).
+PORTED |= {f'web.bw_sync_bl_{step}' for step in ('site', 'connect', 'key', 'choose', 'choose_save', 'start', 'pick', 'pick_save', 'preview', 'apply', 'result', 'undo')}
 # M.10 A: the copy page's Part list (the Switch sheet's body; its writes are `web.bw_collection_write`).
 PORTED |= {'web.bw_copy_part_list', 'web.bw_add_picture_known'}
 # M.12: onboarding step 1, the first-run page's catalogue button.

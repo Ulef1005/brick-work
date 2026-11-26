@@ -1038,6 +1038,7 @@ paths:
       - $ref: '#/components/parameters/Q_status'
       - $ref: '#/components/parameters/Q_storage'
       - $ref: '#/components/parameters/Q_place'
+      - $ref: '#/components/parameters/Q_list'
       - $ref: '#/components/parameters/Q_flag'
       - $ref: '#/components/parameters/Q_lot'
       - $ref: '#/components/parameters/Q_problem'
@@ -4364,6 +4365,188 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: get_export_missing_xml
       x-piece: M.11b
+  /export/brickwork.zip:
+    get:
+      operationId: get_export_brickwork_zip
+      summary: "Brick Work's own export (#524) as a zip: places, flags, the collection and the wishes, as JSON Lines with a manifest."
+      description: 'Live rows only. Items and colours are named by provider, namespace, key and kind, never by this install''s ids. A copy carries its part-line marks and the word for where its list came from, not the list itself. Orders, part checks, market prices, photos, secrets and history are not in version 1; the prices you paid and the values you recorded are. A stored credential in a note is written as [set].'
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: sections
+        in: query
+        description: Comma-separated sections to include (places, flags, collection, wishes). All when absent.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The zip file.
+          headers:
+            X-Brickwork-Exported:
+              description: Rows written in all.
+              schema:
+                type: integer
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /export/collection.csv:
+    get:
+      operationId: get_export_collection_csv
+      summary: "The owned collection as CSV in Brick Work's own columns (#470): one row per copy or stock row."
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: kind
+        in: query
+        required: true
+        description: What to export.
+        schema:
+          type: string
+          enum:
+          - set
+          - part
+          - minifigure
+      - name: id
+        in: query
+        description: Repeated copy or stock row IDs; only these rows are exported (1 to 200 unique, live rows; a longer list does not fit a request line).
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+          maxItems: 200
+          uniqueItems: true
+      responses:
+        '200':
+          description: 'CSV with Kind, Item number, Name, Colour, Colour id, Quantity, Condition, Completeness, Storage, Place, Price paid, Price paid currency, Purchase date, Owners, Tags/flags, Note and Rating (sets only).'
+          headers:
+            X-Brickwork-Exported:
+              description: Rows written (merged lines for the XML).
+              schema:
+                type: integer
+            X-Brickwork-Skipped:
+              description: Rows left out because they have no number or no colour number on the target site.
+              schema:
+                type: integer
+          content:
+            text/csv:
+              schema:
+                type: string
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /export/collection.xml:
+    get:
+      operationId: get_export_collection_xml
+      summary: 'The owned collection as BrickLink wanted-list XML (#470): rows summed per item, colour and condition.'
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: kind
+        in: query
+        required: true
+        description: What to export.
+        schema:
+          type: string
+          enum:
+          - set
+          - part
+          - minifigure
+      - name: id
+        in: query
+        description: Repeated copy or stock row IDs; only these rows are exported (1 to 200 unique, live rows; a longer list does not fit a request line).
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+          maxItems: 200
+          uniqueItems: true
+      responses:
+        '200':
+          description: 'BrickLink INVENTORY XML; rows with no BrickLink number are left out and counted in X-Brickwork-Skipped.'
+          headers:
+            X-Brickwork-Exported:
+              description: Rows written (merged lines for the XML).
+              schema:
+                type: integer
+            X-Brickwork-Skipped:
+              description: Rows left out because they have no number or no colour number on the target site.
+              schema:
+                type: integer
+          content:
+            application/xml:
+              schema:
+                type: string
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /export/collection.rebrickable.csv:
+    get:
+      operationId: get_export_collection_rebrickable_csv
+      summary: 'The owned collection as Rebrickable CSV (#470): part_num, set_num or minifig_num with quantity.'
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: kind
+        in: query
+        required: true
+        description: What to export.
+        schema:
+          type: string
+          enum:
+          - set
+          - part
+          - minifigure
+      - name: id
+        in: query
+        description: Repeated copy or stock row IDs; only these rows are exported (1 to 200 unique, live rows; a longer list does not fit a request line).
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+          maxItems: 200
+          uniqueItems: true
+      responses:
+        '200':
+          description: 'Rebrickable CSV; rows with no Rebrickable number are left out and counted in X-Brickwork-Skipped.'
+          headers:
+            X-Brickwork-Exported:
+              description: Rows written (merged lines for the XML).
+              schema:
+                type: integer
+            X-Brickwork-Skipped:
+              description: Rows left out because they have no number or no colour number on the target site.
+              schema:
+                type: integer
+          content:
+            text/csv:
+              schema:
+                type: string
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
   /orders:
     get:
       operationId: get_orders
@@ -5375,6 +5558,16 @@ paths:
                 lost_parts:
                   type: boolean
                   description: 'Rebrickable only: the remembered switch "Bring in Lost Parts" of a pull (#457). On when never set.'
+                keep_list_names:
+                  type: boolean
+                  description: 'Rebrickable only: the remembered switch "Keep each set''s Rebrickable list names as its source detail" (#531). On when never set.'
+                part_lists:
+                  type:
+                  - array
+                  - 'null'
+                  items:
+                    type: integer
+                  description: 'Rebrickable only: the ids of the part lists to pull into loose stock (#471). null clears the choice.'
       responses:
         '200':
           description: OK
@@ -5389,6 +5582,80 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-v1: put_sync_by_source_link
+      x-piece: M.11d
+  /sync/rebrickable/parts/plan:
+    post:
+      operationId: post_sync_rebrickable_parts_plan
+      x-mcp-tool: plan_sync_rebrickable_parts
+      summary: 'Compare the chosen Rebrickable part lists with the loose parts in their lots: add (Rebrickable has more), differs and only here are listed, the
+        last two never pulled. Writes nothing to the collection; the plan expires after 24 hours.'
+      tags:
+      - Sync
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Plan created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenPartsPlan'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11d
+  /sync/rebrickable/parts/apply:
+    post:
+      operationId: post_sync_rebrickable_parts_apply
+      x-mcp-tool: apply_sync_rebrickable_parts
+      summary: 'Apply a part-list plan: the ticked rows'' difference goes into loose stock (Added via Rebrickable, tag imported from Rebrickable), in one
+        transaction with one receipt. Never lowers or removes stock. Undo with POST /events/{id}/undo.'
+      tags:
+      - Sync
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - plan_id
+              properties:
+                plan_id:
+                  type: string
+                ticked:
+                  type: array
+                  description: 'Row keys to apply. Left out: every row that adds.'
+                  items:
+                    type: string
+                lots:
+                  type: object
+                  description: 'Row key to lot id: puts a row into another live lot than its list''s own.'
+                  additionalProperties:
+                    type: string
+      responses:
+        '200':
+          description: Applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenPartsApplied'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
       x-piece: M.11d
   /sync/{source}/pull/plan:
     post:
@@ -5473,6 +5740,16 @@ paths:
                   description: 'Lost Parts: the copy to use for a set with several copies, `{set number: copy id}`. A set without a pick is left out and listed.'
                   additionalProperties:
                     type: string
+                list_choices:
+                  type: object
+                  description: 'Rebrickable list names (#531): the choice per preview line of `lists.preview`, `{list id: rename | keep | drop | skip}`. Left out: each line''s default (Rename it, Drop the name, Skip).'
+                  additionalProperties:
+                    type: string
+                    enum:
+                    - rename
+                    - keep
+                    - drop
+                    - skip
       responses:
         '200':
           description: OK
@@ -6130,6 +6407,78 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-v1: post_imports_by_id_apply
+      x-piece: M.11d
+  /imports/brickwork/plan:
+    post:
+      operationId: post_imports_brickwork_plan
+      summary: Upload a Brick Work export zip (#524, up to 50 MB) and get an import plan. Each row is new, here, a difference or unresolved; nothing is written to the collection.
+      description: 'Version 1 adds only. A row whose id is already here is left alone; a row that differs from the one here is listed, never changed.'
+      tags:
+      - Admin
+      security:
+      - bearerAuth:
+        - admin
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                file:
+                  type: string
+                  format: binary
+                sections:
+                  type: string
+                  description: Comma-separated sections to import (places, flags, collection, wishes). All the file holds when absent.
+              required:
+              - file
+      responses:
+        '201':
+          description: Plan created (expires after 24 hours).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenOwnImportPlan'
+        '413':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11d
+  /imports/brickwork/{plan_id}/apply:
+    post:
+      operationId: post_imports_brickwork_by_plan_id_apply
+      summary: 'Apply a Brick Work import plan: rows marked new are written in one transaction, with their lists, places and flags. Undo with POST /events/{id}/undo (admin).'
+      tags:
+      - Admin
+      security:
+      - bearerAuth:
+        - admin
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Applied; the event id undoes the whole import. Answers already_applied when the plan was applied before.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenImportApplied'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
       x-piece: M.11d
   /identifications:
     post:
@@ -7372,6 +7721,12 @@ components:
       schema:
         type: string
       description: Event field.
+    Q_list:
+      name: list
+      in: query
+      schema:
+        type: string
+      description: Keep copies synced from the site list with this name (the Rebrickable set list a set came from); the exact name.
     Q_via:
       name: via
       in: query
@@ -7590,6 +7945,64 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    RowSource:
+      type: object
+      description: Where the row came from (#551, read only). Added via never changes; Last synced from lists each site and list a sync matched the row to, newest first.
+      properties:
+        added_via:
+          type:
+          - string
+          - 'null'
+          enum:
+          - hand
+          - rebrickable
+          - brickset
+          - bricklink
+          - brickowl
+          - bricklink_xml
+          - rebrickable_csv
+          - brickset_csv
+          - brickowl_xml
+          - brickwork_export
+          - bricktracker
+          - api
+          - cli
+          - mcp
+          - null
+          description: How the row arrived. null for a row made before schema 4.8 ("Before this release").
+        added_via_label:
+          type: string
+          description: The words the app shows, such as `By hand`, `Rebrickable sync`, `Via the API` or `Before this release`.
+        last_synced_from:
+          type: array
+          items:
+            type: object
+            properties:
+              site:
+                type: string
+                enum:
+                - rebrickable
+                - brickset
+                - bricklink
+                - brickowl
+              list_key:
+                type: string
+                description: The site's id of the list; empty for the site's collection as a whole.
+              list_name:
+                type:
+                - string
+                - 'null'
+              synced_at:
+                type: string
+            required:
+            - site
+            - list_key
+            - list_name
+            - synced_at
+      required:
+      - added_via
+      - added_via_label
+      - last_synced_from
     InstructionFind:
       type: object
       additionalProperties: false
@@ -8330,6 +8743,13 @@ components:
           - string
           - 'null'
           pattern: ^[A-Z]{3,8}$
+        rating:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 5
+          description: Your own stars for the copy, 1 to 5 (#690); null when not rated.
         note:
           type:
           - string
@@ -8738,6 +9158,8 @@ components:
     Stock:
       type: object
       properties:
+        source:
+          $ref: '#/components/schemas/RowSource'
         id:
           type: string
         item:
@@ -9407,6 +9829,8 @@ components:
     Wish:
       type: object
       properties:
+        source:
+          $ref: '#/components/schemas/RowSource'
         qty_filled:
           type: integer
           description: 'How many of the wished quantity you have (#35): qty_filled_manual when set, else derived from owned stock.'
@@ -9419,6 +9843,13 @@ components:
           type:
           - integer
           - 'null'
+        priority:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 999
+          description: How much you want the wish, 1 is highest (#690); null when not set.
         list_id:
           type: string
           description: Target wishlist id; defaults to default on create.
@@ -9584,6 +10015,13 @@ components:
           - integer
           - 'null'
           description: Override the filled quantity; null goes back to the derived count.
+        priority:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 999
+          description: How much you want the wish, 1 is highest (#690); null when not set.
         list_id:
           type: string
           description: Target wishlist id; defaults to default on create.
@@ -10425,6 +10863,12 @@ components:
           type:
           - string
           - 'null'
+        count:
+          type: integer
+          description: Work done so far in this step (calls made, or changes applied for a sync run).
+        total:
+          type: integer
+          description: Work this step has (calls for a fetch; the changes chosen for a sync run stage).
         error:
           type:
           - string
@@ -11701,6 +12145,13 @@ components:
           - string
           - 'null'
           pattern: ^[A-Z]{3,8}$
+        rating:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 5
+          description: Your own stars for the copy, 1 to 5 (#690); null when not rated.
         pinned:
           type: boolean
         missing:
@@ -11782,6 +12233,10 @@ components:
           type: string
         label:
           type: string
+        account:
+          type:
+          - string
+          - 'null'
         credentials:
           type: object
         link:
@@ -11846,6 +12301,9 @@ components:
         lost:
           type: object
           description: 'On a Rebrickable pull plan, the Lost Parts section (#457): `on`, `rule`, `status` (`off`, `read`, `failed`), `message`, `unreadable`, `clearing`, `sets` (one per set with something to write: `copies`, `copy_id`, `state` `ready`, `pick` or `new` (a set this pull adds once, #513), `preview`), `unmatched_sets` and a `summary`.'
+        lists:
+          type: object
+          description: 'On a Rebrickable pull plan, the list names (#531): `keep` (the switch), `names` ({list id: name as read now}), `members` ({list id: set numbers}) and `preview`, one line per list recorded before (`key`, `old_name`, `name`, `state` `renamed`, `removed`, `unlinked` (the person unlinked it at Rebrickable, its names stay) or `unchanged`, `sets`, the default `action` and its `choices`). Each row of `rows` names its lists in `lists`.'
 
     SyncApplied:
       type: object
@@ -11932,6 +12390,52 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/SyncPlan'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
+    WrittenPartsPlan:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - event_id
+      - undo_url
+      - idempotent_replay
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          description: 'The plan: id, the chosen lists with their lots, the rows (add, differs, only_here), the unmatched numbers and a summary.'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
+    WrittenPartsApplied:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - event_id
+      - undo_url
+      - idempotent_replay
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          description: 'The receipt: event_id, counts, and already_applied.'
         event_id:
           type:
           - integer
@@ -12155,6 +12659,49 @@ components:
           - 'null'
         idempotent_replay:
           type: boolean
+    WrittenOwnImportPlan:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - event_id
+      - undo_url
+      - idempotent_replay
+      properties:
+        data:
+          $ref: '#/components/schemas/OwnImportPlan'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
+    OwnImportPlan:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        direction:
+          type: string
+        created_at:
+          type: string
+        source:
+          type: string
+        sections:
+          type: array
+          items:
+            type: string
+        manifest:
+          type: object
+        counts:
+          type: object
+        rows:
+          type: object
     WrittenImportApplied:
       type: object
       additionalProperties: false
@@ -12262,6 +12809,8 @@ components:
     Copy:
       type: object
       properties:
+        source:
+          $ref: '#/components/schemas/RowSource'
         partout:
           type:
           - object
@@ -12372,6 +12921,13 @@ components:
           - string
           - 'null'
           pattern: ^[A-Z]{3,8}$
+        rating:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 5
+          description: Your own stars for the copy, 1 to 5 (#690); null when not rated.
         pinned:
           type: boolean
         flags:
@@ -12447,6 +13003,15 @@ components:
           enum: [add_only, per_part, per_set, everything]
           default: per_part
           description: 'Which count a Rebrickable pull keeps for Lost Parts (#457). `add_only` adds marks and keeps the larger count. `per_part` lets Rebrickable''s count replace yours for a part it lists as lost. `per_set` makes a set with Lost Parts on Rebrickable exactly Rebrickable''s list. `everything` does that for every synced set.'
+        rebrickable_lost_parts_send:
+          type: boolean
+          default: false
+          description: 'Whether Brick Work may send your missing parts to Rebrickable''s Lost Parts list (#469). Locked in this version: it reads false, and true is refused.'
+        rebrickable_lost_parts_send_rule:
+          type: string
+          enum: [add_only, per_part, per_set, everything]
+          default: add_only
+          description: 'Which count wins when Brick Work sends Lost Parts (#469). `add_only` only adds parts and raises counts. `per_part` also lowers a count and offers a part for removal. `per_set` makes a set with a missing part here exactly your list. `everything` does that for every synced set.'
         part_group_overrides:
           type: object
           maxProperties: 200
@@ -12505,6 +13070,15 @@ components:
           enum: [add_only, per_part, per_set, everything]
           default: per_part
           description: 'Which count a Rebrickable pull keeps for Lost Parts (#457). `add_only` adds marks and keeps the larger count. `per_part` lets Rebrickable''s count replace yours for a part it lists as lost. `per_set` makes a set with Lost Parts on Rebrickable exactly Rebrickable''s list. `everything` does that for every synced set.'
+        rebrickable_lost_parts_send:
+          type: boolean
+          default: false
+          description: 'Whether Brick Work may send your missing parts to Rebrickable''s Lost Parts list (#469). Locked in this version: it reads false, and true is refused.'
+        rebrickable_lost_parts_send_rule:
+          type: string
+          enum: [add_only, per_part, per_set, everything]
+          default: add_only
+          description: 'Which count wins when Brick Work sends Lost Parts (#469). `add_only` only adds parts and raises counts. `per_part` also lowers a count and offers a part for removal. `per_set` makes a set with a missing part here exactly your list. `everything` does that for every synced set.'
         part_group_overrides:
           type: object
           maxProperties: 200

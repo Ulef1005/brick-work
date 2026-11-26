@@ -1,6 +1,6 @@
 """The screenshot gate (D3, #160; ADR 0022): renders the built app per screen state and compares it with the approved baseline captures.
 
-    python3 scripts/screen_gate.py capture [SCREEN ...]   write CANDIDATE baselines for the built states into
+    python3 scripts/screen_gate.py capture [SCREEN ...]   (Linux only) write CANDIDATE baselines for the built states into
                                                           design/screens/approval/baselines/<NN-Screen>/ (all of them, or the named screens)
     python3 scripts/screen_gate.py agree                  render every approved state on one Chrome process and on four, compare the two renders (#267)
     python3 scripts/screen_gate.py compare                render every built state with `approved: true`, compare it with its baseline, write
@@ -91,16 +91,16 @@ def world_folder():
 
 # The version the footer shows in the gate's world. The baselines were rendered when the footer said 1.0.0; the constant keeps that text for good.
 GATE_VERSION = '1.0.0'
-WORLDS = ('demo', 'showcase', 'extras', 'edge', 'edge-read-only', 'edge-empty', 'edge-value', 'edge-order', 'edge-instructions', 'real', 'frames', 'frames-no-storage', 'frames-pulled', 'frames-matcher', 'frames-instructions', 'frames-empty', 'frames-scout', 'frames-storage', 'frames-lot', 'frames-order', 'frames-orders')
+WORLDS = ('demo', 'showcase', 'extras', 'edge', 'edge-read-only', 'edge-empty', 'edge-value', 'edge-order', 'edge-instructions', 'real', 'frames', 'frames-no-storage', 'frames-pulled', 'frames-matcher', 'frames-instructions', 'frames-empty', 'frames-scout', 'frames-storage', 'frames-lot', 'frames-order', 'frames-orders', 'frames-setdetail', 'frames-source')
 
 
 def build_store(name: str, store: Path) -> None:
     """Build the invented collection of world `name` at `store` (and its catalogue beside it), with its staged checks. The one place a gate world's data
     is made, so a test can build exactly what the gate renders (tests/test_gate_edge_world.py proves the three older worlds did not change)."""
-    from brickwork.demo import checks, dataset, frames, frames_lot, frames_orders, frames_scout, frames_storage, gate_edge, gate_extras, real, showcase
-    layers = {'real': real.layer, 'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer, 'edge-value': gate_edge.value_layer, 'edge-order': gate_edge.order_layer, 'edge-instructions': gate_edge.instruction_layer, 'frames': frames.layer, 'frames-no-storage': frames.unstored_layer, 'frames-pulled': frames.pulled_layer, 'frames-matcher': frames.matcher_layer, 'frames-instructions': frames.instructions_layer, 'frames-empty': frames.empty_layer, 'frames-scout': frames_scout.scout_layer, 'frames-storage': frames_storage.storage_layer, 'frames-lot': frames_lot.lot_layer, 'frames-order': frames.layer, 'frames-orders': frames_orders.orders_layer}
+    from brickwork.demo import checks, dataset, frames, frames_lot, frames_orders, frames_scout, frames_setdetail, frames_storage, gate_edge, gate_extras, real, showcase
+    layers = {'real': real.layer, 'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer, 'edge-value': gate_edge.value_layer, 'edge-order': gate_edge.order_layer, 'edge-instructions': gate_edge.instruction_layer, 'frames': frames.layer, 'frames-no-storage': frames.unstored_layer, 'frames-pulled': frames.pulled_layer, 'frames-matcher': frames.matcher_layer, 'frames-instructions': frames.instructions_layer, 'frames-empty': frames.empty_layer, 'frames-scout': frames_scout.scout_layer, 'frames-storage': frames_storage.storage_layer, 'frames-lot': frames_lot.lot_layer, 'frames-order': frames.layer, 'frames-orders': frames_orders.orders_layer, 'frames-setdetail': frames_setdetail.setdetail_layer, 'frames-source': frames_setdetail.source_layer}
     dataset.build(store, layer=layers[name]() if layers[name] else None)
-    checks.stage(store, real.CHECKS if name == 'real' else showcase.CHECKS if name not in ('demo', 'frames', 'frames-no-storage', 'frames-pulled', 'frames-matcher', 'frames-instructions', 'frames-empty', 'frames-storage', 'frames-lot', 'frames-order', 'frames-orders') else None)
+    checks.stage(store, real.CHECKS if name == 'real' else showcase.CHECKS if name not in ('demo', 'frames', 'frames-no-storage', 'frames-pulled', 'frames-matcher', 'frames-instructions', 'frames-empty', 'frames-storage', 'frames-lot', 'frames-order', 'frames-orders', 'frames-setdetail', 'frames-source') else None)
     if name in ('frames', 'frames-no-storage', 'frames-matcher', 'frames-order'):
         frames.stage_inspector(store)   # frame 06's running check, answered through the checker like the staged ones
     if name == 'frames-order':
@@ -116,9 +116,9 @@ def build_store(name: str, store: Path) -> None:
 
 @contextmanager
 def edge_seams(name: str):
-    """What only the edge worlds switch on (brickwork/demo/gate_edge.py): BrickLink looks configured, so Update price is offered, and the photo recognition is
-    answered by a staged reply instead of the network. Nothing is changed for any other world, and both are put back when the world is gone."""
-    if not name.startswith('edge'):
+    """What the edge worlds and frames-setdetail switch on (brickwork/demo/gate_edge.py): BrickLink looks configured, so Update price is offered, and the photo
+    recognition is answered by a staged reply instead of the network. Nothing is changed for any other world, and both are put back when the world is gone."""
+    if not (name.startswith('edge') or name in ('frames-setdetail', 'frames-source')):
         yield
         return
     from brickwork.core.sources import base
@@ -157,6 +157,7 @@ def world(name: str, warm_up: list[str] = ()):
         if name.startswith('edge'):
             app.config['BW_READ_ONLY'] = name == 'edge-read-only'
         app.config['GATE_SHOWN_VERSION'] = GATE_VERSION   # the footer shows a constant, so a release never changes a baseline (#257)
+        app.config['SYSTEM_VARIANT_FROM_QUERY'] = True   # a state names its 404 version with ?variant= (the app picks one at random otherwise)
         client = app.test_client()
         for path in warm_up:
             client.get(path)
@@ -330,7 +331,18 @@ def run_agree(chrome: str, parallel: int = 4) -> tuple[list[str], int]:
     return [f'Serial against {parallel}-process render: {total} captures compared, {len(differ)} differ'] + [f'  differs: {d}' for d in differ], total
 
 
+def refused_off_linux() -> bool:
+    if sys.platform.startswith('linux'):
+        return False
+    print(f'Refused: baselines are written on Linux only (ADR 0022), not on {sys.platform}. Run the `baselines` workflow and commit its artifact.')
+    return True
+
+
 def capture(selected: list[str], chrome: str) -> int:
+    """Write the candidate baselines. Linux only: the baselines are Linux renders (ADR 0022). A Mac draws text and line art differently, and
+    references written there never match the Linux gate (#503: 708 files of 2026-11-23). Run the `baselines` workflow instead."""
+    if refused_off_linux():
+        return 2
     states = load()
     todo = [e for e in states['states'] if e['built'] and (not selected or e['screen'] in selected or e['screen'].split('-')[0] in selected)]
     for entry in todo:
@@ -347,6 +359,8 @@ def main(argv: list[str]) -> int:
     if mode == 'summary':
         print('\n'.join(summary_lines(load(), 0, [])))
         return 0
+    if mode == 'capture' and refused_off_linux():   # before Chrome: a refused run downloads nothing, and says why where no pinned Chrome exists
+        return 2
     chrome = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'chrome.py'), 'pinned'], capture_output=True, text=True)
     if chrome.returncode:
         print(chrome.stderr.strip())

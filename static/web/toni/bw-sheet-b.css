@@ -1,0 +1,42 @@
+/* The sheets (#501 T2: the edit sheet, frame 11; the copy chooser, frame 18; and the other `.bc-sheet` dialogs of a detail page). They sit
+   outside `.b-prime` but inside `#bw-collection`, on a set copy's page and an item's page alike. Tokens only, every field and control
+   stays: radius 8 and a hairline (no radius where it docks to the right edge), the ruled heading, label type, the field, a choice of one as
+   the ink segment (the chosen part filled ink, as on Add), hairline groups, outlined ink buttons, the violet primary. */
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet {background:var(--tw-bg);border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);box-shadow:none;color:var(--tw-text)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) :is(.bc-sheet-head,#bc-copies>h2) {padding-bottom:12px;border-bottom:1.5px solid var(--tw-rule)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet :is(.bc-sheet-title,h2) {margin:0;font:600 22px/1.2 var(--tw-font);letter-spacing:-.01em;color:var(--tw-text)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-sheet-sub {font:400 12px var(--tw-mono),ui-monospace,monospace;color:var(--tw-text-2)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet :is(.bc-field>label,.bc-label,form>label,.bc-segments legend) {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet :is(input:not([type=checkbox],[type=radio],[type=hidden],[type=file]),select,textarea) {border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);box-shadow:none;color:var(--tw-text)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-money {border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-money :is(input,select) {border:0;border-radius:0;background:transparent}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-money>:first-child {border-right:1px solid var(--tw-divider)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments>div {gap:0;padding:0;border:1.5px solid var(--tw-text);border-radius:3px;background:none;overflow:hidden}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments label+label span {border-left:1.5px solid var(--tw-text)}
+/* #667: the span fills its part to the full height of the bar, so the dividers and the filled part meet the outline (the parts are equal: flex:1 in bw-collection.css) */
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments label {display:flex;min-height:0;margin:0}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments label>span {flex:1;min-width:0}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments span {min-height:38px;padding:0 8px;border-radius:0;background:transparent;color:var(--tw-text);font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments input:checked+span {background:var(--tw-text);color:var(--tw-bg)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet :is(.bc-group,.bc-check) {border-color:var(--tw-divider)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-hint {color:var(--tw-text-2)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet :is(button,a.button):not(.primary,[role=switch],.bc-sheet-close) {min-height:38px;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet :is(button,a.button).primary {min-height:38px;padding:0 16px;border:0;border-radius:var(--tw-r-1);background:var(--tw-accent);box-shadow:none;color:var(--tw-on-accent);font:600 14px var(--tw-font)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet :is(button,a.button):disabled {background:transparent;box-shadow:none;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px}
+/* #667: Close is the thin line X with no square (the components sheet), a 44px target at the right end of the heading, centred on the title line */
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-sheet-head {display:flex;justify-content:space-between;align-items:flex-start}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-sheet-close {width:44px;height:44px;min-width:44px;min-height:44px;padding:0;margin:-9px -12px 0 auto;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:none;color:var(--tw-text-2)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-sheet-close:hover {color:var(--tw-text)}
+/* #667: the sheet opens with focus on its title (autofocus), not on Close, so Safari draws no ring around the X; Tab reaches Close next */
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet h2[tabindex="-1"]:focus {outline:none}
+/* The copy chooser: one row per copy, the number, its status tag and its storage, on hairlines */
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) #bc-copies .bc-row {display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 0;border:0;border-bottom:1px solid var(--tw-divider);border-radius:0;background:transparent;color:var(--tw-text);font:600 15px var(--tw-font);text-decoration:none}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) #bc-copies .bc-row:hover {background:var(--tw-surface)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) #bc-copies .bc-row:focus-visible {outline:2px solid var(--tw-focus-color);outline-offset:-2px}
+@media(min-width:1024px) {
+  #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet {border-width:0 0 0 1px;border-radius:0}
+  #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-sheet-close {display:grid;place-items:center}   /* the phone sheet keeps closing with Discard */
+}
+@media(max-width:1023.98px) {
+  #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet {border-radius:var(--tw-r-2) var(--tw-r-2) 0 0}
+}

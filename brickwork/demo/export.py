@@ -24,9 +24,9 @@ ROOT = Path(__file__).resolve().parents[2]
 NOTE = 'Demo with sample data: changes are not saved'
 SEEDS = ['/collection/sets', '/collection/M', '/collection/P', '/collection/G', '/collection/B', '/collection/C', '/collection/purchase-places',
          '/workbench/check-parts', '/workbench/part-picker', '/workbench/part-to-inventory', '/workbench/match', '/workbench/orders',
-         '/workbench/what-is-this', '/workbench/storage',
+         '/workbench/what-is-this', '/workbench/storage', '/workbench/lot-sorter', '/workbench/build-scout', '/planning/order-missing-parts',
          '/planning/wishlist', '/planning/prices', '/planning/complete-sets',
-         '/manage/add', '/manage/tools', '/manage/statistics', '/manage/sync', '/manage/catalogues', '/manage/tokens', '/manage/jobs',
+         '/manage/add', '/manage/tools', '/manage/statistics', '/workbench/sync', '/manage/catalogues', '/manage/tokens', '/manage/jobs',
          '/manage/refresh', '/manage/appearance', '/manage/history', '/manage/values']
 # Routes the crawl may follow from a seed (the agreed demo routes and their own sub-pages).
 FOLLOW = [re.compile(p) for p in (
@@ -38,7 +38,13 @@ FOLLOW = [re.compile(p) for p in (
     r'^/workbench/orders(/[1-9][0-9]*)?$',
     r'^/planning/(wishlist|prices|complete-sets)$',
     r'^/workbench/storage(/[^/?]+)?$',
-    r'^/manage/(add|tools|statistics|sync|catalogues|tokens|jobs|refresh|appearance|history|values)$',
+    r'^/workbench/lot-sorter$',
+    r'^/collection/lots/[0-9a-f-]{36}(\?detect=1)?$',
+    r'^/collection/lots/[0-9a-f-]{36}/pull/[1-9][0-9]*$',
+    r'^/workbench/build-scout(/[1-9][0-9]*)?(\?scan=1)?$',   # opening starts nothing; the Scan button's page is ?scan=1 (#668)
+    r'^/planning/order-missing-parts(\?sel=all(&step=review)?)?$',
+    r'^/workbench/sync$',
+    r'^/manage/(add|tools|statistics|catalogues|tokens|jobs|refresh|appearance|history|values)$',
 )]
 LIMIT = 3000   # a safety stop, never a silent cut: reaching it raises (the whole demo is about 1,300 pages)
 HOST_PATH = re.compile(r'/var/folders|/private/var|/private/tmp|/tmp/|/home/[a-z]|/Users/[A-Za-z]|\btmp[a-z0-9_]{8}\b')
@@ -148,7 +154,8 @@ def item_pages(store):
         other = ['/collection/item/%d' % r[0] for kind, limit in (('minifigure', 6), ('gear', 5), ('book', 4), ('catalog', 3))
                  for r in db.execute('SELECT DISTINCT item_id FROM stock WHERE kind=? AND archived_at IS NULL ORDER BY item_id LIMIT ?', (kind, limit))]
         parts = db.execute("SELECT item_id, color_id FROM stock WHERE kind='part' AND archived_at IS NULL ORDER BY item_id, color_id LIMIT 4").fetchall()
-    return sets + other + ['/collection/item/%d?colour=%d' % tuple(part) for part in parts]
+        lots = ['/collection/lots/%s?detect=1' % r[0] for r in db.execute('SELECT id FROM lot WHERE archived_at IS NULL AND id IN (SELECT lot_id FROM stock WHERE archived_at IS NULL) ORDER BY id')]   # the lot page with its set detection shown
+    return sets + other + ['/collection/item/%d?colour=%d' % tuple(part) for part in parts] + lots
 
 
 def render(client, base, data, store):
@@ -243,7 +250,7 @@ def check(out):
 def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True, world='showcase'):
     """Build the demo into `out` (which must not exist). Returns the manifest; raises on findings. `rich` adds the showcase layer
     (showcase.py) to the design test data's world; the screen gate renders the world without it. `world='real'` builds the real-sets world instead (real.py, #332)."""
-    layer, plan = (real.layer(), real.CHECKS) if world == 'real' else (showcase.layer(data), showcase.CHECKS)
+    layer, plan = (real.layer(demo=True), real.CHECKS) if world == 'real' else (showcase.layer(data), showcase.CHECKS)
     out = Path(out)
     if out.exists():
         raise FileExistsError(out)
@@ -295,8 +302,9 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True, world='s
             .replace('/*MANIFEST*/null', json.dumps({k: manifest[k] for k in ('base', 'note', 'pages', 'gets', 'pictures') if k in manifest})))
     (out / 'demo-shim.js').write_text(shim, encoding='utf-8')
     start = base + manifest['pages']['/collection/sets']
-    (out / 'index.html').write_text(f'<!doctype html><meta charset="utf-8"><title>Brick Work demo</title>'
-                                    f'<meta http-equiv="refresh" content="0; url={start}"><a href="{start}">Open the demo</a>\n',
+    (out / 'index.html').write_text(f'<!doctype html><html lang="en"><meta charset="utf-8"><title>Brick Work demo: try it in your browser</title>'
+                                    f'<meta name="viewport" content="width=device-width, initial-scale=1">'
+                                    f'<meta http-equiv="refresh" content="0; url={start}"><h1>Brick Work demo</h1><p><a href="{start}">Open the demo</a></p>\n',
                                     encoding='utf-8')
     (out / 'demo-manifest.json').write_text(json.dumps(manifest, indent=1), encoding='utf-8')
     findings = check(out)

@@ -535,6 +535,7 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 .bc-wish-max { display:flex;flex-direction:column;gap:2px; }
 .bc-wish-max-label { font:500 10px/12px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted); }
 .bc-wish-max strong { font:600 20px/26px var(--tw-mono); }
+.bc-wish-max-none { font:400 14px/20px var(--tw-font);color:var(--tw-text-2); }
 
 /* Design v1.3: figures stay visible as individual lines in every state. */
 #bw-collection .bc-figure-heading h3 { margin:8px 0 4px;font:600 22px/28px var(--tw-font);letter-spacing:-.2px; }
@@ -700,8 +701,8 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .bc-switch { position:relative;flex:none;width:52px;height:44px;padding:0;border:0;background:transparent; }
 #bw-collection .bc-switch::before { content:"";position:absolute;inset:6px 0;border-radius:16px;background:var(--tw-divider-strong); }
 #bw-collection .bc-switch[aria-checked=true]::before { background:var(--tw-accent); }
-#bw-collection .bc-switch-knob { position:absolute;left:3px;top:9px;width:26px;height:26px;border-radius:50%;background:#fff; }
-#bw-collection .bc-switch[aria-checked=true] .bc-switch-knob { transform:translateX(20px); }
+#bw-collection .bc-switch-knob { position:absolute;left:3px;top:9px;width:26px;height:26px;border-radius:50%;background:var(--tw-surface); }
+#bw-collection .bc-switch[aria-checked=true] .bc-switch-knob { transform:translateX(20px);background:var(--tw-on-accent); }   /* #512: tokens, so the knob reads on the dark track and on dark violet */
 @media(prefers-reduced-motion:no-preference) { #bw-collection .bc-switch-knob { transition:transform 160ms; } }
 #bw-collection .bc-cell-missing { font:400 12px/16px var(--tw-mono);color:var(--tw-text-2); }
 #bw-collection .bc-flat-switch { display:flex;flex:none;margin-right:8px; }
@@ -1221,3 +1222,10 @@ body:has(#bw-collection[data-bp-sets]) .layout>main.bp-flush,body:has(#bw-collec
 @media(max-width:599px) {
   .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-tiles,.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-bp-flow=sections] .bp-tiles,.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-bp-flow=flat] .bp-tiles { grid-template-columns:1fr 1fr; }
 }
+/* #551, frame 45: the Source chip rows of the Sets page (Added via, Last synced from). */
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-source { display:flex;flex-direction:column;gap:14px; }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchips { display:flex;flex-wrap:wrap;align-items:center;gap:8px; }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchips-label { margin-right:4px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted); }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchip { display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 12px;border:1.5px solid var(--tw-divider);border-radius:3px;background:transparent;overflow-wrap:anywhere;font:500 13.5px var(--tw-font);color:var(--tw-text-2);cursor:pointer;max-width:100%;text-align:left; }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchip .mono { font-size:12px;padding:0;border:0;color:inherit; }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-fchip[aria-pressed="true"] { border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent); }

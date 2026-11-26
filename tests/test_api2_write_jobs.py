@@ -46,6 +46,7 @@ def test_jobs_are_listed_newest_first_with_steps_and_filters(v2, world, pair):
     one = call(v2, f'/jobs/{first}')
     validate(one, 'get_jobs_by_id')
     assert one.json['data']['steps'][0]['error_code'] == 'source_error' and one.json['data']['interrupted'] is False
+    assert all(isinstance(step['count'], int) and isinstance(step['total'], int) for step in one.json['data']['steps'])        # #685: the work done and the work a step has
     assert call(v2, '/jobs/999').status_code == 404 and call(v2, '/jobs/x').status_code == 404
     assert call(v2, '/jobs', token=stored_token(pair, ['read'])).status_code == 200
 

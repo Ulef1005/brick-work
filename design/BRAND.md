@@ -106,9 +106,9 @@ Every B′ screen in `screens-b/`, one folder per screen, light and dark at 1440
 | `54` to `58` | The states of a sync run: a site asks us to wait, the day's budget used up, rows waiting for your choice, a long run, nothing to sync | N round 3 |
 | `59` to `62` | Wishlist (tiles, list, empty) and Wishlist detail (#654, #655) | U follow-up |
 | `63` to `65` | Edit set, Edit wish, Build Scout before a scan (#667 to #670) | U follow-up |
-| `66` to `77` | A run applying in one request; Brickset, BrickLink and Brick Owl steps and results; Import and Export | N round 4 |
+| `66` to `77` | A run applying in one request; Brickset and Brick Owl steps and results, the BrickLink result; Import and Export | N round 4 |
 | `78` to `93` | The added-via source on stock and wishes, BrickLink prices, each import and export format, the re-import result | N round 5 |
-| `94`, `95` | A run applying with progress; they replace `23` and `57` (#685) | N round 5, copy in round 6 |
+| `94`, `95` | A run applying (#685), approved to replace `23` and `57`; both folders stay, `23` as the target of the progress view, and `57` carries the restart copy of round 6 | N round 5, copy in round 6 |
 | `96` | The run a restart interrupted | N rounds 6 to 8 |
 
 Every other shipped screen is **tokens only** (round 5, #501): it keeps its layout and every control and is rebuilt through the tokens and components above, on the approved frame its row names (`screens-b/BUILD-NOTES.md`). Each round's differences from the shipped screens (what changed, what is kept, the phone) are in `screens-b/BUILD-NOTES.md`. Other widths are built from the two approved ones. The v1.3 frames in `screens/` stay the record of the shipped app until each screen is rebuilt. SUCCESS: all seven, per screen, in each round's review.

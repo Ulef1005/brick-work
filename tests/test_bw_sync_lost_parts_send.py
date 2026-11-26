@@ -637,6 +637,19 @@ def test_a_removal_that_stops_halfway_names_the_old_count(store, failure):
         assert 'it had 3' in exc.partial['remaining'][0]['gone']
 
 
+@pytest.mark.parametrize('stop', [adapters.RemoteBudgetExceeded(), adapters.KeyRejected('Refused')])
+def test_a_retry_after_a_failed_put_back_that_stops_again_still_says_it_could_not(store, stop):
+    planned, keys = change_plan(store)
+    client = ListedClient(refuse=lambda quantity: adapters.SourceError('down'))
+    first = lost_parts_send.apply(store, client, planned, keys, via='test', actor='tester')
+    client.refuse = lambda quantity: stop
+    try:
+        (row,) = lost_parts_send.apply(store, client, dict(rows=first['failed']), None, via='test', actor='tester')['remaining']
+    except adapters.KeyRejected as exc:
+        (row,) = exc.partial['remaining']
+    assert 'could not put it back' in row['gone']
+
+
 def test_a_key_refused_after_the_removal_keeps_what_is_gone(store):
     planned, keys = change_plan(store)
     client = ListedClient(refuse=lambda quantity: adapters.KeyRejected('Refused'))

@@ -81,7 +81,7 @@ browser() {
   # checked by version and SHA-256), else a system Chrome (scripts/chrome.py; CONTRIBUTING, Rendered tests).
   local found
   if [[ ${BW_NO_CHROME:-} == 1 ]]; then
-    echo "NOTE: BW_NO_CHROME=1, so every Chrome test and every Node test is skipped and named below (CI sets it on pull requests; run them by hand before a release)."
+    echo "NOTE: BW_NO_CHROME=1, so every Chrome test and every Node test is skipped and named below (set by hand; CI runs them on every pull request since 2026-11-26)."
     return 0
   fi
   if found=$(python3 scripts/chrome.py ensure); then
@@ -100,7 +100,7 @@ runtimes() {
   shopt -s nullglob
   local harnesses=(tests/*_runtime.cjs) rc=0 harness
   if [[ ${BW_NO_CHROME:-} == 1 ]]; then
-    echo "NOTE: BW_NO_CHROME=1, so the Node runtime harnesses are skipped and named below (CI sets it on pull requests; a push to main runs them)."
+    echo "NOTE: BW_NO_CHROME=1, so the Node runtime harnesses are skipped and named below (set by hand; CI runs them on every pull request since 2026-11-26)."
     (( ${#harnesses[@]} )) && printf '%s (BW_NO_CHROME=1)\n' "${harnesses[@]}" >> "$skips"   # an empty glob names nothing
     return 0
   fi
@@ -120,7 +120,7 @@ runtimes() {
 }
 
 secrets() {
-  if [[ -n ${CI:-} ]]; then
+  if [[ -n ${GITHUB_ACTIONS:-} ]]; then
     echo "Secret scan: the workflow's gitleaks action (shard 1) is this run's one scan (Repo Gates)."
     return 0
   fi
@@ -180,11 +180,8 @@ docs() {
 if [[ $mode == docs ]]; then
   if (( ! shard_first )); then echo "NOTE: docs mode runs on shard 1 only."; exit 0; fi
   step names "$python" scripts/check_names.py
-  if (( run_tests )); then
-    step docs-tests heavy "$python" -m pytest tests/test_docs_*.py tests/test_vale.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
-  else
-    step private-names heavy "$python" -m pytest -q -p no:xdist -p no:cacheprovider tests/test_public_snapshot.py
-  fi
+  [[ -z ${GITHUB_ACTIONS:-} ]] && step private-names "$python" -m pytest -q -p no:xdist -p no:cacheprovider tests/test_public_snapshot.py
+  (( run_tests )) && step docs-tests heavy "$python" -m pytest tests/test_docs_*.py tests/test_vale.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
   step secrets secrets
   step docs docs
 else
@@ -201,10 +198,10 @@ else
   fi
   # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice
   # (every step runs whatever the earlier ones did, so an early smoke step brought no earlier failure; #254).
+  # The private patterns check: on every run off GitHub, whatever runs besides (the patterns file never goes to CI)
+  [[ -z ${GITHUB_ACTIONS:-} ]] && step private-names "$python" -m pytest -q -p no:xdist -p no:cacheprovider tests/test_public_snapshot.py
   if (( run_tests )); then
     step pytest heavy "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}" ${shard_args[@]+"${shard_args[@]}"}   # the + form: bash 3.2 (macOS) fails an empty array under set -u
-  else
-    step private-names heavy "$python" -m pytest -q -p no:xdist -p no:cacheprovider tests/test_public_snapshot.py
   fi
   # The screenshot gate (tests/test_screen_gate.py) no longer runs here (Ulf, 2026-11-13: screens are approved from frames in a review artifact).
   # Run it by hand: python -m pytest tests/test_screen_gate.py -q -p no:xdist
@@ -227,6 +224,10 @@ if [[ -s $skips ]]; then
   rm -f "$skips.sorted"
 else
   echo 'Skipped rendered tests: none (0)'
+fi
+if (( ! run_tests )); then
+  echo '--- Tests ---'
+  echo 'Tests: not run here (the test suite, Chrome and the Node harnesses); the pull request'"'"'s check runs them on GitHub. BW_LOCAL_TESTS=1 runs them here.'
 fi
 echo '--- Screenshot gate ---'
 echo 'Screenshot gate: not run (removed from the check, 2026-11-13)'

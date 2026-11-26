@@ -7,6 +7,9 @@ Run by hand, once, with the download from Rebrickable's Downloads page. Nothing 
 fetched separately, by hand (not-mit/rebrickable/NOTICE.md). The output is Rebrickable data, so it lives in the not-MIT folder with its notice and is
 read at build time by `brickwork/demo/real.py`; CI never needs the download.
 
+Element ids (`elements.csv`, #676) only: one per part-and-colour line, the lowest when there are several, none when the file has none; no other
+column of that file is kept.
+
 What it keeps, per set: number, name, year, theme path and the theme id of the leaf, the part count and the picture's source URL; the inventory's part
 lines (version 1 when a set has several, which is the first release's list), with each part's name and category and each colour's name, RGB and
 transparency; the minifigures with their own part lists (a figure's inventory is the one whose set number is the figure number). The wished sets keep
@@ -66,12 +69,18 @@ def main(zip_path, out):
         parts = {r['part_num']: r for r in rows(archive, 'parts.csv') if r['part_num'] in needed}
         categories = {r['id']: r['name'] for r in rows(archive, 'part_categories.csv')}
         colours = {r['id']: r for r in rows(archive, 'colors.csv')}
+        wanted_pairs = {(l['part_num'], l['color_id']) for found in lines.values() for l in found}
+        elements = {}      # (part, colour id) -> the lowest element id: LEGO's id of that part in that colour (#676); a pair can have several
+        for r in rows(archive, 'elements.csv'):
+            pair = (r['part_num'], r['color_id'])
+            if pair in wanted_pairs and r['element_id'].isascii() and r['element_id'].isdigit() and (pair not in elements or int(r['element_id']) < int(elements[pair])):
+                elements[pair] = r['element_id']
 
     def line(row, figure=None):
         part, colour = parts[row['part_num']], colours[row['color_id']]
         return {'figure': figure, 'part': part['part_num'], 'name': part['name'], 'category': categories[part['part_cat_id']],
                 'color': {'id': int(colour['id']), 'name': colour['name'], 'rgb': '#' + colour['rgb'].lstrip('#'), 'transparent': colour['is_trans'] == 'True'},
-                'quantity': int(row['quantity']), 'spare': row['is_spare'] == 'True', 'element': None,
+                'quantity': int(row['quantity']), 'spare': row['is_spare'] == 'True', 'element': elements.get((row['part_num'], row['color_id'])),
                 'print': bool(PRINTED.search(part['name']) or PRINTED.search(part['part_num']))}
 
     result = []

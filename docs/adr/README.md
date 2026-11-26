@@ -49,3 +49,4 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0039](0039-added-via-and-synced-from.md) | Where a row came from: `added_via` on copy, stock and wish, and `synced_from`, schema 4.8 | proposed | 2026-11-22 |
 | [0041](0041-rating-and-priority.md) | Your rating and priority: `copy.rating` and `wish.priority`, schema 4.9 | proposed | 2026-11-24 |
 | [0042](0042-sync-run-as-a-job.md) | A sync run is a durable job in the shared job table, no schema change | accepted | 2026-11-24 |
+| [0043](0043-tests-on-github-land-tier-on-the-mac.md) | Tests run on GitHub; the Mac runs the land tier and the private patterns check | accepted; replaces the 2026-11-13 no-Chrome-on-PRs rule | 2026-11-26 |

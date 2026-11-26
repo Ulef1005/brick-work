@@ -275,7 +275,7 @@
 <div class="sr-actions">{% if can_edit %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_stop', run_id=run.id) }}">{{ csrf() }}<button class="bk-btn bk-outline"{% if info.stop_requested or info.state == 'running' %} disabled{% endif %}>{{ 'Stopping after this one' if info.stop_requested else 'Stop after this one' }}</button></form>{% endif %}</div></section>
 <div class="sr-two">
 <section class="sr-card" data-rb-pull><h2>Into Brick Work</h2>
-<p class="sr-lede sr-wait">{% if info.state == 'running' %}<span class="sr-spin" aria-hidden="true"></span>Applying the pull{% else %}Waiting to start{% endif %}</p>
+{% if info.state in ('running', 'queued') %}<p class="sr-lede sr-wait">{% if info.state == 'running' %}<span class="sr-spin" aria-hidden="true"></span>Applying the pull{% else %}Waiting to start{% endif %}</p>{% endif %}
 <p class="sr-lede">Sets, wishes, loose stock and part lists are applied together, so there is no count for this part. If it fails, nothing here changed.</p></section>
 {% if sends %}<section class="sr-card" data-rb-send><h2>To {{ label }}</h2>
 <p class="sr-meta mono">{{ sent_done }} of {{ '{:,}'.format(sent_all) }} sent</p>
@@ -290,6 +290,7 @@
 <p class="sr-lede">{% if pull_undone %}This pull was undone. One part had not been applied. The result page says which and why.{% else %}{{ '{:,}'.format(pull_changes) }} changes were applied here. One part was not. The result page says which and why.{% endif %}</p>
 {% elif pull_done %}<h2>Pull applied {{ tag('Done') }}</h2>
 <p class="sr-lede">{{ '{:,}'.format(pull_changes) }} changes applied here, in one step. {% if interrupted and pull_undone %}This pull was undone.{% elif interrupted %}They stay done.{% if undo_in_last_runs and can_edit %} Undo for this pull is in Last runs, where this run is listed as Interrupted.{% endif %}{% else %}Undo for the run stays on the result page.{% endif %}</p>
+{% else %}<h2>Into Brick Work</h2>
 {% endif %}</section>{% endif %}
 {% if sends %}<section class="sr-card" data-rb-send>
 {% if interrupted %}<h2>Sending {{ tag('Interrupted', true, true) }}</h2>

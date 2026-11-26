@@ -1746,7 +1746,8 @@ def _row_sources(row, added):
     """The Added via filter values of a stock or wish row and each row chip's words (#551, frames 78 and 79). A row with nothing owned has none."""
     found = sorted({v or 'before' for v in added}, key=_source_order)
     row['via'] = found
-    row['source_chips'] = [origins.chip(None if v == 'before' else v) for v in found]
+    # Frames 78 and 79 draw a list row's chip with the lead also for a row added by hand (design, 2026-11-26); the copy page (frame 44) is unchanged.
+    row['source_chips'] = ['Added via ' + origins.label(v) if v == origins.HAND else origins.chip(None if v == 'before' else v) for v in found]
 
 
 def _source_order(value):

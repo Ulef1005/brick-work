@@ -42,7 +42,7 @@ def test_a_grouped_row_names_each_origin_once_in_a_fixed_order():
     row = {}
     collection._row_sources(row, [None, 'hand', 'rebrickable', 'hand'])
     assert row['via'] == ['hand', 'rebrickable', 'before']
-    assert row['source_chips'] == ['By hand', 'Added via Rebrickable sync', 'Before this release']
+    assert row['source_chips'] == ['Added via By hand', 'Added via Rebrickable sync', 'Before this release']
 
 
 def test_a_row_with_nothing_owned_has_no_chip_and_counts_nowhere():

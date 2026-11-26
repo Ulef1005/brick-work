@@ -105,6 +105,7 @@ def test_lost_parts_tracks_ids_complete_across_merged_rows(store):
     ('add', {'lost_quantity': ['Ensure this value is greater than or equal to 1.']}),
     ('add', {'non_field_errors': ['nope']}),
     ('add', {'detail': 'bad', 'code': 400}),
+    ('add', ['Lost Part for Inv Part 501 already exists. Use PUT/PATCH to update it instead.']),      # the live reply, 2026-11-26
     ('remove', {'non_field_errors': ['nope']}),
     ('remove', []),
 ])
@@ -120,17 +121,11 @@ def test_lost_part_add_and_remove_reject_error_bodies(store, kind, reply):
         assert str(exc.value) == 'Rebrickable refused the Lost Part'
 
 
-@pytest.mark.parametrize('reply', [
-    {},
-    {'lost_part_id': '99'},
-    {'ok': True},
-    [],
-    {'lost_part_id': 99, 'lost_quantity': 3},
-])
-def test_lost_part_add_accepts_2xx_without_integer_id(store, reply):
+@pytest.mark.parametrize('reply', [{}, {'ok': True}, [], {'lost_part_id': None}, {'lost_part_id': '99'}, {'lost_part_id': True}])
+def test_lost_part_add_without_a_lost_part_id_is_a_failure(store, reply):
     remote = rebrickable_ready(store, WriteRemote(reply=reply))
-    client = adapters.RebrickableUser(store, http=remote)
-    assert client.lost_part_add(501, 3) == reply
+    with pytest.raises(adapters.SourceError):
+        adapters.RebrickableUser(store, http=remote).lost_part_add(501, 3)
     assert len(remote.writes) == 1
 
 

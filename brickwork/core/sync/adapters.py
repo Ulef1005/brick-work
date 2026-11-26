@@ -60,8 +60,7 @@ def _optional_id(value):
 def parse_lost_part(row):
     """One row of `GET /users/{token}/lost_parts/` as `dict(set_no, part_no, color_id, quantity, is_spare, lost_part_id, inv_part_id)`, or None when it cannot be read.
 
-    ASSUMED SHAPE (Rebrickable's documentation; the OpenAPI file does not describe the items and the test instance has no user token, so it
-    was not checked live): `{lost_part_id, lost_quantity, inv_part: {id, inv_part_id, part: {part_num, ...}, color: {id, ...}, set_num,
+    Checked against a real account on 2026-11-26 (#469; the OpenAPI file does not describe the items): `{lost_part_id, lost_quantity, inv_part: {id, inv_part_id, part: {part_num, ...}, color: {id, ...}, set_num,
     quantity, is_spare, element_id}}`. The set number is read from `inv_part.set_num`, else `set_num` or
     `set.set_num` on the row itself. If Rebrickable's reply differs, fix this one function; a row it returns None for is
     counted by the caller and reported as "could not be read", and a run with such a row clears nothing."""
@@ -198,25 +197,22 @@ class RebrickableUser(Rebrickable):
     def lost_part_add(self, inv_part_id, quantity):
         """Add one Lost Parts row on Rebrickable.
 
-        ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
-        `POST /users/{token}/lost_parts/` with form fields `inv_part_id` and `lost_quantity`.
-        After a 2xx the write is done, so only an error body fails; `lost_part_id` in the reply is optional."""
+        Checked live on 2026-11-26 (#469): `POST /users/{token}/lost_parts/` with form fields `inv_part_id` and `lost_quantity` answers the new
+        row with `lost_part_id`. For a part that is already listed it answers a list of messages ("... already exists. Use PUT/PATCH ...")
+        and changes nothing; `PATCH` on the row answered 405. Only a row with `lost_part_id` counts as added: an error with an empty body
+        arrives here as `{}`, and a listed part cannot be added twice."""
         reply = self.user_call('/lost_parts/', method='POST',
                                data={'inv_part_id': int(inv_part_id), 'lost_quantity': int(quantity)})
-        if isinstance(reply, dict) and (
-            'detail' in reply
-            or 'non_field_errors' in reply
-            or any(k in reply and not (type(reply[k]) is int and reply[k] >= 1) for k in ('inv_part_id', 'lost_quantity'))
-        ):
+        added_id = reply.get('lost_part_id') if isinstance(reply, dict) else None
+        if type(added_id) is not int or added_id < 1 or 'detail' in reply or 'non_field_errors' in reply:      # an int, as `lost_parts_send` requires
             raise SourceError('Rebrickable refused the Lost Part')
         return reply
 
     def lost_part_remove(self, lost_part_id):
         """Remove one Lost Parts row on Rebrickable.
 
-        ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
-        `DELETE /users/{token}/lost_parts/{id}/`. An empty reply is treated as success because 204 has no body, so it cannot be told from
-        an empty-bodied error; live behaviour of POST and DELETE must be tried with a real user token before sending is offered."""
+        Checked live on 2026-11-26 (#469): `DELETE /users/{token}/lost_parts/{id}/` removes the row. An empty reply is treated as success
+        because 204 has no body, so it cannot be told from an empty-bodied error."""
         reply = self.user_call(f'/lost_parts/{int(lost_part_id)}/', method='DELETE')
         if reply is not True:
             raise SourceError('Rebrickable refused the Lost Part removal')

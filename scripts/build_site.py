@@ -291,9 +291,16 @@ def questions_markup(meta, body):
         if old not in text:
             raise RuntimeError(f'{path}: the breadcrumb label {old!r} is missing, so the page would ship without its links')
         return text.replace(old, new, 1)
-    if not path.startswith('questions/'):
+    section = next((folder for folder in ('questions/', 'coming-from/') if path.startswith(folder)), None)
+    if section is None:
         return body, ''
     root, name = origin() + site_base(), html.unescape(meta['title'])
+    if section == 'coming-from/':       # #724: Home, the hub, then the page's own breadcrumb label; no HowTo or ItemList
+        label = re.search(r'<span class="label">.*? / ([^<>/]+)</span>', body)[1] if path != section else None
+        crumbs = [('Home', root), ('Coming from another tool', root + section)] + ([(html.unescape(label), root + path)] if label else [])
+        data = [{'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
+            {'@type': 'ListItem', 'position': n, 'name': text, 'item': url} for n, (text, url) in enumerate(crumbs, 1)]}]
+        return body, ''.join('<script type="application/ld+json">' + json.dumps(item, ensure_ascii=False).replace('</', '<\\/') + '</script>' for item in data)
     crumbs = [('Home', root), ('Questions', root + 'questions/')] + ([] if path == 'questions/' else [(name, root + path)])
     data = [{'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
         {'@type': 'ListItem', 'position': n, 'name': label, 'item': url} for n, (label, url) in enumerate(crumbs, 1)]}]

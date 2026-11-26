@@ -835,3 +835,26 @@ def test_the_questions_hub_lists_every_page_passes_the_lego_rule_and_the_structu
         assert '<a href="../../">Home</a> / <a href="../../questions/">Questions</a>' in text, slug
         assert len(ld(text)[types.index('HowTo')]['step']) >= 2, slug
         assert name_use_errors(text) == [], slug
+
+
+def test_coming_from_pages_carry_breadcrumb_data_and_the_old_collection_links_point_at_the_hub(site):
+    """#724: the hub and every coming-from page carry BreadcrumbList data that matches the visible breadcrumb; the home page and install/ link to the hub; llms.txt names the Brickie page."""
+    import json
+    from scripts.build_site import origin, site_base
+    root = origin() + site_base()
+    for path in ('coming-from/', 'coming-from/rebrickable/', 'coming-from/bricklink/', 'coming-from/bricktracker/', 'coming-from/brickie/', 'coming-from/other/'):
+        text = (site / path / 'index.html').read_text()
+        blocks = [json.loads(block) for block in re.findall(r'<script type="application/ld\+json">(.+?)</script>', text)]
+        crumbs = [block for block in blocks if block['@type'] == 'BreadcrumbList']
+        assert len(crumbs) == 1 and [block['@type'] for block in blocks] == ['BreadcrumbList'], path
+        items = crumbs[0]['itemListElement']
+        label = text.split('<span class="label">')[1].split('</span>')[0]
+        assert items[-1]['name'] == re.sub(r'<[^>]+>', '', label).split(' / ')[-1], path
+        assert items[0] == {'@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': root}, path
+        if path == 'coming-from/':
+            assert [item['name'] for item in items] == ['Home', 'Coming from another tool'] and items[-1]['item'] == root + path
+        else:
+            assert len(items) == 3 and items[1]['item'] == root + 'coming-from/' and items[2]['item'] == root + path, path
+    for page in ('index.html', 'install/index.html'):
+        assert 'coming-from/">Moving an old collection over?</a>' in (site / page).read_text(), page
+    assert 'coming-from/brickie/' in (site / 'llms.txt').read_text()

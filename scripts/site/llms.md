@@ -49,6 +49,8 @@ Short answers to common questions, each with how Brick Work does it:
 
 - [Everything in one file]({site}llms-full.txt): this page's facts and the full text of the pages below, for one fetch
 - [Bring your collection in from another app](docs/how-to/migrate.md): Brickset, Rebrickable, BrickLink and BrickTracker
+- [Coming from another tool]({site}coming-from/): Rebrickable, Brickset, BrickLink, BrickTracker, Brickie or another app, with a preview before anything is added
+- [Coming from Brickie]({site}coming-from/brickie/): Brickie was removed from the App Store; its sets are on Brickset, and Brick Work brings them over
 - [Check a set's parts](docs/how-to/check-set-parts.md): Set Inspector
 - [Pick parts for several sets](docs/how-to/pick-parts.md): Part Runner
 - [Find sets your loose stock can finish](docs/how-to/match-stock-to-sets.md): Matchmaker

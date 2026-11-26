@@ -198,8 +198,11 @@ else
   fi
   # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice
   # (every step runs whatever the earlier ones did, so an early smoke step brought no earlier failure; #254).
-  # The private patterns check: on every run off GitHub, whatever runs besides (the patterns file never goes to CI)
-  [[ -z ${GITHUB_ACTIONS:-} ]] && step private-names "$python" -m pytest -q -p no:xdist -p no:cacheprovider tests/test_public_snapshot.py
+  # The private patterns check on every run off GitHub (the patterns file never goes to CI), on shard 1 only, and
+  # here only when the test suite does not run it anyway
+  if [[ -z ${GITHUB_ACTIONS:-} ]] && (( shard_first && ! run_tests )); then
+    step private-names "$python" -m pytest -q -p no:xdist -p no:cacheprovider tests/test_public_snapshot.py
+  fi
   if (( run_tests )); then
     step pytest heavy "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}" ${shard_args[@]+"${shard_args[@]}"}   # the + form: bash 3.2 (macOS) fails an empty array under set -u
   fi

@@ -15,8 +15,8 @@ from .collection import defects
 from ..web.formatting import money, short_age
 
 FIELDS = ('type number name colour color_id rgb ink category theme year quantity missing damaged in_sets image unresolved entity ids condition status storage place '
-          'flags lot duplicates price lot_links defects price_basis missing_parts missing_figures pdf_available max_price subtheme tags item_id also source added in_sets_missing in_sets_damaged in_sets_defects bars via list').split()
-DEFAULTS = {18: [''], 19: [''], 20: ['null'], 21: ['null'], 22: [], 23: ['null'], 43: [], 44: []}   # what the browser decoder restores for an omitted field
+          'flags lot duplicates price lot_links defects price_basis missing_parts missing_figures pdf_available max_price subtheme tags item_id also source added in_sets_missing in_sets_damaged in_sets_defects bars via list source_chips').split()
+DEFAULTS = {18: [''], 19: [''], 20: ['null'], 21: ['null'], 22: [], 23: ['null'], 43: [], 44: [], 45: []}   # what the browser decoder restores for an omitted field
 KEYS = [str(i) for i in range(len(FIELDS))]
 EMPTY = (None, '', False, 0, [])
 
@@ -53,7 +53,7 @@ def payload(rows, query="", filters=None, sort="index", direction="asc"):
             sorted({f['name'] for i in r.get('instances', []) for f in i.get('flags', []) if f.get('kind') == 'tag' and f.get('shown_on_grid') and f.get('name')}),
             r.get('item_id'), r.get('also'), 'bricklink' if r.get('number_source') == 'bricklink' else None,
             r.get('added'), r.get('in_sets_missing') or 0, r.get('in_sets_damaged') or 0, defects(r.get('in_sets_missing'), r.get('in_sets_damaged')),
-            r.get('bars') or [], r.get('via') or [], r.get('list') or []]   # a set row's bars: [found, missing, total, figures missing] per copy (null: a copy with no part list), in the order of its statuses (core/collection.py `_copy_bars`)
+            r.get('bars') or [], r.get('via') or [], r.get('list') or [], r.get('source_chips') or []]   # a set row's bars: [found, missing, total, figures missing] per copy (null: a copy with no part list), in the order of its statuses (core/collection.py `_copy_bars`)
         packed = {KEYS[i]: v for i, v in enumerate(values) if (i == 4 and v is not None) or (v != DEFAULTS.get(i) and v not in EMPTY)}
         records.append(packed)
     if query or filters or sort != 'index' or direction != 'asc':

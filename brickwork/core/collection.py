@@ -411,6 +411,7 @@ def listing(db, type_letter, *, wishes=False):
         for row in rows:
             row['flags'] = flags['wish', row['id']]
             row['flag_names'] = [f['name'] or '' for f in row['flags']]
+            _row_sources(row, [row.get('added_via')])
     else:
         if type_letter not in TYPES:
             raise ValueError('Unknown collection')
@@ -446,6 +447,9 @@ def listing(db, type_letter, *, wishes=False):
                 found = {origins.list_value(s): origins.list_label(s) for i in row['instances'] for s in sources[i['id']]}
                 row['list'] = sorted(found)
                 row['list_labels'] = found
+        else:
+            for row in rows:
+                _row_sources(row, [i.get('added_via') for i in row['instances']])
         in_sets = []
         if kind == 'part':
             in_sets = [dict(r) for r in db.execute('''SELECT p.item_id,p.color_id,sum(p.quantity) AS quantity,sum(p.missing) AS missing,sum(p.damaged) AS damaged
@@ -1738,8 +1742,20 @@ def defects(missing=0, damaged=0):
                       ((missing, 'missing'), (damaged, 'damaged')) if count)
 
 
+def _row_sources(row, added):
+    """The Added via filter values of a stock or wish row and each row chip's words (#551, frames 78 and 79). A row with nothing owned has none."""
+    found = sorted({v or 'before' for v in added}, key=_source_order)
+    row['via'] = found
+    row['source_chips'] = [origins.chip(None if v == 'before' else v) for v in found]
+
+
+def _source_order(value):
+    order = [*origins.ORIGINS, 'before']
+    return order.index(value) if value in order else len(order)
+
+
 def source_chips(rows):
-    """The two chip rows of the Sets page (#551, frame 45): `(value, label, sets)` for Added via and for Last synced from, counted in sets."""
+    """The chip rows above a list (#551, frames 45, 78, 79): `(value, label, rows)` for Added via and, on Sets only, for Last synced from. A row of one chip would filter nothing and is empty (Ulf, 2026-11-26)."""
     via, lists = {}, {}
     for row in rows:
         for value in row.get('via') or []:
@@ -1750,5 +1766,6 @@ def source_chips(rows):
             if ' · ' not in entry[0] and ' · ' in row['list_labels'][value]:     # a row recorded without the list's name: the name another row has wins
                 entry[0] = row['list_labels'][value]
     order = [o for o in origins.ORIGINS] + ['before']
-    return ([(v, 'Before this release' if v == 'before' else origins.label(v), via[v]) for v in order if v in via],
-            [(v, label, n) for v, (label, n) in sorted(lists.items(), key=lambda kv: kv[1][0].casefold())])
+    added = [(v, 'Before this release' if v == 'before' else origins.label(v), via[v]) for v in order if v in via]
+    synced = [(v, label, n) for v, (label, n) in sorted(lists.items(), key=lambda kv: kv[1][0].casefold())]
+    return tuple(chips if len(chips) > 1 else [] for chips in (added, synced))

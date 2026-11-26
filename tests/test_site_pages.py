@@ -101,7 +101,7 @@ def test_every_documentation_page_links_the_complete_favicon_set(site):
     from scripts.build_site import MOVED, NAV
 
     # The stub pages at the old /api/ and /mcp/ URLs are built here too.
-    for href in [''] + [href for _, href in NAV if '#' not in href] + ['coming-from/' + n + '/' for n in ('rebrickable', 'bricklink', 'bricktracker', 'other')] + [folder + '/' for folder, _, _ in MOVED]:
+    for href in [''] + [href for _, href in NAV if '#' not in href] + ['coming-from/' + n + '/' for n in ('rebrickable', 'bricklink', 'bricktracker', 'brickie', 'other')] + ['coming-from/'] + [folder + '/' for folder, _, _ in MOVED]:
         if href.startswith(('demo/', 'docs/')):  # The demo uses the app's own icon links; Zensical builds the docs.
             continue
         page = site / href / 'index.html'
@@ -482,15 +482,21 @@ def test_copied_demo_html_root_paths_use_demo_base(site, name):
 def test_install_and_coming_from_pages_exist_and_cross_link(site):
     expected = {'install/': 'Install Brick Work in about five minutes.', 'coming-from/rebrickable/': 'Coming from Rebrickable or Brickset.',
                 'coming-from/bricklink/': 'Coming from BrickLink.', 'coming-from/bricktracker/': 'Coming from BrickTracker.',
-                'coming-from/other/': 'Coming from another app.'}
+                'coming-from/other/': 'Coming from another app.',
+                'coming-from/': 'Coming from another tool.', 'coming-from/brickie/': 'Coming from Brickie.'}
     for path, heading in expected.items():
         text = (site / path / 'index.html').read_text()
         assert heading in text, path
         assert 'aria-current="page"' in text.split('</header>')[0] or path.startswith('coming-from/'), path
     for path in expected:
         if path.startswith('coming-from/'):
-            rows = (site / path / 'index.html').read_text().split('<div class="rows">')[1].split('</div>')[0]
-            assert rows.count('<a href=') == 4          # the four sibling rows on every coming-from page
+            page = (site / path / 'index.html').read_text()
+            rows = page.split('<div class="rows">')[1].split('</div>')[0]
+            assert rows.count('<a href=') == 5          # the five rows on the hub and every coming-from page
+            label = page.split('<span class="label">')[1].split('</span>')[0]
+            assert 'Coming from another tool' in label
+            if path != 'coming-from/':                  # every sub-page breadcrumb links back to the hub
+                assert re.search(r'<a href="(\.\./)+coming-from/">Coming from another tool</a>', label), path
 
 
 def test_changelog_page_lists_every_release_with_an_anchor_and_an_atom_feed(site):
@@ -521,7 +527,7 @@ def test_every_site_page_has_its_own_description_canonical_and_social_tags_and_n
     from scripts.build_site import origin, site_base
     seen = set()
     for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'use-cases/', 'impressum/', 'privacy/', 'coming-from/rebrickable/',
-                 'coming-from/bricklink/', 'coming-from/bricktracker/', 'coming-from/other/'):
+                 'coming-from/bricklink/', 'coming-from/bricktracker/', 'coming-from/other/', 'coming-from/', 'coming-from/brickie/'):
         text = (site / path / 'index.html').read_text()
         description = re.search(r'<meta name="description" content="([^"]+)"', text)[1]
         assert description not in seen, path
@@ -551,7 +557,7 @@ def test_robots_and_sitemaps_point_at_this_sites_address(site):
     index = ET.fromstring((site / 'sitemap.xml').read_text())
     assert [e.find(ns + 'loc').text for e in index] == [f'{base}sitemap-pages.xml', f'{base}docs/sitemap.xml']
     locs = [e.find(ns + 'loc').text for e in ET.fromstring((site / 'sitemap-pages.xml').read_text())]
-    assert base in locs and f'{base}install/' in locs and f'{base}coming-from/other/' in locs and f'{base}demo/' in locs
+    assert base in locs and f'{base}install/' in locs and f'{base}coming-from/other/' in locs and f'{base}coming-from/' in locs and f'{base}coming-from/brickie/' in locs and f'{base}demo/' in locs
     assert all(loc.startswith(base) for loc in locs) and len(locs) == len(set(locs))
     assert (site / 'docs/sitemap.xml').is_file()
 

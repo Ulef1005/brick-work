@@ -195,3 +195,14 @@ pre.code{white-space:pre-wrap;overflow-wrap:anywhere}
 /* focus: the B′ ring, 2 px ink, never violet (BRAND.md § 3 --tw-focus-color, § 6); main draws it in the accent */
 :focus-visible{outline:2px solid var(--tw-focus-color)!important;outline-offset:2px}
 #t1:focus-visible~.tablist label[for=t1],#t2:focus-visible~.tablist label[for=t2],#t3:focus-visible~.tablist label[for=t3],#t4:focus-visible~.tablist label[for=t4]{outline:2px solid var(--tw-focus-color)!important;outline-offset:-4px}
+
+/* install options (draft): one slot per option, a name or a logo */
+.opt-head{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.slot{min-height:48px;display:flex;align-items:center}
+.slot.ph{width:160px;height:48px;justify-content:center;padding:0 8px;text-align:center;border:1px dashed var(--tw-text-muted);border-radius:var(--r1);font-size:12px;line-height:16px;color:var(--tw-text-muted)}
+.site .optname{font-size:18px;line-height:24px;font-weight:600;margin:0}
+.opts .card .link{margin-top:auto;align-self:flex-start}
+@media (min-width:641px){.opts.logos .opt-head{min-height:80px}}
+.way{display:flex;flex-direction:column;gap:12px;border-top:var(--hair);padding-top:20px}
+.site .steps.titles{padding:0}
+.site .steps.titles li{align-items:center;padding:0}

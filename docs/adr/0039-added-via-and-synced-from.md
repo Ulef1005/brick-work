@@ -27,7 +27,7 @@ Recommendation: option 1, with the lookup table.
 - `synced_from(copy_id | stock_id | wish_id, site, list_key, list_name, synced_at)`: exactly one row reference, one row per site and list (`list_key` '' for the site's collection as a whole). A pull touches every live copy, set-like stock row and wish of the linked list whose item the site holds, made by this pull or not, of the kinds that come in (see the amendment below); its receipt keeps a compact entry per touched row and its Undo takes them back, leaving a row a later run touched again.
 - API v2 serves both read only as `source` on `Copy`, `Stock` and `Wish` (`RowSource`); MCP reads the same bodies.
 
-**Amended 2026-11-27 (Ulf, in the product session: "Yes, only incoming (Recommended)", #531).** A pull records *Last synced from* only on rows of the kinds whose direction brings them in (Into Brick Work or Both ways): copies and set-like stock follow the sets, wishes follow the wishlist. A kind that is Off or goes only to the site gets no record, also in a run that only brings Lost Parts in. Records already written stay. It was: every kind, whatever the direction.
+**Amended 2026-11-27 (Ulf, in the product session: "Yes, only incoming (Recommended)", #531).** A pull records *Last synced from* only on rows of the kinds whose direction brings them in (Into Brick Work or Both ways): copies and set-like stock follow the sets, wishes follow the wishlist. A kind that is Off or goes only to the site gets no record, also in a run that only brings Lost Parts in. Records already written stay. A pull outside a sync run (API, CLI, MCP, the older pull page) also counts a kind it takes rows of as coming in. It was: every kind, whatever the direction.
 
 ## Consequences
 

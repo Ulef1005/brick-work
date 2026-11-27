@@ -467,10 +467,21 @@ def test_a_pull_marks_only_the_kinds_that_come_in(client, remote, pair, owned, w
     assert (copies > 0, wishes > 0) == (owned in ('into', 'both'), wished in ('into', 'both')), (copies, wishes)
 
 
-def test_a_pull_outside_a_run_follows_the_saved_directions(client, remote, pair):  # noqa: F811
+@pytest.mark.parametrize('taken,wishes_marked', [([], False), (None, True)])
+def test_a_pull_outside_a_run_follows_the_saved_directions_and_what_it_takes_in(client, remote, pair, taken, wishes_marked):  # noqa: F811
     csrf = connected(client, pair)
     run_id = start(client, csrf, owned_dir='into', wishlist_dir='off')
     with db_of(pair) as db:
-        sync.apply_pull(db, sync_run.load(db, run_id)[0]['pull'], None)
+        sync.apply_pull(db, sync_run.load(db, run_id)[0]['pull'], taken)      # None takes the default rows, a wish among them
+        assert (db.execute('SELECT count(*) FROM main.synced_from WHERE wish_id IS NOT NULL').fetchone()[0] > 0) is wishes_marked
+
+
+def test_a_run_marks_by_its_own_directions_not_by_those_saved_later(client, remote, pair):  # noqa: F811
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='into', wishlist_dir='off')
+    start(client, csrf, owned_dir='into', wishlist_dir='into')      # the saved directions now take wishes in too
+    with db_of(pair) as db:
+        sync_run.apply(db, run_id, form_for(db, run_id, send=False))
+        assert sync_run.load(db, run_id)[0]['stages']['pull']['status'] == 'done'
         assert db.execute('SELECT count(*) FROM main.synced_from WHERE copy_id IS NOT NULL').fetchone()[0] > 0
         assert db.execute('SELECT count(*) FROM main.synced_from WHERE wish_id IS NOT NULL').fetchone()[0] == 0

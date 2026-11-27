@@ -537,7 +537,7 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
     event ids, so its one Undo takes the sets, stock, wishes and marks back together.
 
     Last synced from (#531) is written only on rows of the kinds ('owned', 'wanted') that come in: `incoming`, which a run takes from its own
-    directions, else the saved directions of the site.
+    directions. Any other pull uses the saved directions of the site and the kinds of the rows it takes in.
 
     `mark_only`: a run with nothing to take in. The pull then writes its receipt and Last synced from and nothing else: no row, no Lost Parts
     step, no list rename or drop. It leaves the baseline as it is, and so does its Undo: a new baseline would make a set gone here read as
@@ -556,9 +556,6 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
     if via is None:
         via, actor = origin()
     source, stamp = plan['source'], store_now()
-    if incoming is None:
-        from . import run as sync_run
-        incoming = sync_run.kinds_in(sync_run.directions(db, source))
     wish_list = plan['link'].get('wish_list') or 'default'
     receipt = dict(plan=plan_id, source=source, copies=[], stock=[], wishes=[], pending=[], flag=None, flag_created=None, baseline_before=None,
                    stock_flags=[], guards={}, jobs=[], synced=[])
@@ -568,6 +565,9 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
         if done:
             return dict(event_id=done['event_id'], already_applied=True, counts=done['counts'])
         wishlists.require(db, wish_list)
+        if incoming is None:      # no run says: the saved directions, and whatever this pull takes in, which comes in by that
+            from . import run as sync_run
+            incoming = tuple({*sync_run.kinds_in(sync_run.directions(db, source)), *(r['kind'] for r in rows)})
         flag = receipt['flag'] = _flag(db, source, receipt) if any(r['kind'] == 'owned' for r in rows) else None
         touched = set()
         for row in rows:

@@ -562,16 +562,15 @@ def pull_wanted(form_data):
     return [k for k, v in form_data['chosen'].items() if v in ('pull', 'take')]
 
 
-def _kinds_in(run):
-    """The kinds of row ('owned', 'wanted') whose direction brings them into Brick Work."""
-    ways = run.get('directions') or {}
+def kinds_in(ways):
+    """The kinds of row ('owned', 'wanted') whose direction in `ways` (see `directions`) brings them into Brick Work (#531)."""
     return tuple(kind for kind, key in (('owned', 'owned'), ('wanted', 'wishlist')) if ways.get(key) in ('into', 'both'))
 
 
 def marked_rows(db, run, plans):
     """How many rows here a run that takes nothing in would mark Last synced from (#531): the rows that already match, of the kinds that come
     in."""
-    kinds = _kinds_in(run)
+    kinds = kinds_in(run.get('directions') or {})
     return sync.pull_marked_rows(db, plans['pull'], kinds) if plans['pull'] and kinds else 0
 
 
@@ -590,7 +589,7 @@ def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=
     only_marked = 0 if changes else marked_rows(db, run, plans)      # nothing to take in: what the pull will record is all it does
     if changes or only_marked:
         try:
-            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_skipped=kept_skipped, mark_only=None if changes else _kinds_in(run), via=via, actor=actor)
+            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_skipped=kept_skipped, incoming=kinds_in(run.get('directions') or {}), mark_only=not changes, via=via, actor=actor)
             effective = {k: lists.get(k, line['action']) for k, line in lines.items()}
             stages['pull'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted),
                                   lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']) if changes else 0, marked=only_marked)

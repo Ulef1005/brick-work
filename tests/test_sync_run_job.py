@@ -451,3 +451,26 @@ def test_a_released_run_runs_every_stage_chosen_on_the_next_try(three_sends, mon
         run_job.drain(db)
         assert sync_run.load(db, run_id)[0]['stages']['pull']['status'] == 'done'
         assert not db.execute("SELECT 1 FROM job_step WHERE job_id=? AND state='queued'", (job_id,)).fetchall()
+
+
+@pytest.mark.parametrize('owned,wished', [('into', 'off'), ('off', 'into'), ('to', 'into'), ('off', 'off')])
+def test_a_pull_marks_only_the_kinds_that_come_in(client, remote, pair, owned, wished):  # noqa: F811
+    from brickwork.core.sync import run as runs
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='into', wishlist_dir='into')
+    ways = dict(owned=owned, wishlist=wished)
+    with db_of(pair) as db:
+        plan_id = sync_run.load(db, run_id)[0]['pull']
+        sync.apply_pull(db, plan_id, None, incoming=runs.kinds_in(ways))      # a pull that takes rows in
+        copies = db.execute('SELECT count(*) FROM main.synced_from WHERE copy_id IS NOT NULL OR stock_id IS NOT NULL').fetchone()[0]
+        wishes = db.execute('SELECT count(*) FROM main.synced_from WHERE wish_id IS NOT NULL').fetchone()[0]
+    assert (copies > 0, wishes > 0) == (owned in ('into', 'both'), wished in ('into', 'both')), (copies, wishes)
+
+
+def test_a_pull_outside_a_run_follows_the_saved_directions(client, remote, pair):  # noqa: F811
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='into', wishlist_dir='off')
+    with db_of(pair) as db:
+        sync.apply_pull(db, sync_run.load(db, run_id)[0]['pull'], None)
+        assert db.execute('SELECT count(*) FROM main.synced_from WHERE copy_id IS NOT NULL').fetchone()[0] > 0
+        assert db.execute('SELECT count(*) FROM main.synced_from WHERE wish_id IS NOT NULL').fetchone()[0] == 0

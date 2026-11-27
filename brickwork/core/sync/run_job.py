@@ -461,6 +461,7 @@ def _fail_unexpected(db, job_id, *, write_failed=False):
         if not began and not settled:      # nothing ran: the run can be queued again
             for key in ('job', 'job_form', 'job_progress'):
                 run.pop(key, None)
+            run['stages'] = {}      # only `none` records here: kept, the next try would skip those stages whatever is chosen then
         elif not settled:
             if write_failed:      # the data folder or database refused a write: what is stored may lack what went out, and the run page warns of that
                 run['write_failed'] = True

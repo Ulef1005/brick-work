@@ -355,3 +355,31 @@ def test_a_failing_send_unit_keeps_the_rows_the_plan_holds(three_sends, monkeypa
         stage = sync_run.load(db, run_id)[0]['stages']['send']
         assert stage['status'] == 'failed' and len(stage['results']) == len(keys)
         assert stage['counts'].get('failed') and sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'done'
+
+
+@pytest.mark.parametrize('by_job', [True, False])
+def test_a_run_with_nothing_to_add_still_marks_the_rows_that_match(client, remote, pair, by_job):  # noqa: F811
+    """#531: the first run after the upgrade, when the copies here already match the site."""
+    csrf = connected(client, pair)
+    first = start(client, csrf, wishlist_dir='off', owned_dir='into')
+    with db_of(pair) as db:
+        sync_run.apply(db, first, form_for(db, first, send=False))        # now the copies here match
+        db.execute('DELETE FROM main.synced_from')
+        db.commit()
+    run_id = start(client, csrf, wishlist_dir='off', owned_dir='into')
+    nothing = MultiDict()
+    with db_of(pair) as db:
+        copies = db.execute('SELECT count(*) FROM main.copy WHERE archived_at IS NULL').fetchone()[0]
+        if by_job:
+            job_id = run_job.queue(db, run_id, nothing)
+            assert [tuple(r) for r in db.execute('SELECT name, total FROM job_step WHERE job_id=?', (job_id,))] == [('pull', 0)]
+            run_job.drain(db)
+            assert db.execute('SELECT state FROM job WHERE id=?', (job_id,)).fetchone()[0] == 'done'
+        else:
+            sync_run.apply(db, run_id, nothing)
+        stage = sync_run.load(db, run_id)[0]['stages']['pull']
+        assert stage['status'] == 'done' and not any(stage['counts'].values()), stage
+        marked = db.execute('SELECT count(DISTINCT copy_id) FROM main.synced_from WHERE copy_id IS NOT NULL').fetchone()[0]
+        assert marked > 0 and db.execute('SELECT count(*) FROM main.copy WHERE archived_at IS NULL').fetchone()[0] == copies
+        sync_run.undo_run(db, stage['event'])
+        assert db.execute('SELECT count(*) FROM main.synced_from').fetchone()[0] == 0

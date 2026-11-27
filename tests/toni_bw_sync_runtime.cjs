@@ -14,6 +14,9 @@ vm.runInNewContext(fs.readFileSync('static/web/toni/bw-sync.js','utf8'),{documen
 assert.equal(submit.textContent,'Pull 2 changes');assert.equal(submit.disabled,false);
 ticks[0].checked=false;ticks[1].checked=false;form.events.change();
 assert.equal(submit.textContent,'Pull');assert.equal(submit.disabled,true);
+submit.dataset.syMarks='';form.events.change();   // #531: rows that already match keep the button usable with nothing ticked
+assert.equal(submit.textContent,'Pull');assert.equal(submit.disabled,false);
+delete submit.dataset.syMarks;
 tabs[2].events.click();
 assert.deepEqual(rows.map(r=>r.hidden),[true,true,false,false]);
 assert.equal(tabs[2].getAttribute('aria-pressed'),'true');assert.equal(tabs[0].getAttribute('aria-pressed'),'false');

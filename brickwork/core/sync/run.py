@@ -557,23 +557,39 @@ def apply(db, run_id, form, *, http=None, via=None, actor=None):
         return run
 
 
+def pull_wanted(form_data):
+    """The preview rows the person chose to take into Brick Work."""
+    return [k for k, v in form_data['chosen'].items() if v in ('pull', 'take')]
+
+
+def marked_rows(db, run, plans, wanted=()):
+    """How many rows here the run's pull would mark Last synced from with the preview rows `wanted` taken in (#531), with sets or wishes coming
+    in. Nothing may be taken in: the rows that already match are marked all the same."""
+    ways = run.get('directions') or {}
+    if not plans['pull'] or not any(ways.get(k) in ('into', 'both') for k in ('owned', 'wishlist')):
+        return 0
+    return sync.pull_marked_rows(db, plans['pull'], list(wanted))
+
+
 def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=False):
     """Run the pull stage (sets, wishes, Lost Parts in, list names) and store its outcome on `run`."""
     pull = plans['pull']
     if not pull:
         return None
     stages, source = run['stages'], run.get('source', SOURCE)
-    wanted = [k for k, v in form_data['chosen'].items() if v in ('pull', 'take')]
+    wanted = pull_wanted(form_data)
     lost, picks, lists = form_data['lost'], form_data['copies'], form_data['lists']
     lines = {line['key']: line for line in (pull.get('lists') or {}).get('preview', ())}
     kept = [k for k, v in form_data['chosen'].items() if v == 'keep']       # the conflicts the person chose to Keep: remembered (#686)
     kept_covered, kept_skipped = keep_scope(run)
-    if wanted or lost or picks or any(v not in ('keep', 'skip') for v in lists.values()):
+    changes = bool(wanted or lost or picks or any(v not in ('keep', 'skip') for v in lists.values()))
+    only_marked = 0 if changes else marked_rows(db, run, plans, wanted)      # nothing to take in: what the pull will record is all it does
+    if changes or only_marked:
         try:
-            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_skipped=kept_skipped, via=via, actor=actor)
+            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_skipped=kept_skipped, marks_only=not changes, via=via, actor=actor)
             effective = {k: lists.get(k, line['action']) for k, line in lines.items()}
             stages['pull'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted),
-                                  lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']))
+                                  lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']), marked=only_marked)
         except WaitingForBudget as exc:
             stages['pull'] = dict(status='waiting' if raise_budget else 'failed', message=_message(exc, source))
             if raise_budget:

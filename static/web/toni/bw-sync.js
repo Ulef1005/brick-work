@@ -28,7 +28,7 @@
       if (submit) {
         const verb = submit.dataset.syVerb;
         submit.textContent = ticked ? verb + ' ' + ticked + ('syPlain' in submit.dataset ? '' : ticked === 1 ? ' change' : ' changes') : verb;
-        submit.disabled = ticked === 0;
+        submit.disabled = ticked === 0 && !('syMarks' in submit.dataset);   // #531: rows that already match are still to be recorded
       }
       if (requests) {
         // Brickset takes one call per set: rows that carry the same data-sy-set (an owned and a wanted row of one set) are one request

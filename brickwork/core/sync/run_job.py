@@ -47,6 +47,11 @@ def _stage_total(run, plans, form_data, name):
     return 0
 
 
+def _has_work(form_data, name, total):
+    """A stage with changes to make, or a pull that only marks the rows that already match (its total stays 0: nothing changes)."""
+    return total > 0 or (name == 'pull' and bool(form_data.get('marks')))
+
+
 def _interrupted(db, run, plans, form_data, name):
     """A stage a dead owner left `started`: failed (`done` when every send's result was already saved), never run again. For the send stage the rows get the result the send plan kept. The row in
     flight is the one the worker recorded before its call (`job_progress.in_flight`, cleared after the call; Brickset: one call per set number, so
@@ -109,8 +114,9 @@ def queue(db, run_id, form, *, via='app', actor=None):
             return run.get('job')
         chosen = sync_run.validate_choices(db, run, plans, form)
         form_data = sync_run._extract_form(run, plans, form, chosen)
+        form_data['marks'] = sync_run.marked_rows(db, run, plans, sync_run.pull_wanted(form_data)) > 0     # #531: a pull with no change to make can still have rows to mark
         steps = [(name, _stage_total(run, plans, form_data, name)) for name in STAGES]
-        active_steps = [(name, total) for name, total in steps if total > 0]
+        active_steps = [(name, total) for name, total in steps if _has_work(form_data, name, total)]
         t = now()
         stamp = jobs._stamp(t)
         source = run.get('source', sync_run.SOURCE)
@@ -346,7 +352,7 @@ def _run_one(db, job, http):
                 _drop_unsent_lost_parts(db, job_id, run)
             continue
         total = _stage_total(run, plans, form_data, name)
-        if total == 0:
+        if not _has_work(form_data, name, total):
             run['stages'][name] = dict(status='none')
             _refresh_plans(db, run)
             continue

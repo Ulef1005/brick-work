@@ -483,7 +483,7 @@ Five states of a sync run, built by `sources/n/n3_frames.py` (`build`, `check`),
 - **Frames 74 to 77 (Import & export, #523):** choose file with what the format carries, result with one Undo; export choose and result, no Undo. The Brickset CSV columns are "Unverified" until a real export is read.
 - **Frame 44 supersedes frame 12 for the copy page** (wiki-agent, 2026-11-24): brick-work's frame check fails on 12 because the Source row is the only difference (21 % at 1440); brick-work points its check at 44, and 12 stays as the base of the frames. No frame changed.
 
-## Commission N round 5 (draft, pending Ulf): every frame still missing (frames 78 to 93, the rail)
+## Commission N round 5 (approved by Ulf 2026-11-24, "Designs approved"): every frame still missing (frames 78 to 95, the rail)
 
 Gap list: `~/Workspace/_exports/design-brief-n/frame-gaps-n.md`. Requested by brick-work-product for Ulf, 2026-11-24: "ask design to write all missing frames".
 
@@ -495,7 +495,7 @@ Gap list: `~/Workspace/_exports/design-brief-n/frame-gaps-n.md`. Requested by br
 - **`93-re-import-result` (#524):** the result of re-importing a complete export, one Undo. The run state is frame 66's busy button.
 - **Design's wording, for Ulf's check:** every sentence in 78 to 93, the "Unverified" notes and "Before this release".
 - **SUCCESS:** Say: one job per frame. Unify: the same Result step as every sync page. Check: counts add up in each frame. Pass. Dark and 320/375 follow from the approved parts.
-- **`94-rebrickable-run-applying`, `95-sync-long-run-applying` (#685; brick-work-product, 2026-11-24):** frames 23 and 57 redrawn. The pull and the part lists apply in one transaction and cannot report "N of M", so they read "Applying the pull" with a spinner, no count and no ETA, and the pull cannot be stopped halfway. Sends and Lost Parts out keep "N of M" per call. In 95 the long run is 3,200 changes applied here plus 800 sends (640 sent of 800, about 3 min left, budget today 810 / 1,000, from the code's Rebrickable budget of 1,000), which also makes F-01's contradiction go away. 23 and 57 stay approved until Ulf approves 94 and 95.
+- **`94-rebrickable-run-applying`, `95-sync-long-run-applying` (#685; brick-work-product, 2026-11-24):** frames 23 and 57 redrawn. The pull and the part lists apply in one transaction and cannot report "N of M", so they read "Applying the pull" with a spinner, no count and no ETA, and the pull cannot be stopped halfway. Sends and Lost Parts out keep "N of M" per call. In 95 the long run is 3,200 changes applied here plus 800 sends (640 sent of 800, about 3 min left, budget today 810 / 1,000, from the code's Rebrickable budget of 1,000), which also makes F-01's contradiction go away. 23 and 57 stay approved until Ulf approves 94 and 95. **Since that approval** 94 and 95 are the run-applying states; both old folders stay, 23 as the target of the progress view and 57 with the restart copy of round 6 (`../BRAND.md` § 7).
 - **Keys (brick-work-product, 2026-11-24):** "Keys are not included." on the database export (87) and the re-import result (93): keys, tokens and the Brickset password hash are never in an export; sync settings are. The approved complete export (35) already says "Settings · never includes keys"; the approved re-import preview (36) has no such line and is not changed.
 
 ## Inconsistencies in approved frames, fixed (Ulf, 2026-11-24, F-01 to F-04: "All a, going with your recommendations")
@@ -521,4 +521,4 @@ Review artifact https://claude.ai/artifact/2rT6QJkS3wDAJF2ErShyAB, version 1; th
 - **`96-sync-run-interrupted`, pull undone:** in both undone cases (all applied, and one part not applied) the first card's heading is "Pull undone" with a plain "Undone" tag (not the hatched failed one). The sentences below do not change.
 - **Record-only preview:** when the "sets compared" count is 0 and rows will be recorded, the page head is "checked <time>" plus "· last run <time>" where there is one. The empty-list line and the record-only line do not change.
 
-Frame `94-rebrickable-run-applying` still draws the greyed Stop solid; the approved look is the app's dashed disabled style, and the frame is redrawn later.
+Frame `94-rebrickable-run-applying` draws the greyed Stop in the app's dashed disabled style (redrawn 2026-11-27; the dark pair is derived).

@@ -219,7 +219,7 @@ def run_applying(ph):
     out = card('To Rebrickable', f'<p class="mono" style="{small}">0 of 2 sent</p>{N.prog(0, 2)}<p class="n">Sends and Lost Parts start when the pull is applied, one request each.</p>')
     top = card('Running 6 changes', f'<p class="mono" style="{small}">about 1 request a second for the sends · budget today 144 / 1,000</p>'
                '<p class="n">You can leave this page. The run goes on and shows in Jobs. The pull is applied in one step, so it cannot be stopped halfway; Stop after this one works on the sends.</p>'
-               '<span class="btn sec sm" style="align-self:flex-start;opacity:.55">Stop after this one</span>')
+               '<span class="btn sec sm" aria-disabled="true" style="align-self:flex-start;box-shadow:none;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px">Stop after this one</span>')
     return head('Rebrickable', 'Running 6 changes', ph) + N.steps('Run', ph) + top + (into + out if ph else f'<div class="ngrid g2">{into}{out}</div>')
 
 

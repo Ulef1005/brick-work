@@ -225,7 +225,7 @@ def sources():
 
 
 def main(cmd='check', outdir=None):
-    out = Path(outdir) if outdir else bf.OUT
+    out = Path(outdir).resolve() if outdir else bf.OUT
     bf.OUT = out
     items = sources()
     if cmd == 'build':
@@ -237,6 +237,11 @@ def main(cmd='check', outdir=None):
         print(f'Built {len(items)} wishlist frames in {out}')
         return 0
     bad = [k for k, (html, _, _) in items.items() if not (out / k).exists() or (out / k).read_text() != html]
+    if not bad:   # the HTML is current, so the committed files are what is rendered: their PNGs must show it
+        for key, png in bf.render(items).items():
+            committed = (out / key).with_suffix('.png')
+            if not committed.exists() or not bf.same_pixels(committed.read_bytes(), png):
+                bad.append(key.replace('.html', '.png'))
     for k in bad:
         print('FRAMES: drift in', k)
     print('Wishlist frames OK' if not bad else f'{len(bad)} wishlist frames drift from wl_frames.py')

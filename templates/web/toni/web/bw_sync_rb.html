@@ -265,7 +265,7 @@
 {{ stepbar() }}
 {{ flashes() }}
 <div data-sr-live{% if not interrupted and info.state != 'failed' %} data-sr-poll{% endif %} aria-live="polite">
-{% if info.state == 'failed' %}<p class="bk-banner bk-warning" role="alert">{{ unsaved }}</p>{% endif %}
+{% if info.state == 'failed' and (not interrupted or run.write_failed) %}<p class="bk-banner bk-warning" role="alert">{{ unsaved }}</p>{% endif %}
 {% set applying = pulls and not pull_done and not interrupted and info.state != 'failed' %}
 {% if applying %}{# frame 94: the run, then the pull and the sends beside it #}
 <section class="sr-card" data-rb-run><h2>Running {{ '{:,}'.format(info.total) }} changes</h2>

@@ -585,7 +585,7 @@ def test_an_unexpected_error_during_a_send_does_not_say_the_server_restarted(thr
         steps = {r['name']: r['state'] for r in db.execute('SELECT name, state FROM job_step WHERE job_id=?', (job_id,))}
         assert steps.pop('send') == 'failed' and set(steps.values()) <= {'done'}, steps
     page = text(soup(page_of(client, run_id)))
-    assert 'the run failed' in page and 'restart' not in page.lower().split('if the server restarts')[0], page
+    assert 'the run failed' in page and 'restart' not in page.lower() and 'could not write down' not in page, page
     runs = [text(r) for r in soup(client.get('/workbench/sync/rebrickable')).select('[data-rb-runs] .sr-run')]
     assert any('Interrupted' in r for r in runs), runs
     with db_of(pair) as db:

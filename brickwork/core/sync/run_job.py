@@ -420,7 +420,7 @@ def _run_one(db, job, http):
     _settle_done(db, job, run)
 
 
-def _fail_unexpected(db, job_id):
+def _fail_unexpected(db, job_id, *, write_failed=False):
     """An unexpected error in the worker. The job ends failed (done, when the run was already settled). A run that had begun shows its stages as
     they stand, with the run's audit entry, so the result page, undo and `retry_send` work; a run that never began is released to be queued again."""
     if db.in_transaction:
@@ -449,6 +449,8 @@ def _fail_unexpected(db, job_id):
         return
     try:
         run.pop('applying', None)
+        if write_failed:      # the data folder or database refused a write: what is stored may lack what went out, and the run page warns of that
+            run['write_failed'] = True
         cut_off = []
         if 'job_progress' in run:
             run['job_progress']['now'] = None
@@ -501,7 +503,7 @@ def drain(db, http=None):
             ran.append(dict(db.execute('SELECT * FROM job WHERE id=?', (job_id,)).fetchone()))
         except Exception as exc:
             LOG.warning('sync_run job %s failed unexpectedly: %s', job_id, type(exc).__name__)
-            _fail_unexpected(db, job_id)
+            _fail_unexpected(db, job_id, write_failed=isinstance(exc, (OSError, sqlite3.Error)))
         except BaseException:
             if db.in_transaction:
                 db.rollback()

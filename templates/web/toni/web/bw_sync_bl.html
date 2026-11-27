@@ -1,4 +1,5 @@
 {% extends 'web/toni/base.html' %}
+{% block flashes %}{% endblock %}{# this page shows its messages itself, in its own place: the layout must not show them again #}
 {% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bw-admin-page bw-sync-page bw-sync-rb-page{% endblock %}
 {% block page_assets %}
 <link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin.css') }}">

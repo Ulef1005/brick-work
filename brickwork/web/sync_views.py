@@ -73,7 +73,7 @@ def _log(db, limit=20, source=None):
                 f"{c.get('stock', 0)} loose added" if c.get('stock') else '',
                 f"{c.get('wishes_added', 0)} {'wish' if c.get('wishes_added') == 1 else 'wishes'} added" if c.get('wishes_added') else '',
                 f"{c.get('wishes_changed', 0)} wish quantities raised" if c.get('wishes_changed') else '',
-                _lost_words(c)) if p) or 'Nothing new'
+                _lost_words(c)) if p) or (f"Last synced from recorded on {value['marked']:,} {'row' if value['marked'] == 1 else 'rows'}" if value.get('marked') else 'Nothing new')
             rows.append(dict(id=r['id'], at=r['at'], source=value['source'], direction='Pulled', what=what, state='Undone' if r['undone'] else 'Done', event=r['id']))
         elif r['field'] == 'undo':
             rows.append(dict(id=r['id'], at=r['at'], source=site, direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))

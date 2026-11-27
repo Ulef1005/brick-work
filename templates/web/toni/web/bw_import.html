@@ -1,4 +1,5 @@
 {% extends 'web/toni/base.html' %}
+{% block flashes %}{% endblock %}{# this page shows its messages itself, in its own place: the layout must not show them again #}
 {% from 'web/toni/shell-components.html' import page_head with context %}
 {% block title %} · Import from BrickTracker{% endblock %}{% block content_class %}standard bw-admin-page bw-sync-page{% endblock %}
 {% block page_assets %}

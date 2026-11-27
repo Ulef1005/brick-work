@@ -49,7 +49,7 @@
   </div>
   <div class="layout">
     <main id="content" tabindex="-1" class="{% block content_class %}standard{% endblock %}">
-      {% for category,message in get_flashed_messages(with_categories=true) %}<p class="notice" role="status">{{ message }}</p>{% endfor %}{% if flow_return %}<p class="flow-return" data-flow-return><a href="{{ url_for('web.bw_get_started_collection') }}">‹ Back to Get started</a></p>{% endif %}
+      {% block flashes %}{% for category,message in get_flashed_messages(with_categories=true) %}<p class="notice" role="status">{{ message }}</p>{% endfor %}{% endblock %}{% if flow_return %}<p class="flow-return" data-flow-return><a href="{{ url_for('web.bw_get_started_collection') }}">‹ Back to Get started</a></p>{% endif %}
       {% block main %}{% endblock %}
     </main>
   </div>

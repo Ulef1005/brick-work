@@ -600,6 +600,7 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
         receipt['jobs'] = queue_new_items(db, touched)
         if mark_only:
             receipt['marks_only'] = True
+            receipt['marked'] = pull_marked_rows(db, plan, incoming)      # rows, not Last synced from lines: Last runs names the count
         else:
             receipt['baseline_before'] = _setting(db, source, 'baseline')
             _put(db, source, 'baseline', _baseline(db, plan, wish_list, kept, [r['key'] for r in rows], (receipt['baseline_before'] or {}).get('kept'), kept_covered, kept_skipped))

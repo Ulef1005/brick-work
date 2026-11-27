@@ -413,11 +413,20 @@ def step_apply(source, run_id):
         flash(_message(exc, source), 'warning')
         return redirect(_to(source, 'preview', run_id=run_id))
     if run.get('job'):                 # queued now, or by an earlier post: the page follows the job
+        if not run.get('applied'):
+            _wake_worker()
         return redirect(_to(source, 'progress', run_id=run_id))
     if not run.get('applied'):         # claimed by another request that has not finished, or one that was interrupted
         flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
         return redirect(url_for('web.bw_sync_site', source=source))
     return redirect(_to(source, 'result', run_id=run_id))
+
+
+def _wake_worker():
+    """A sync run is a job (#685): start the embedded drainer, which sleeps whenever nothing is pending. Starting a running one does nothing. A job
+    left queued by a stopped process is picked up when the app starts."""
+    from .views import bw_start_worker
+    bw_start_worker()
 
 
 def _interrupted_stage(stages, name):

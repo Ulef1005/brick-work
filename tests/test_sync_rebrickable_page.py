@@ -565,6 +565,24 @@ def test_a_lost_parts_send_that_fails_is_listed_and_a_budget_or_key_stop_keeps_t
         assert stage['status'] == 'partial' and stage['counts']['failed'] >= 1
 
 
+def test_run_starts_the_worker_that_applies_the_job(client, remote, pair, monkeypatch):
+    """The drainer sleeps when nothing is pending, so the page that queues a run must start it: before, a run waited at "Waiting to start" until
+    something else woke the worker. No job is drained by hand here."""
+    from brickwork.core import drainer
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, parts_dir='into', part_list=['31'])
+    page = preview_of(client, run_id)
+    launched = []
+    monkeypatch.setenv('BW_EMBEDDED_WORKER', '1')
+    monkeypatch.setattr(drainer, 'spawn', launched.append)
+    response = client.post(f'/workbench/sync/rebrickable/run/{run_id}/run', data={'csrf_token': csrf, **run_data(page)})
+    assert response.location.endswith('/progress') and len(launched) == 1
+    launched.pop()()                                           # the drainer's own thread body
+    assert client.get(response.location).location.endswith('/result')
+    with db_of(pair) as db:
+        assert db.execute("SELECT count(*) FROM stock WHERE archived_at IS NULL AND kind='part'").fetchone()[0] == 2
+
+
 def test_loose_stock_comes_in_by_part_list_and_one_undo_takes_the_run_and_its_parts_back(client, remote, pair):
     csrf = connected(client, pair)
     run_id = start(client, csrf, parts_dir='into', part_list=['31'])

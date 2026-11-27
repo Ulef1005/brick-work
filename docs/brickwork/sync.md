@@ -3,7 +3,7 @@ audience: developer
 verified: 1.0
 ---
 
-# Collection sync with Rebrickable and Brickset
+# Collection sync with Rebrickable, Brickset and Brick Owl
 
 Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wanted sets only; loose parts, minifigures, missing parts, BrickLink, two-way merge and scheduled sync are out of scope. Code: `brickwork/core/sync/` (service) and `brickwork/core/sync/adapters.py` (remote calls). The routes named below are API v2 (`brickwork/api2/`); API v1 is retired and answers 410, except `/api/v1/health`. The screens (Workbench → Sync) and `brickwork sync` run the same service.
 
@@ -19,6 +19,18 @@ Both sites need their API key (Catalogues & keys) and a per-user credential:
 ## Link
 
 `PUT /api/v2/sync/{source}/link`. Rebrickable: `owned` (set list ids; empty = every list except the wishlist list), `wishlist` (one set list id), `send_to` (the owned list that receives sends; defaults to the only owned list). Both: `wish_list` (the Brick Work wishlist that pulls and sends wishes, default `default`). `GET /api/v2/sync/rebrickable/lists` lists the set lists. Plans answer 201 and an unknown source answers 404. The MCP tools `get_sync_status`, `plan_sync_pull`, `apply_sync_pull` and `plan_sync_send` run the same service.
+
+## Brick Owl
+
+Brick Owl is a source of the core, the API and the MCP tools (#522). It has no page yet. It syncs owned and wanted sets with their counts. Parts, minifigures, minibuilds, orders and store inventory are not read.
+
+- **Credentials.** The API key is the whole credential: save it under Catalogues & keys (`BW_BRICKOWL_API_KEY`) and test it with `POST /sources/brickowl/key/test`. The key needs the permissions Collection, Wishlist and Orders (view). The `/sources/{source}/user` routes answer 404 for Brick Owl, and `GET /sync/brickowl` has `credentials.user: null`.
+- **Link.** `wishlist_id` (text) names the one Brick Owl wishlist that pulls and takes wishes; `wish_list` is the Brick Work wishlist, as for the other sites. `GET /sync/brickowl/lists` lists the wishlists, each with its number of lots. With no wishlist linked, wishes are not read, and a wish row cannot be ticked in a send.
+- **Counts.** Brick Owl keeps lots, one per set and condition. The count of a set is the sum of its lots. A send adds to the first lot, creates a lot (condition new) where there is none, and takes a lower count from the last lot first, whatever its condition. A send that deletes a lot is never ticked by default; the row has `deletes_lot: true`.
+- **Retry.** When a call does not go through, or the process dies inside one, the next attempt reads the lots again before it writes, so a lot that did arrive is not created twice.
+- **Numbers.** A set lot without a readable set number or quantity is left out. A set number that Brick Owl's lookup does not resolve to exactly one item is listed as unmatched. The lookup is one call per set number.
+- **Run.** `core.sync.run` takes the source `brickowl`, with the directions setting `brickowl_sync_directions`. Each row is one send.
+- **Budget.** At most 2,000 calls a day (`BW_BRICKOWL_DAILY_BUDGET` can lower it).
 
 ## Remote calls
 

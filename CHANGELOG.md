@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Brick Owl sync in the API and MCP** (#522). The sync routes and MCP tools take `brickowl`: owned and wanted sets with their counts, with one linked Brick Owl wishlist. A send that would delete a lot there is never ticked by default. There is no Brick Owl page yet.
+
 - **Clearer sync run headings** (#722). After you undo the pull of an interrupted run, its card reads *Pull undone*. A preview that only records where matching sets came from no longer starts with *0 sets compared*.
 
 - **Sync pages show a message once** (#722). A message such as *Run undone.* showed twice. After a run that only records where matching sets came from, Last runs now says on how many rows, in place of *Nothing new*. A part list with one part reads *1 part*.

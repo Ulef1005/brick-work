@@ -1,4 +1,4 @@
-"""One Rebrickable or Brickset run (#519, #520): the choices of step 2, the plans a run reads, the merged preview and the stages it applies.
+"""One Rebrickable, Brickset or Brick Owl run (#519, #520, #522): the choices of step 2, the plans a run reads, the merged preview and the stages it applies.
 
 A run is not new sync logic. It reads the plans that already exist (`sync.plan_pull` with its Lost Parts and list-name sections,
 `sync.plan_send`, `part_lists.plan`, `lost_parts_send.plan`), merges their rows into one row per set with the choices that row has, and
@@ -7,7 +7,8 @@ lists, the sends, the Lost Parts out. The run record is a plan file (`direction=
 plans it read, the sets picked, and what each stage did, because `lost_parts_send.apply` keeps no progress of its own.
 
 A run takes its site from its own record (`run['source']`); every other function takes `source`, Rebrickable when left out. Brickset has
-owned and wanted sets with counts only: no lists, part lists or Lost Parts, so those stages never run for it.
+owned and wanted sets with counts only: no lists, part lists or Lost Parts, so those stages never run for it. The same holds for Brick Owl,
+which links one of its wishlists too (`wishlist_id`) and gets one send per row, not per set number.
 
 Choices are kept without a schema change: the link (`sync.link`), the setting the Lost Parts pull rule already uses, the two settings of the
 Lost Parts send (`lost_parts_send.KEY`, `RULE_KEY`) and `DIRECTIONS_KEY` here.
@@ -27,21 +28,22 @@ from . import adapters, lost_parts, lost_parts_send, part_lists
 
 INTERRUPTED_MESSAGE = 'Interrupted: check what was sent and run again.'     # the message of a stage a restart cut off (`run_job`, `retry_send`)
 SOURCE = 'rebrickable'
-SOURCES = ('rebrickable', 'brickset')
+SOURCES = ('rebrickable', 'brickset', 'brickowl')
 DIRECTIONS_KEY = 'rebrickable_sync_directions'
-DIRECTIONS_KEYS = {'rebrickable': DIRECTIONS_KEY, 'brickset': 'brickset_sync_directions'}
+DIRECTIONS_KEYS = {'rebrickable': DIRECTIONS_KEY, 'brickset': 'brickset_sync_directions', 'brickowl': 'brickowl_sync_directions'}
 SEGMENTS = {'owned': ('into', 'both', 'to', 'off'), 'wishlist': ('into', 'both', 'to', 'off'), 'parts': ('into', 'off'), 'lost': ('into', 'both', 'to', 'off')}
 SEGMENT_LABELS = {'into': 'Into Brick Work', 'both': 'Both ways', 'to': 'To Rebrickable', 'off': 'Off'}
-SEGMENT_LABELS_BY = {'rebrickable': SEGMENT_LABELS, 'brickset': dict(SEGMENT_LABELS, to='To Brickset')}
+SEGMENT_LABELS_BY = {'rebrickable': SEGMENT_LABELS, 'brickset': dict(SEGMENT_LABELS, to='To Brickset'), 'brickowl': dict(SEGMENT_LABELS, to='To Brick Owl')}
 MODE_LABELS = (('all', 'All linked'), ('list', 'By list'), ('theme', 'By theme'), ('year', 'By year'), ('one', 'One by one'))
 MODES = tuple(m for m, _ in MODE_LABELS)
-MODE_LABELS_BY = {'rebrickable': MODE_LABELS, 'brickset': tuple(m for m in MODE_LABELS if m[0] != 'list')}      # Brickset has no lists to pick by
+_NO_LISTS = tuple(m for m in MODE_LABELS if m[0] != 'list')      # Brickset and Brick Owl have no set lists to pick by
+MODE_LABELS_BY = {'rebrickable': MODE_LABELS, 'brickset': _NO_LISTS, 'brickowl': _NO_LISTS}
 def segments():
     """`SEGMENTS` as offered now: without a way out for Lost Parts while their send is locked."""
     return dict(SEGMENTS, lost=('into', 'off')) if lost_parts_send.SEND_LOCKED else SEGMENTS
 
 
-KINDS_BY = {'rebrickable': tuple(SEGMENTS), 'brickset': ('owned', 'wishlist')}       # the kinds of data each site has a direction for
+KINDS_BY = {'rebrickable': tuple(SEGMENTS), 'brickset': ('owned', 'wishlist'), 'brickowl': ('owned', 'wishlist')}       # the kinds of data each site has a direction for
 LIST_WORDS = {'rename': 'Rename it', 'keep': 'Keep', 'drop': 'Drop the name', 'skip': 'Skip'}
 LOG = logging.getLogger(__name__)
 FAILURES = (errors.BrickWorkError, ValueError, SourceError, sqlite3.Error)
@@ -73,7 +75,7 @@ def directions(db, source=SOURCE):
         saved = json.loads(_setting_row(db, DIRECTIONS_KEYS[source]) or '{}')
     except ValueError:
         saved = {}
-    if source == 'brickset':       # owned and wanted sets only: loose stock and Lost Parts are Rebrickable's
+    if source != SOURCE:           # owned and wanted sets only: loose stock and Lost Parts are Rebrickable's
         return dict({kind: saved.get(kind) if saved.get(kind) in SEGMENTS[kind] else 'both' for kind in KINDS_BY[source]}, parts='off', lost='off')
     link = link_value(db)
     out = {}
@@ -88,8 +90,8 @@ def save_choices(db, form, source=SOURCE):
     """Save step 2 in one transaction. `form` holds the checked values: `owned_dir`, `wishlist_dir`, `parts_dir`, `lost_dir`, `owned`
     (list ids), `wishlist`, `send_to`, `wish_list`, `part_lists`, `lost_rule`, `send_rule`, `keep_list_names`. A value that does not fit
     raises ValidationFailed and nothing is saved."""
-    if source == 'brickset':
-        return _save_brickset_choices(db, form)
+    if source != SOURCE:
+        return _save_sets_choices(db, form, source)
     if lost_parts_send.SEND_LOCKED and form.get('lost_dir') in ('to', 'both'):
         raise errors.ValidationFailed(lost_parts_send.LOCKED_MESSAGE)
     for kind in SEGMENTS:
@@ -125,18 +127,22 @@ def save_choices(db, form, source=SOURCE):
     return directions(db)
 
 
-def _save_brickset_choices(db, form):
-    """Step 2 of the Brickset page: `owned_dir`, `wishlist_dir` and `wish_list` (the Brick Work wishlist that takes the wanted sets). One transaction."""
-    for kind in KINDS_BY['brickset']:
+def _save_sets_choices(db, form, source):
+    """Step 2 of a site with owned and wanted sets only: `owned_dir`, `wishlist_dir`, `wish_list` (the Brick Work wishlist that takes the wanted
+    sets) and, for Brick Owl, `wishlist_id` (its wishlist there; left as it is when the form does not carry it). One transaction."""
+    for kind in KINDS_BY[source]:
         if form.get(kind + '_dir') not in SEGMENTS[kind]:
             raise errors.ValidationFailed('Choose a direction for ' + kind)
     with transaction(db):
-        before = dict(directions=_setting_row(db, DIRECTIONS_KEYS['brickset']))
-        sync.link(db, 'brickset', dict(wish_list=form.get('wish_list') or 'default'))
-        saved = json.dumps({k: form[k + '_dir'] for k in KINDS_BY['brickset']}, sort_keys=True)
-        _put_setting(db, DIRECTIONS_KEYS['brickset'], saved)
-        audit(db, 'sync:brickset', 'choices', before, dict(directions=saved))
-    return directions(db, 'brickset')
+        before = dict(directions=_setting_row(db, DIRECTIONS_KEYS[source]))
+        options = dict(wish_list=form.get('wish_list') or 'default')
+        if source == 'brickowl' and 'wishlist_id' in form:
+            options['wishlist_id'] = form['wishlist_id'] or None
+        sync.link(db, source, options)
+        saved = json.dumps({k: form[k + '_dir'] for k in KINDS_BY[source]}, sort_keys=True)
+        _put_setting(db, DIRECTIONS_KEYS[source], saved)
+        audit(db, 'sync:' + source, 'choices', before, dict(directions=saved))
+    return directions(db, source)
 
 
 def _saved_names(db):
@@ -151,10 +157,10 @@ def lost_labels(db):
     return lost_parts.RULE_LABELS[lost_parts.rule(db)], dict((v, l) for v, l, _ in lost_parts_send.RULES)[lost_parts_send.send_rule(db)]
 
 
-def _brickset_what_syncs(db):
-    link = link_value(db, 'brickset')
-    d = directions(db, 'brickset')
-    labels = SEGMENT_LABELS_BY['brickset']
+def _sets_what_syncs(db, source):
+    link = link_value(db, source)
+    d = directions(db, source)
+    labels = SEGMENT_LABELS_BY[source]
     wish_lists = {w['id']: w['name'] for w in wishlists.listing(db)}
     rows = []
     if d['owned'] != 'off':
@@ -167,8 +173,8 @@ def _brickset_what_syncs(db):
 
 def what_syncs(db, source=SOURCE):
     """The rows of the What syncs table of the page at rest, from what is stored: no call to the site."""
-    if source == 'brickset':
-        return _brickset_what_syncs(db)
+    if source != SOURCE:
+        return _sets_what_syncs(db, source)
     from ...store4 import origins
     link = link_value(db)
     d = directions(db)
@@ -329,6 +335,10 @@ _TAGS = {'add': ('New there', 'info'), 'send_add': ('Only here', 'dash'), 'chang
          'unmatched': ('Not matched', 'unknown'), 'info': ('Same', 'unknown'), 'gone': ('Gone here', 'dash')}
 
 
+def _lot_note(row):
+    return 'Deletes a lot there' if row.get('deletes_lot') else None
+
+
 def rows(db, run, plans):
     """The preview rows: one per set and kind, with the choices each has. An option is `dict(id, label, note)`: `pull` adds the difference here,
     `take` takes Rebrickable's count (a pull only raises a count here), `send` sends the count here, `remove` takes the set off the list
@@ -375,7 +385,7 @@ def rows(db, run, plans):
                 row['state'] = 'gone'
                 row['options'].append(dict(id='remove' if r['state'] == 'remove' else 'send',
                                            label=f'Remove from {site}' if r['state'] == 'remove' else f"Quantity {r['remote']} to {r['send']}",
-                                           note='Takes the set off the list there' if r['state'] == 'remove' else None))
+                                           note='Takes the set off the list there' if r['state'] == 'remove' else _lot_note(r)))
         elif r['state'] == 'remove' and r['tickable']:        # only sending: a set taken off the list here is offered for the list there, unticked
             row['state'] = 'remove'
             row['options'].append(dict(id='remove', label=f'Remove from {site}', note=None))
@@ -383,6 +393,9 @@ def rows(db, run, plans):
             row['state'] = 'send_add' if r['state'] == 'add' else 'change'
             row['options'].append(dict(id='send', label=(f"Add {r['send']} there" if r['state'] == 'add' else f"Quantity {r['remote']} to {r['send']}"), note=None))
             row['default'] = row['default'] or 'send'
+        elif r.get('deletes_lot') and r['tickable']:      # Brick Owl: offered, never chosen for the person
+            row['state'] = 'change'
+            row['options'].append(dict(id='send', label=f"Quantity {r['remote']} to {r['send']}", note=_lot_note(r)))
         elif r.get('reason'):
             row['reason'] = r['reason']        # why the send side has nothing for this row; the row is not unmatched when it can still be pulled
     out = []
@@ -460,7 +473,7 @@ def budget(db, source=SOURCE):
 def _message(exc, source=SOURCE):
     label = sync.LABELS[source]
     if isinstance(exc, KeyRejected):
-        return label + ' rejected the key or user token. Nothing more was changed there.'
+        return label + ' rejected the ' + sync.credential_words(source) + '. Nothing more was changed there.'
     if isinstance(exc, WaitingForBudget):
         return label + ' is paused: the daily budget is used up. Try again after ' + (exc.retry_at or 'midnight UTC')[:16].replace('T', ' ') + '.'
     if isinstance(exc, SourceError):

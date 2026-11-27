@@ -1361,6 +1361,14 @@
               "integer",
               "null"
             ]
+          },
+          "wishlist_id": {
+            "description": "Brick Owl only: the id of the Brick Owl wishlist that pulls and takes wishes (#522). null unlinks it.",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "type": "object"

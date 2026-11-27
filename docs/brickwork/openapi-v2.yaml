@@ -5466,6 +5466,7 @@ paths:
           enum:
           - rebrickable
           - brickset
+          - brickowl
       responses:
         '200':
           description: OK
@@ -5499,6 +5500,7 @@ paths:
           enum:
           - rebrickable
           - brickset
+          - brickowl
       responses:
         '200':
           description: OK
@@ -5532,6 +5534,7 @@ paths:
           enum:
           - rebrickable
           - brickset
+          - brickowl
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -5555,6 +5558,12 @@ paths:
                   - 'null'
                 wish_list:
                   type: string
+                wishlist_id:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^[A-Za-z0-9_-]{1,64}$
+                  description: 'Brick Owl only: the id of the Brick Owl wishlist that pulls and takes wishes (#522). null unlinks it.'
                 lost_parts:
                   type: boolean
                   description: 'Rebrickable only: the remembered switch "Bring in Lost Parts" of a pull (#457). On when never set.'
@@ -5677,6 +5686,7 @@ paths:
           enum:
           - rebrickable
           - brickset
+          - brickowl
       - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '201':
@@ -5713,6 +5723,7 @@ paths:
           enum:
           - rebrickable
           - brickset
+          - brickowl
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -5784,6 +5795,7 @@ paths:
           enum:
           - rebrickable
           - brickset
+          - brickowl
       - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '201':
@@ -5819,6 +5831,7 @@ paths:
           enum:
           - rebrickable
           - brickset
+          - brickowl
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -12256,13 +12269,19 @@ components:
       additionalProperties: false
       properties:
         id:
-          type: integer
+          type:
+          - integer
+          - string
+          description: A number at Rebrickable, text at Brick Owl.
         name:
           type: string
         sets:
           type:
           - integer
           - 'null'
+        lots:
+          type: integer
+          description: 'Brick Owl only: the number of lots in the wishlist (it gives no set count).'
     SyncPlan:
       type: object
       additionalProperties: false

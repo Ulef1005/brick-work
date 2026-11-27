@@ -9,6 +9,7 @@ from b_frames.darken(). Pictures are empty tiles with their alt text (the catalo
 Folders: 59-wishlist (tile view, all lists, the five states), 60-wishlist-list (list view, one list), 61-wishlist-empty, 62-wishlist-detail.
 """
 import sys
+import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import b_frames as bf
@@ -237,6 +238,20 @@ def main(cmd='check', outdir=None):
         print(f'Built {len(items)} wishlist frames in {out}')
         return 0
     bad = [k for k, (html, _, _) in items.items() if not (out / k).exists() or (out / k).read_text() != html]
+    if not bad:   # the HTML is current: the PNGs must show it
+        with tempfile.TemporaryDirectory(prefix='.wl_frames-', dir=out.parent) as work:   # beside OUT, so ../../fonts resolves the same
+            bf.OUT = Path(work)
+            try:
+                for key, (html, _, _) in items.items():
+                    (bf.OUT / key).parent.mkdir(parents=True, exist_ok=True)
+                    (bf.OUT / key).write_text(html)
+                shots = bf.render(items)
+            finally:
+                bf.OUT = out
+        for key, png in shots.items():
+            committed = (out / key).with_suffix('.png')
+            if not committed.exists() or not bf.same_pixels(committed.read_bytes(), png):
+                bad.append(key.replace('.html', '.png'))
     for k in bad:
         print('FRAMES: drift in', k)
     print('Wishlist frames OK' if not bad else f'{len(bad)} wishlist frames drift from wl_frames.py')

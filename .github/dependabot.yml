@@ -5,9 +5,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    groups:   # one pull request per ecosystem and week (Repo Gates)
+    groups:   # minor and patch: one pull request per ecosystem and week; each major its own (Repo Gates)
       pip:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -15,6 +16,7 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: docker
     directory: /
     schedule:
@@ -22,3 +24,4 @@ updates:
     groups:
       docker:
         patterns: ["*"]
+        update-types: ["minor", "patch"]

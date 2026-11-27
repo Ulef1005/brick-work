@@ -325,7 +325,7 @@ def test_the_job_sends_lost_parts_out_one_call_with_one_audit_entry(client, remo
 
 def test_a_run_that_never_began_is_released_when_the_job_fails_at_once(three_sends, monkeypatch):
     pair, run_id, keys = three_sends
-    monkeypatch.setattr(run_job, '_run_one', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('boom')))
+    monkeypatch.setattr(run_job, '_run_one', lambda *a, **k: (_ for _ in ()).throw(OSError('disk full')))
     with db_of(pair) as db:
         job_id = run_job.queue(db, run_id, form_for(db, run_id))
         run_job.drain(db)
@@ -333,6 +333,7 @@ def test_a_run_that_never_began_is_released_when_the_job_fails_at_once(three_sen
         assert {r[0] for r in db.execute('SELECT state FROM job_step WHERE job_id=?', (job_id,))} == {'failed'}
         run = sync_run.load(db, run_id)[0]
         assert not run.get('applied') and not run.get('job') and 'applying' not in run
+        assert 'write_failed' not in run      # nothing ran: the next try of this run carries no warning over
         assert run_job.queue(db, run_id, form_for(db, run_id)) != job_id
 
 

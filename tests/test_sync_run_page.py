@@ -1,4 +1,5 @@
 """#685 slice 2: the run page while a run is a job: queued and applying (frame 94), sending with Stop (95), interrupted with Send again (96)."""
+import json
 import re
 
 from bs4 import BeautifulSoup
@@ -560,3 +561,99 @@ def test_a_second_send_again_repairs_a_job_the_first_one_could_not_write(three_s
     with db_of(pair) as db:
         job_id = sync_run.load(db, run_id)[0]['job']
         assert db.execute("SELECT state FROM job_step WHERE job_id=? AND name='send'", (job_id,)).fetchone()[0] == 'done'
+
+
+def _crash_on_send(monkeypatch, number):
+    from brickwork.core.sync import adapters
+    real, calls = adapters.RebrickableUser.send, []
+
+    def send(self, row, link, state):
+        calls.append(row['key'])
+        if len(calls) == number:
+            raise RuntimeError('boom')
+        return real(self, row, link, state)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', send)
+
+
+def test_an_unexpected_error_during_a_send_does_not_say_the_server_restarted(three_sends, client, monkeypatch):  # noqa: F811
+    pair, run_id, keys = three_sends
+    _crash_on_send(monkeypatch, 2)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        steps = {r['name']: r['state'] for r in db.execute('SELECT name, state FROM job_step WHERE job_id=?', (job_id,))}
+        assert steps.pop('send') == 'failed' and set(steps.values()) <= {'done'}, steps
+    page = text(soup(page_of(client, run_id)))
+    assert 'the run failed' in page and 'restart' not in page.lower() and 'could not write down' not in page, page
+    runs = [text(r) for r in soup(client.get('/workbench/sync/rebrickable')).select('[data-rb-runs] .sr-run')]
+    assert any('Interrupted' in r for r in runs), runs
+    with db_of(pair) as db:
+        unknown = [r['key'] for r in sync_run.load(db, run_id)[0]['stages']['send']['results'] if r['result'] == 'unknown']
+    client.post(f'/workbench/sync/rebrickable/run/{run_id}/retry', data={'csrf_token': _csrf(client)})      # the Not known row stays: still interrupted
+    with db_of(pair) as db:
+        stage = sync_run.load(db, run_id)[0]['stages']['send']
+    assert unknown and stage['cause'] == 'error'
+    assert 'the run failed' in text(soup(page_of(client, run_id)))
+
+
+def test_an_error_after_the_last_saved_result_leaves_the_send_done_in_jobs(three_sends, client, monkeypatch):  # noqa: F811
+    pair, run_id, keys = three_sends
+    real = sync_run.stage_send
+
+    def sends_then_fails(*args, **kwargs):
+        real(*args, **kwargs)
+        args[1]['stages']['send'] = {'status': 'started'}      # every result is in the send plan, the stage was not yet stored as done
+        sync._store_plan(args[0], args[1])
+        raise RuntimeError('boom')
+
+    monkeypatch.setattr(sync_run, 'stage_send', sends_then_fails)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        assert sync_run.load(db, run_id)[0]['stages']['send']['status'] == 'done'
+        assert db.execute("SELECT state, error FROM job_step WHERE job_id=? AND name='send'", (job_id,)).fetchone()[:] == ('done', None)
+    runs = [text(r) for r in soup(client.get('/workbench/sync/rebrickable')).select('[data-rb-runs] .sr-run')]
+    assert not any('Interrupted' in r for r in runs), runs
+
+
+def test_send_again_that_leaves_a_row_keeps_the_pulls_on_its_record(three_sends, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    _interrupt(pair, run_id)
+    client.post(f'/workbench/sync/rebrickable/run/{run_id}/retry', data={'csrf_token': _csrf(client)})
+    with db_of(pair) as db:
+        run = sync_run.load(db, run_id)[0]
+        record = json.loads(db.execute("SELECT new_value FROM event WHERE entity_kind='sync' AND field='send' ORDER BY id DESC").fetchone()[0])
+    assert record['interrupted'] and record['run'] == run_id and record['pulls'] == sync_run.pull_events(run)
+
+
+def test_a_read_only_viewer_of_an_interrupted_run_gets_no_buttons(three_sends, app4, client):  # noqa: F811
+    pair, run_id, keys = three_sends
+    _interrupt(pair, run_id)
+    app4.config['BW_READ_ONLY'] = True
+    try:
+        page = soup(page_of(client, run_id))
+    finally:
+        app4.config['BW_READ_ONLY'] = False
+    assert not page.select('[data-rb-send] button') and not page.select('[data-rb-send] input[name=also]')
+
+
+def test_a_cut_off_lost_parts_stage_is_named_on_the_card(client, remote, pair):  # noqa: F811
+    from tests.test_bw_sync_lost_parts import copy_of, raw
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, MultiDict([('lostsend', lost_parts_send.row_key('1000-1', '3001', 4, False))]))
+        run = sync_run.load(db, run_id)[0]
+        run['stages'] = {'lost_out': {'status': 'started'}}
+        sync._store_plan(db, run)
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
+        db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
+        db.commit()
+        run_job.drain(db)
+    page = text(soup(page_of(client, run_id)))
+    assert 'Lost Parts were being sent when the server restarted' in page and 'No send was cut off' not in page

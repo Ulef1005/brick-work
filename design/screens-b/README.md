@@ -57,7 +57,7 @@ The approved frames of commission U, built by `../sources/b/b_frames.py` (`build
 | `54-sync-rate-limit/` | R3-01 A site asks us to wait: the run pauses and goes on by itself | N round 3 |
 | `55-sync-budget-used/` | R3-02 The day's budget is used up: what is done, what waits, when the budget is back | N round 3 |
 | `56-sync-conflicts-waiting/` | R3-03 Rows that differ on both sides wait for your choice | N round 3 |
-| `57-sync-long-run/` | R3-04 A long run: close the page, it goes on from the last saved step | N round 3 |
+| `57-sync-long-run/` | R3-04 A long run: closing the page is safe (restart copy as of round 6) | N round 3 |
 | `58-sync-nothing-to-sync/` | R3-05 Nothing to sync: both sides match, what was compared and when | N round 3 |
 | `59-wishlist/` | Wishlist, all lists, with the price states (#654) | #654, redrawn to the build |
 | `60-wishlist-list/` | One wishlist | #654, redrawn to the build |

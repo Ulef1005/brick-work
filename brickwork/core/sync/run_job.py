@@ -79,6 +79,23 @@ def _interrupted(db, run, plans, form_data, name):
     return stage
 
 
+def _record_cut_off(db, job, run, plans, name):
+    """The sync-log record of a send or Lost Parts stage that was cut off: an unfinished one reads Interrupted in Last runs, with a way back to
+    its page."""
+    stage = run['stages'][name]
+    if name == 'send' and stage.get('counts'):
+        record = dict(plan=plans['send']['id'], counts=stage['counts'])
+    elif name == 'lost_out':      # counted from the rows known to have gone out
+        gone_out = sum(1 for r in (run.get('lost_out') or {}).get('rows', ()) if r.get('outcome') == 'sent')
+        record = dict(plan=run['id'], kind='lost_parts', counts=dict(sent=gone_out))
+    else:
+        return
+    if stage.get('status') != 'done':
+        record.update(interrupted=True, run=run['id'], pulls=sync_run.pull_events(run))
+    with transaction(db):
+        audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None, record, via=job['via'], actor=job['actor'])
+
+
 def _has_plan(run, plans, name):
     return bool(sync_run.lost_out(run)) if name == 'lost_out' else bool(plans.get(name))
 
@@ -316,19 +333,7 @@ def _run_one(db, job, http):
             run['stages'][name] = _interrupted(db, run, plans, form_data, name)
             _refresh_plans(db, run)
             finished = run['stages'][name].get('status') == 'done'
-            if name == 'send' and run['stages'][name].get('counts'):    # the send's record in the sync log; an interrupted one keeps a way back to its page
-                record = dict(plan=plans['send']['id'], counts=run['stages'][name]['counts'])
-                if not finished:
-                    record.update(interrupted=True, run=run_id, pulls=sync_run.pull_events(run))
-                with transaction(db):
-                    audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None, record)
-            if name == 'lost_out':      # its record in the sync log, as for the sends; counted from the rows known to have gone out
-                gone_out = sum(1 for r in (run.get('lost_out') or {}).get('rows', ()) if r.get('outcome') == 'sent')
-                record = dict(plan=run_id, kind='lost_parts', counts=dict(sent=gone_out))
-                if not finished:
-                    record.update(interrupted=True, run=run_id, pulls=sync_run.pull_events(run))
-                with transaction(db):
-                    audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'send', None, record)
+            _record_cut_off(db, job, run, plans, name)
             with transaction(db):
                 if finished:
                     _set_step(db, job_id, name, 'done')
@@ -433,6 +438,10 @@ def _fail_unexpected(db, job_id):
     with transaction(db):
         db.execute("UPDATE job SET state=?, error_code=?, error=?, retry_at=NULL, updated_at=? WHERE id=?",
                    ('done' if settled else 'failed', None if settled else 'source_error', msg, stamp, job_id))
+        finished = [n for n, st in (run['stages'] if run else {}).items() if st.get('status') in ('done', 'none')]      # saved before the error: not failed
+        for name in finished:
+            db.execute("UPDATE job_step SET state='done', count=total, updated_at=? WHERE job_id=? AND name=? AND state IN ('running', 'queued')",
+                       (stamp, job_id, name))
         db.execute("UPDATE job_step SET state='failed', error_code='source_error', error=?, updated_at=? WHERE job_id=? AND state IN ('running', 'queued')",
                    (msg, stamp, job_id))
         db.execute('DELETE FROM job_owner WHERE job_id=?', (job_id,))
@@ -440,6 +449,7 @@ def _fail_unexpected(db, job_id):
         return
     try:
         run.pop('applying', None)
+        cut_off = []
         if 'job_progress' in run:
             run['job_progress']['now'] = None
         if not began and not settled:      # nothing ran: the run can be queued again
@@ -448,10 +458,16 @@ def _fail_unexpected(db, job_id):
         elif not settled:
             for name, stage in run['stages'].items():
                 if stage.get('status') == 'started':
-                    run['stages'][name] = _interrupted(db, run, plans, run['job_form'], name)
+                    run['stages'][name] = dict(_interrupted(db, run, plans, run['job_form'], name), cause='error')      # no restart: the run page says so
+                    cut_off.append(name)
             events = [st['event'] for st in run['stages'].values() if st.get('event') is not None]
             run['applied'] = dict(at=now().isoformat(), events=events)
         sync._store_plan(db, run)             # the run first: a failing audit below must not leave it stuck as running
+        for name in cut_off:
+            _record_cut_off(db, job, run, plans, name)
+            if run['stages'][name]['status'] == 'done':      # every result was saved before the error
+                with transaction(db):
+                    db.execute("UPDATE job_step SET state='done', count=total, error=NULL, error_code=NULL WHERE job_id=? AND name=?", (job_id, name))
         if began and not settled:
             with transaction(db):
                 audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'run', None, dict(run=run['id'], events=run['applied']['events']), via=job['via'], actor=job['actor'])

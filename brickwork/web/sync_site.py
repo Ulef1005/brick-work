@@ -439,6 +439,11 @@ def _is_interrupted(stages):
     return _interrupted_stage(stages, 'send') or _interrupted_stage(stages, 'lost_out')
 
 
+def _failed_not_restarted(stages):
+    """Whether the cut came from an unexpected error in the worker, not from a server restart: the card then says so."""
+    return any(_interrupted_stage(stages, n) and stages[n].get('cause') == 'error' for n in ('send', 'lost_out'))
+
+
 def _send_it_when(site, unknown):
     """When to tick Send it too, for the rows in flight as (chosen action, run row): how the person sees on the site that the call did not arrive.
     A removal did not arrive when the row is still there, an add when it is not there, a changed row stays there either way."""
@@ -502,7 +507,7 @@ def step_progress(source, run_id):
     return _render(source, screen='progress', title=LABEL[source], run=run, info=info, unsaved=_unsaved(source), pstages=stages, interrupted=bool(interrupted), unsent=unsent,
                  sent_count=len(sent_rows), send_total=send.get('rows', 0), unknown_count=sum(1 for u in unsent if u['state'] == 'not known'),
                  unsent_count=sum(1 for u in unsent if u['state'] == 'not sent'), lost_interrupted=_interrupted_stage(run['stages'], 'lost_out'),
-                 undo_in_last_runs=undo_listed, pull_undone=pull_undone, send_it_when=send_it_when,
+                 undo_in_last_runs=undo_listed, pull_undone=pull_undone, send_it_when=send_it_when, failed_run=_failed_not_restarted(run['stages']),
  **_steps(5))
 
 

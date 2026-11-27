@@ -14,7 +14,7 @@
 .sr-steps li.sr-now { border-top-color: var(--tw-accent); color: var(--tw-text); }
 .sr-stepname { display: inline-flex; align-items: center; gap: 6px; }
 .sr-stepname svg { width: 14px; height: 14px; flex: none; }
-.sr-stepline { display: none; margin: 0; font: 500 13px var(--tw-font); color: var(--tw-text-2); }
+.sr-stepline { display: none; margin: 0; font: 500 13px var(--tw-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--tw-text-2); }
 
 .sr-grid, .sr-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
 .sr-col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }

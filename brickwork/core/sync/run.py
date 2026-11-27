@@ -998,7 +998,8 @@ def retry_send(db, run_id, *, http=None, also=()):
             counts[r['result']] = counts.get(r['result'], 0) + 1
         left = len(kept_unknown)
         if left:     # a row that may have gone out is still unchecked: the run stays interrupted, here and in the sync log
-            run['stages']['send'] = dict(status='failed', message=INTERRUPTED_MESSAGE, counts=counts, rows=len(rows), results=rows)
+            run['stages']['send'] = dict(status='failed', message=INTERRUPTED_MESSAGE, counts=counts, rows=len(rows), results=rows,
+                                         **({'cause': stage['cause']} if stage.get('cause') else {}))      # what cut it off stays on the card
             with transaction(db):
                 audit(db, 'sync:' + run.get('source', SOURCE), 'send', None, dict(plan=send['id'], counts=counts, interrupted=True, run=run_id, pulls=pull_events(run)))
         else:

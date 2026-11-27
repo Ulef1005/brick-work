@@ -3,11 +3,11 @@ audience: user
 verified: 1.0
 ---
 
-# Sync with Rebrickable and Brickset
+# Sync with Rebrickable, Brickset and Brick Owl
 
 *Since 0.6.0.*
 
-Do this to bring the sets you already keep on Rebrickable or Brickset into Brick Work, or to send what you hold here back to the site. Pull never deletes anything here; send always shows the changes first and asks before it removes anything there. Open **Workbench → Sync**, then **Open** on the site. The old page under Tools & Admin sends you there. Rebrickable and Brickset each have their own page with six steps, described next; the sections after them describe the rules both share.
+Do this to bring the sets you already keep on Rebrickable, Brickset or Brick Owl into Brick Work, or to send what you hold here back to the site. Pull never deletes anything here; send always shows the changes first and asks before it removes anything there. Open **Workbench → Sync**, then **Open** on the site. The old page under Tools & Admin sends you there. Rebrickable, Brickset and Brick Owl each have their own page with six steps, described next. The sections after them describe the shared rules.
 
 ## A Rebrickable run
 
@@ -35,6 +35,19 @@ The page shows your account (API key and today's budget, with **Test**, **Change
 
 Brickset allows 100 calls a day unless it raises the limit for your key. Brickset now counts every call, not only `getSets`. The page counts reads, sends and the check of your user hash. Brickset also counts key checks and logins, so its own number can be a few higher.
 
+## A Brick Owl run
+
+The **Brick Owl** page has the same six steps. It syncs owned and wanted sets with their counts, with one Brick Owl wishlist. Parts, minifigures, minibuilds, orders and your store are not read.
+
+The page shows your account (API key and speed, with **Test**, **Change** and **Remove**), **Today's budget** and a table of **What syncs**. After the first run it also shows the last runs, with **Undo this run**. It reads nothing from Brick Owl until you start a run. All calls share one daily budget of 2,000, or the lower number that `BW_BRICKOWL_DAILY_BUDGET` sets. A key from the environment has no **Remove** here.
+
+1. **Connect.** The API key is your whole sign-in: there is no username or password. Give the key the permissions Collection, Wishlist and Orders (view). **Save and test** keeps a key you paste.
+2. **Choose what.** A direction for **Owned sets** and one for **Wanted sets**: **Into Brick Work**, **Both ways**, **To Brick Owl** or **Off**. **Brick Owl wishlist** is the one wishlist there that gives and takes wishes. **Wishlist here** is the Brick Work wishlist for them. With **No wishlist**, wishes are not read or sent. Opening this step reads your wishlists with one call. If that read fails, the page shows the reason, and **Save** keeps the wishlist you linked before.
+3. **Pick sets.** The sets with a difference, **All linked**, **By theme**, **By year** or **One by one**. Each row shows the count at Brick Owl and the count here. Brick Owl keeps one lot per set and condition, and the count adds the lots up. A set you do not pick stays as it is on both sides.
+4. **Preview, run and result.** These steps work as on the [Brickset page](#a-brickset-run). A send that deletes a lot at Brick Owl is never ticked by default, whatever the condition of that lot. A change sent to Brick Owl cannot be undone here.
+
+A send that deletes a lot at Brick Owl says *Deletes a lot there* and is not ticked. Brick Work deletes from the last lot first, whatever its condition. The run page also names a speed of one request a second, which is not the Brick Owl speed.
+
 ## A BrickLink run
 
 The **BrickLink** page has the same six steps, but its data is different: BrickLink's API has no personal collection and no wanted lists. This page pulls your **orders** into Orders. The price guide it reads is the one that already prices your sets and parts.
@@ -53,7 +66,7 @@ BrickLink's daily limit depends on your key. The page shows how many calls are u
 
 ## Connect a site
 
-Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored. Only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. The username you type is kept as well, to show on the page. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
+Rebrickable and Brickset each need an API key and your own account credential; Brick Owl needs only its API key, on step 1 of its page. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored. Only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. The username you type is kept as well, to show on the page. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
 
 ## Link the lists
 

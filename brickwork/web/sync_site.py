@@ -1,8 +1,9 @@
-"""The Rebrickable and Brickset sync pages and their six steps (#519, #520): connect, choose what, pick sets, preview, run, result.
+"""The Rebrickable, Brickset and Brick Owl sync pages and their six steps (#519, #520, #522): connect, choose what, pick sets, preview, run, result.
+Brick Owl signs in with its API key alone and links one of its wishlists; its pages are built up to the pick step.
 
 The views only read and write through `core.sync` and `core.sync.run`; the plans, the applies and the choices are theirs. The run record is a plan
-file (24 hours), so the pick, preview, run and result pages take its id in the path. One view body serves both sites: each step is registered
-under `/workbench/sync/<site>/...` and the endpoints `web.bw_sync_rb_<step>` and `web.bw_sync_bs_<step>`, and the site is the view's `source`."""
+file (24 hours), so the pick, preview, run and result pages take its id in the path. One view body serves every site: each step is registered
+under `/workbench/sync/<site>/...` and the endpoints `web.bw_sync_<prefix>_<step>` (rb, bs, bo), and the site is the view's `source`."""
 import json
 import re
 import sqlite3
@@ -12,11 +13,10 @@ from flask_login import login_required
 
 from .safe_errors import public
 from .views import web_page, bw_add_csrf, bw_collection_editable
-from .sync_views import _db, _event_id, _log, _message, _page, _receipt_source, _unavailable, lost_result
+from .sync_views import PREFIX, _connected, _db, _event_id, _log, _message, _page, _receipt_source, _unavailable, lost_result
 
 SOURCE = 'rebrickable'
-PREFIX = {'rebrickable': 'rb', 'brickset': 'bs'}
-LABEL = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset'}
+LABEL = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset', 'brickowl': 'Brick Owl'}
 TEMPLATE = 'web/toni/web/bw_sync_rb.html'
 STEPS = ('Connect', 'Choose what', 'Pick sets', 'Preview', 'Run', 'Result')
 KEY_FIELD = 'key:key'
@@ -37,7 +37,7 @@ def _unsaved(source):
 
 
 def _route(method, path, unavailable):
-    """Register a step for both sites: login first, the not-available notice for a page that reads (before setup there is no database)."""
+    """Register a step for every site: login first, the not-available notice for a page that reads (before setup there is no database)."""
     def register(view):
         STEPS_LIST.append((method, path, unavailable, view))
         return view
@@ -106,7 +106,7 @@ def site_page(source):
     from .setup_state import key_missing
     with _db() as db:
         status = sync.status(db, source)
-        connected = bool(status['credentials']['user']['configured'])
+        connected = _connected(status)
         key_gap = key_missing(source)
         budget = sync_run.budget(db, source)
         what = sync_run.what_syncs(db, source)
@@ -119,10 +119,17 @@ def site_page(source):
     last = status.get('last_pull') or status.get('last_send')
     stamps = [t for t in ((status.get('last_pull') or {}).get('at'), (status.get('last_send') or {}).get('at')) if t]
     from .sync_views import _last_sync
-    return _render(source, screen='site', title=LABEL[source], subtitle='Last run ' + _last_sync(status) if last else 'Not run yet',
+    return _render(source, screen='site', title=LABEL[source], subtitle='Last run ' + _last_sync(status) if last else 'Not synced yet' if source == 'brickowl' else 'Not run yet',
+                 speed=_speed(source),
                  connected=connected, account=status.get('account'), key_gap=key_gap, key=status['credentials']['key'], budget=budget, what=what, runs=runs,
                  waiting=status.get('waiting') or 0, pulled=pulled, lost_result=result, rule_labels=lost_parts.RULE_LABELS, stamps=stamps,
                  key_day=_key_checked_day(status['credentials']['key'], (budget or {}).get('last_success')))
+
+
+def _speed(source):
+    """For Brick Owl, the most requests a second the client sends, from the spacing it keeps between two calls (None for the other sites)."""
+    from ..core.sources.brickowl import BrickOwl
+    return round(1 / BrickOwl.minimum_spacing) if source == 'brickowl' else None
 
 
 @_route('get', '/connect', True)
@@ -132,13 +139,14 @@ def step_connect(source):
     with _db() as db:
         status = sync.status(db, source)
     return _render(source, screen='connect', title=LABEL[source], subtitle='Connect your account, choose what to sync, then run the sync.',
-                 connected=bool(status['credentials']['user']['configured']), account=status.get('account'), key_gap=key_missing(source), key=status['credentials']['key'],
+                 connected=_connected(status), account=status.get('account'), key_gap=key_missing(source), key=status['credentials']['key'],
                  **_steps(1))
 
 
 @_route('post', '/key', False)
 def step_key(source):
-    """Save, test or remove the site's API key from step 1: the same operations as Catalogues & keys, which stays their one implementation."""
+    """Save, test or remove the site's API key from step 1 (or, with `next=site`, from the page at rest): the same operations as Catalogues & keys,
+    which stays their one implementation."""
     from ..core import errors
     from ..core.sources.base import KeyRejected, SourceError, redact
     from . import admin_ops
@@ -159,8 +167,8 @@ def step_key(source):
     except KeyRejected as exc:
         flash(LABEL[source] + ' rejected the key · ' + redact(exc), 'warning')
     except (errors.BrickWorkError, SourceError) as exc:
-        flash(redact(exc), 'warning')
-    return redirect(_to(source, 'connect'))
+        flash(_message(exc, source) if source == 'brickowl' else redact(exc), 'warning')      # Brick Owl's client names itself by its id
+    return redirect(url_for('web.bw_sync_site', source=source) if request.form.get('next') == 'site' else _to(source, 'connect'))
 
 
 def _lists(db):
@@ -180,6 +188,16 @@ def _lists(db):
     return sets, sets_error, parts, parts_error
 
 
+def _wishlists(db):
+    """Brick Owl: the wishlists of the account (one call), with the reason they could not be read (None when they could): `(wishlists, error)`."""
+    from ..core import errors, sync
+    from ..core.sources.base import SourceError
+    try:
+        return sync.lists(db, 'brickowl'), None
+    except (SourceError, errors.BrickWorkError, ValueError, sqlite3.Error) as exc:
+        return [], _message(exc, 'brickowl')
+
+
 @_route('get', '/choose', True)
 def step_choose(source):
     from ..core import sync, wishlists
@@ -187,13 +205,14 @@ def step_choose(source):
     from ..core.sync import run as sync_run
     with _db() as db:
         status = sync.status(db, source)
-        if not status['credentials']['user']['configured']:
+        if not _connected(status):
             flash('Connect your ' + LABEL[source] + ' account first.', 'warning')
             return redirect(_to(source, 'connect'))
-        if source == 'brickset':       # owned and wanted sets with counts: two directions and the wishlist here that takes the wanted sets
+        if source != SOURCE:           # owned and wanted sets with counts: two directions and the wishlist here that takes the wanted sets
+            there, there_error = _wishlists(db) if source == 'brickowl' else ([], None)      # Brick Owl also links one of its wishlists
             return _render(source, screen='choose', title=LABEL[source], subtitle='Choose what to sync, and in which direction. You can change it later.',
                            link=status['link'], directions=sync_run.directions(db, source), segments=sync_run.segments(), send_locked=sync_run.lost_parts_send.SEND_LOCKED, segment_labels=sync_run.SEGMENT_LABELS_BY[source],
-                           wish_lists=wishlists.listing(db), **_steps(2))
+                           wish_lists=wishlists.listing(db), there=there, there_error=there_error, budget=sync_run.budget(db, source), **_steps(2))
         lists, sets_error, part_lists, parts_error = _lists(db)
         return _render(source, screen='choose', title=LABEL[source], subtitle='Choose what to sync, and in which direction. You can change it later.',
                      link=status['link'], directions=sync_run.directions(db), segments=sync_run.segments(), send_locked=sync_run.lost_parts_send.SEND_LOCKED, segment_labels=sync_run.SEGMENT_LABELS,
@@ -214,8 +233,10 @@ def step_choose_save(source):
     from ..core.sync import run as sync_run
     _guard()
     form = request.form
-    if source == 'brickset':
+    if source != SOURCE:
         values = dict(owned_dir=form.get('owned_dir'), wishlist_dir=form.get('wishlist_dir'), wish_list=form.get('wish_list') or 'default')
+        if source == 'brickowl' and 'wishlist_id' in form:      # no field (the wishlists could not be read): the stored link stays
+            values['wishlist_id'] = form['wishlist_id']
     else:
         values = _rebrickable_values(form)
     try:
@@ -299,11 +320,32 @@ def step_pick(source, run_id):
                 chips[k] = chips.get(k, 0) + 1
     chips = sorted(chips.items(), key=lambda kv: (kv[0] if mode != 'year' else -int(kv[0]) if kv[0].isdigit() else 0, kv[0]))
     lists = (plans['pull'] or {}).get('lists') or {}
-    return _render(source, screen='pick', title=LABEL[source], subtitle=(
+    extra = _owl_pick(run, plans) if source == 'brickowl' else {}
+    return _render(source, screen='pick', **extra, title=LABEL[source], subtitle=(
         'Pick the sets this run covers. A set you do not pick keeps its copies, counts and fields; only its list names follow their lists.' if mode == 'list' and lists.get('keep')
         else 'Pick the sets this run covers. Sets you do not pick stay as they are on both sides.'), run=run, mode=mode, modes=sync_run.MODE_LABELS_BY[source],
         candidates=candidates, picked=picked, chips=chips, group=mode, keep_names=bool(lists.get('keep')), list_names=sorted((lists.get('names') or {}).values()),
         loose=_loose_names(run, plans), lost_on=run['directions']['lost'] != 'off', **_steps(3))
+
+
+def _owl_pick(run, plans):
+    """What the Brick Owl pick step shows beside the sets (frame 71), from the run and its plans (no call to the site): per set its counts there and
+    here, the linked wishlist, and the day's budget."""
+    from ..core import wishlists
+    from ..core.sync import run as sync_run
+    found, link = {}, {}
+    for plan in (plans['pull'], plans['send']):
+        link = (plan or {}).get('link') or link
+        for r in (plan or {}).get('rows', ()):
+            if run['directions']['owned' if r['kind'] == 'owned' else 'wishlist'] != 'off':
+                found.setdefault(r['item_id'], {})[r['kind']] = (r['remote'], r['here'])
+    counts = {item: [' · '.join(('Set' if kind == 'owned' else 'Wanted', f'{there} at Brick Owl' if there else 'not at Brick Owl',
+                                 f'{here} here' if here else 'not here yet')) for kind, (there, here) in sorted(kinds.items())]
+              for item, kinds in found.items()}
+    with _db() as db:
+        names = {w['id']: w['name'] for w in wishlists.listing(db)}
+        budget = sync_run.budget(db, 'brickowl')
+    return dict(counts=counts, budget=budget, linked=bool(link.get('wishlist_id')), linked_here=names.get(link.get('wish_list') or 'default', 'Wanted'))
 
 
 def _loose_names(run, plans):
@@ -616,7 +658,7 @@ def step_retry(source, run_id):
 
 
 def _register():
-    """Both sites get every step: the same view body under its own URL, endpoint and `source`."""
+    """Every site gets every step: the same view body under its own URL, endpoint and `source`."""
     for source in PREFIX:
         for method, path, unavailable, view in STEPS_LIST:
             def bound(view=view, source=source, **values):

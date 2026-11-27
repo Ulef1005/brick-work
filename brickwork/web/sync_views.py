@@ -9,7 +9,19 @@ from flask_login import login_required
 
 from .views import web_page, bw_add_csrf, bw_add_token, bw_collection_editable
 
-SOURCES = ('rebrickable', 'brickset')
+SOURCES = ('rebrickable', 'brickset', 'brickowl')
+# The short name of each site in its step endpoints (`web.bw_sync_<prefix>_<step>`, web/sync_site.py).
+PREFIX = {'rebrickable': 'rb', 'brickset': 'bs', 'brickowl': 'bo'}
+
+
+def _connected(status):
+    """Whether a site can be synced: its user credential is stored, or, for a site that signs in with its API key alone (Brick Owl), the key is."""
+    credentials = status['credentials']
+    return bool((credentials['user'] if credentials['user'] is not None else credentials['key'])['configured'])
+
+
+def _step_url(source, step):
+    return url_for(f'web.bw_sync_{PREFIX[source]}_{step}')
 
 
 def _db():
@@ -159,7 +171,7 @@ _SITE_DESCRIPTIONS = {
     'rebrickable': 'Set lists, wishlist, part lists and Lost Parts; minifigures as a check',
     'brickset': 'Owned and wanted sets with their counts',
     'bricklink': 'Orders into Orders, the price guide; store inventory and wanted lists by file follow',
-    'brickowl': 'Collection lots, wishlists, inventory, orders; a daily budget per kind',
+    'brickowl': 'Owned and wanted sets with their counts; one linked wishlist',
 }
 
 
@@ -211,16 +223,17 @@ def bw_sync_hub():
     from ..core import sync
     with _db() as db:
         sites = []
-        for source in ('rebrickable', 'brickset'):
+        def card(source):
             status = sync.status(db, source)
-            connected = bool(status['credentials']['user']['configured'])
-            sites.append(dict(
+            connected = _connected(status)
+            return dict(
                 key=source, label=sync.LABELS[source], description=_SITE_DESCRIPTIONS[source],
                 connected=connected, state_tag=_state_tag(status, connected),
                 account=(status.get('account') or 'Linked') if connected else 'none', last_sync=_last_sync(status),      # #686: the account name when it is known
                 action_label='Open' if connected else 'Connect',
-                url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect'),
-            ))
+                url=url_for('web.bw_sync_site', source=source) if connected else _step_url(source, 'connect'),
+            )
+        sites += [card('rebrickable'), card('brickset')]
         from ..core import keys
         bl_connected = bool(keys.state(db, 'bricklink')['configured'])
         sites.append(dict(
@@ -230,16 +243,11 @@ def bw_sync_hub():
             action_label='Open' if bl_connected else 'Connect',
             url=url_for('web.bw_sync_bl_site') if bl_connected else url_for('web.bw_sync_bl_connect'),
         ))
-        keys_url = url_for('web.bw_admin', page='catalogues')
-        sites.append(dict(
-            key='brickowl', label='Brick Owl', description=_SITE_DESCRIPTIONS['brickowl'],
-            connected=False, state_tag=None, account='none', last_sync='Never',
-            action_label='Connect', url=keys_url,
-        ))
+        sites.append(card('brickowl'))
         import_url = url_for('web.bw_import_legacy') if 'web.bw_import_legacy' in current_app.view_functions else url_for('web.bw_add', mode='file')
         import_export = dict(last_import=_last_import(db), last_export='Never', url=import_url)
         log = _log(db)
-    return _page('web/toni/web/bw_sync_hub.html', title='Sync', sites=sites, import_export=import_export, log=log)
+    return _page('web/toni/web/bw_sync_hub.html', title='Sync', sites=sites, import_export=import_export, log=log, labels=sync.LABELS)
 
 
 @web_page.get('/workbench/sync/<source>')
@@ -248,7 +256,7 @@ def bw_sync_hub():
 def bw_sync_site(source):
     from .sync_site import site_page
     _source(source)
-    return site_page(source)   # both sites have the six-step pages of web/sync_site.py (#519, #520)
+    return site_page(source)   # these sites have the step pages of web/sync_site.py (#519, #520, #522)
 
 
 @web_page.get('/manage/sync')
@@ -272,7 +280,7 @@ def bw_sync():
 @_unavailable
 def bw_sync_link(source):
     _source(source)
-    return redirect(url_for('web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect'))   # the account and the choices are steps 1 and 2 of the site's page (#519, #520)
+    return redirect(_step_url(source, 'connect'))   # the account and the choices are steps 1 and 2 of the site's page (#519, #520, #522)
 
 
 @web_page.get('/manage/sync/<source>/plan/<plan_id>')
@@ -298,15 +306,18 @@ def bw_sync_plan(source, plan_id):
 
 def _message(exc, source):
     from ..core.sources.base import KeyRejected, SourceNotConfigured, WaitingForBudget
-    from ..core.sync import LABELS
+    from ..core.sync import LABELS, credential_words
     if isinstance(exc, KeyRejected):
-        return LABELS[source] + ' rejected the key or user token. Nothing was changed there.'
+        return LABELS[source] + ' rejected the ' + credential_words(source) + '. Nothing was changed there.'
     if isinstance(exc, WaitingForBudget):
         return LABELS[source] + ' is paused: the daily budget is used up. Try again after ' + (exc.retry_at or 'midnight UTC')[:16].replace('T', ' ') + '.'
     if isinstance(exc, SourceNotConfigured):
         return str(exc) + '.'
     from .safe_errors import public
-    return public(exc, LABELS[source] + ' could not be reached · nothing was changed. Try again.')
+    unreached = LABELS[source] + ' could not be reached · nothing was changed. Try again.'
+    if source == 'brickowl' and str(exc) == source + ' could not be reached':      # the client names itself by its id
+        return unreached
+    return public(exc, unreached)
 
 
 @web_page.post('/manage/sync/<source>/<action>')
@@ -315,6 +326,8 @@ def bw_sync_write(source, action):
     from ..core import sync
     from ..core.sources.base import audit_origin
     _source(source)
+    if action in ('connect', 'paste', 'remove', 'test') and source not in sync.USER:
+        abort(404)   # a site that signs in with its API key alone has no user credential, as in the API (#522)
     origin = request.headers.get('Origin')
     if origin and origin.rstrip('/') != request.host_url.rstrip('/') or request.headers.get('Sec-Fetch-Site') == 'cross-site':
         abort(403)
@@ -324,8 +337,7 @@ def bw_sync_write(source, action):
     form = request.form
     back = url_for('web.bw_sync_link', source=source)
     if form.get('next') in ('site', 'connect'):   # a site's page and its connect step keep their own account buttons (#519, #520)
-        back = url_for('web.bw_sync_site' if form['next'] == 'site' else 'web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect',
-                       **({} if form['next'] == 'connect' else {'source': source}))
+        back = url_for('web.bw_sync_site', source=source) if form['next'] == 'site' else _step_url(source, 'connect')
     try:
         with _db() as db, audit_origin('app'):
             if action == 'connect':

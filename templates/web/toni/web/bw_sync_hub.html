@@ -56,7 +56,7 @@
     <h2 class="bk-eyebrow" id="sy-log-title">Sync log</h2>
     {% if log %}
     <div class="sy-log-head" aria-hidden="true"><span>When</span><span>Site</span><span>Direction</span><span>What</span><span></span></div>
-    {% for r in log %}<div class="sy-log-row"><span class="mono">{{ stamp(r.at) }}</span><span>{{ r.source|capitalize if r.source else '' }}</span><span>{{ r.direction }}</span><span>{{ r.what }}</span><span>{% if r.state == 'Done' %}{{ pill('success', 'Done') }}{% else %}{{ pill('warning', r.state) }}{% endif %}</span></div>{% endfor %}
+    {% for r in log %}<div class="sy-log-row"><span class="mono">{{ stamp(r.at) }}</span><span>{{ labels.get(r.source, r.source|capitalize) if r.source else '' }}</span><span>{{ r.direction }}</span><span>{{ r.what }}</span><span>{% if r.state == 'Done' %}{{ pill('success', 'Done') }}{% else %}{{ pill('warning', r.state) }}{% endif %}</span></div>{% endfor %}
     {% else %}
     <p class="bk-text">Nothing pulled or sent yet.</p>
     {% endif %}

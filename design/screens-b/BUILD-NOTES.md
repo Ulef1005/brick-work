@@ -516,7 +516,7 @@ Gap list: `~/Workspace/_exports/design-brief-n/frame-gaps-n.md`. Requested by br
 
 ## Commission N picture check (approved 2026-11-27, "approve all, A and A")
 
-Review artifact https://claude.ai/artifact/2rT6QJkS3wDAJF2ErShyAB, version 1; the rows are in `design/APPROVALS.md`. Two changes are to be built:
+Review artifact https://claude.ai/artifact/2rT6QJkS3wDAJF2ErShyAB, version 1; the rows are in `design/APPROVALS.md`. Two changes, built in #765:
 
 - **`96-sync-run-interrupted`, pull undone:** in both undone cases (all applied, and one part not applied) the first card's heading is "Pull undone" with a plain "Undone" tag (not the hatched failed one). The sentences below do not change.
 - **Record-only preview:** when the "sets compared" count is 0 and rows will be recorded, the page head is "checked <time>" plus "· last run <time>" where there is one. The empty-list line and the record-only line do not change.

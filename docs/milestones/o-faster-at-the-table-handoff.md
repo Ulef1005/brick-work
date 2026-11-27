@@ -1,5 +1,11 @@
 # Milestone O (Faster at the table): handoff for the next agent
 
+**Historical record: the state on 22.11.2026. It is not kept up to date, and nothing in it is an instruction for today.** The live status is on the GitHub issues, under #303. What has changed since, as of 27.11.2026:
+
+- v1.2 has shipped, so milestone U no longer holds back shell, template, CSS or UI work.
+- N's #551 and #520, which #303 and #8 waited on, are closed, and the schema has moved past 4.8 ([n-handoff.md](n-handoff.md)). A new schema step takes the next free number in `UPGRADES`.
+- The rule in *Rules carried* that no agent merges applied to that cloud thread.
+
 Written 2026-11-22 by the cloud thread "Build code for milestone O". O is GitHub milestone 20. Its six open issues are #303, #42, #58, #8, #545 and #546. O has no gate issue yet.
 
 ## State
@@ -24,13 +30,13 @@ Written 2026-11-22 by the cloud thread "Build code for milestone O". O is GitHub
 ## Open guesses
 - Brickset API v3 lookup by EAN/UPC: unverified.
 - #546: one element id is one part and colour (it is the primary key).
-- `tests/test_upgrade_path.py::test_a_050...` fails in the cloud container on main too (sqlite `?mode=ro` ATTACH). It is environmental; it is not caused by O.
+- `tests/test_upgrade_path.py::test_a_050...` fails in the cloud container on main too (sqlite `?mode=ro` ATTACH). It is environmental; it is not caused by O. The same fault hides real upgrade failures: run the test with `sqlite3.connect` patched to `uri=True` before you call a failure pre-existing ([n-handoff.md](n-handoff.md)).
 
 ## Rules carried
 One branch per issue, `o/<issue>-<slug>`. One draft PR each, and no merges by agents. Claim comment on an issue before starting. No shell, templates or CSS while U is open. Design steps need Ulf's written approval.
 
 ## On GitHub
-- Overall handoff: [#303 comment](https://github.com/Ulef1005/brick-work/issues/303#issuecomment-7081947539) (this file is the maintained copy).
+- Overall handoff: [#303 comment](https://github.com/Ulef1005/brick-work/issues/303#issuecomment-7081947539).
 - Per issue: [#58](https://github.com/Ulef1005/brick-work/issues/58#issuecomment-7081646245), [#546](https://github.com/Ulef1005/brick-work/issues/546#issuecomment-7081764416), [#42](https://github.com/Ulef1005/brick-work/issues/42#issuecomment-7081947278); claims and plans on #303, #545 and #8 (22.11.).
 - Draft PRs: #599 (#58), #601 (#546), #603 (#42); CI is green on all three (22.11.).
 

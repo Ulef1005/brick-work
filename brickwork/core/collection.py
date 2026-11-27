@@ -1111,7 +1111,9 @@ def search(db, query, limit=20):
     """Local jump projection: what you own or want that a word of the query names, by name or by either number.
 
     A word matches an item's name, its born (Rebrickable) number, any confirmed BrickLink number, the item id, or the id of a
-    copy or stock line. Sets first, then the exact number, then the number."""
+    copy or stock line. A word that is an element id (#546, 5 to 7 digits in the catalogue's `element`) names one part in one colour:
+    its rows, or the catalogue part itself (`entity` `catalogue`, no instances) when nothing of it is owned or wanted; such a row carries
+    `element` (the id typed) and `element_ids` (every id of that part and colour). Sets first, then the exact number, then the number."""
     query = query.strip()[:100]
     if not query:
         return dict(query=query, results=[], limit=limit, truncated=False)
@@ -1123,12 +1125,18 @@ def search(db, query, limit=20):
         matching |= {r[0] for r in db.execute("""SELECT id FROM main.item WHERE bw_fold(name) LIKE ?1 ESCAPE '\\' OR born_key LIKE ?1 ESCAPE '\\' OR cast(id AS TEXT)=?2
             UNION SELECT item_id FROM main.item_link WHERE provider='bricklink' AND status IN ('matched','inferred','manual') AND provider_key LIKE ?1 ESCAPE '\\'""",
             (pattern, word))}
+    named = {}                                                    # (item, colour) -> the element id a word is (#546)
+    for word in words:
+        pair = items.element(db, word)
+        if pair:
+            named.setdefault(pair, word)
+    named_items = {i for i, _ in named}
     candidates = {}
     # Every live row of an item some matching row belongs to: the ids alone pick those items, then their rows are read whole.
     scope = {item for row_id, item in db.execute('SELECT id,item_id FROM copy WHERE archived_at IS NULL UNION ALL SELECT id,item_id FROM stock WHERE archived_at IS NULL')
-             if item in matching or any(w in str(row_id).casefold() for w in words)}
+             if item in matching or item in named_items or any(w in str(row_id).casefold() for w in words)}
     for r in _instances(db, None, False, None, item_ids=scope) if scope else ():
-        if r['item_id'] in matching or any(w in str(r['id']).casefold() for w in words):
+        if r['item_id'] in matching or (r['item_id'], r.get('color_id')) in named or any(w in str(r['id']).casefold() for w in words):
             candidate = candidates.setdefault((r['item_id'], r.get('color_id')), dict(r, instances=[]))
             candidate['instances'].append(r)
     for raw in db.execute('''SELECT DISTINCT p.item_id,p.color_id FROM copy_part p JOIN copy c ON c.id=p.copy_id
@@ -1136,12 +1144,25 @@ def search(db, query, limit=20):
             UNION SELECT DISTINCT f.item_id,NULL FROM copy_figure f JOIN copy c ON c.id=f.copy_id
             WHERE c.archived_at IS NULL AND f.retired_at IS NULL AND f.item_id IN (SELECT value FROM json_each(?))''', (_in(matching), _in(matching))):
         candidates.setdefault((raw[0], raw[1]), dict(item_id=raw[0], color_id=raw[1], entity='stock', instances=[]))
-    wishes = [dict(r, entity='wish', instances=[]) for r in db.execute('SELECT * FROM wish WHERE archived_at IS NULL AND item_id IN (SELECT value FROM json_each(?)) ORDER BY added_at,id', (_in(matching),))]
+    for raw in db.execute('''SELECT DISTINCT p.item_id,p.color_id FROM copy_part p JOIN copy c ON c.id=p.copy_id
+            WHERE c.archived_at IS NULL AND p.retired_at IS NULL AND p.is_spare=0 AND p.item_id IN (SELECT value FROM json_each(?))''', (_in(named_items),)):
+        if (raw[0], raw[1]) in named:
+            candidates.setdefault((raw[0], raw[1]), dict(item_id=raw[0], color_id=raw[1], entity='stock', instances=[]))
+    wishes = [dict(r, entity='wish', instances=[]) for r in db.execute('SELECT * FROM wish WHERE archived_at IS NULL AND item_id IN (SELECT value FROM json_each(?)) ORDER BY added_at,id', (_in(matching | named_items),))
+              if r['item_id'] in matching or (r['item_id'], r['color_id']) in named]
+    for pair in named:
+        if pair not in candidates and not any((w['item_id'], w['color_id']) == pair for w in wishes):
+            candidates[pair] = dict(item_id=pair[0], color_id=pair[1], entity='catalogue', instances=[])     # not owned or wanted: the part itself
     rows = decorate(db, [*candidates.values(), *wishes])
     for row in rows:
         row['instances'] = [dict(i, flags=i.pop('_flags', [])) for i in row['instances']]
+    for row in rows:
+        pair = (row['item_id'], row.get('color_id'))
+        if pair in named:
+            row['element'], row['element_ids'] = named[pair], items.element_ids(db, *pair)
     numbers = {w for w in words}
-    rows.sort(key=lambda r: (r['kind'] != 'set', r.get('entity') == 'wish', (r['number'] or '').casefold() not in numbers and (r['also'] or '').casefold() not in numbers,
+    rows.sort(key=lambda r: (r['kind'] != 'set', r.get('entity') == 'wish', (r['number'] or '').casefold() not in numbers and (r['also'] or '').casefold() not in numbers
+                             and 'element' not in r,
                              r['item_no'], str(r.get('id', ''))))
     return dict(query=query, results=rows[:limit], limit=limit, truncated=len(rows) > limit)
 

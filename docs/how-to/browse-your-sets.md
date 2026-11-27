@@ -33,6 +33,10 @@ When no copy has a storage, the label and the index do not appear and the sets s
 - Search by set number or name. Choose **Sort** to order by number, name, year, missing parts, used price or date added. On a phone, search and **Sort** are at the top of the Filter sheet.
 - **Filter** opens a sheet with the other filters, the grouping (storage by default) and **Select mode**. See [Give many things a place](storage.md#give-many-things-a-place) for what Select mode does.
 
+## Find a part by its element id
+
+The number printed on a bag or on the parts page of a booklet is an element id: one part in one colour. Type it (5 to 7 digits) into **Jump to a set, copy, figure or part** (⌘K). The result is that part in that colour, with **element** and the id in its type line. If you own or want none of it, the line also says **not in your collection** and opens the part's page. Only element ids the catalogue knows are found. The API's catalogue search (`GET /api/v2/catalogue/items?q=`, the assistant tool `search_catalogue`) takes the same id and names the colour and every element id of that part.
+
 ## Drawers and Ledger
 
 **Drawers** shows the sets as tiles under their labels. **Ledger** shows the same sets as one row each. Your choice stays while the tab is open. The other lists under **Collection** (Minifigures, Parts, Instructions, Boxes) have the same switch: **Drawers** for tiles, **Ledger** for rows.

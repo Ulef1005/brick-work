@@ -2442,6 +2442,9 @@ def bw_collection_jump():
                 item_type=kind,type_label=collection.TYPES[kind],number=r['number_text'] or r['name'],name=r['name'],
                 quantity=r.get('quantity'),color=r.get('color_id'),color_name=r['color_name'],
                 image=url_for('web.bw_image',image_id=r['image'],w=320) if r['image'] else None)
+            if r.get('element'):   # #546: the element id typed names this part in this colour; the dialog shows it in the type line
+                row['type_label']+=f" · element {r['element']}"+(' · not in your collection' if r.get('entity')=='catalogue' else '')
+                row['element'],row['element_ids']=r['element'],r['element_ids']
             params=dict(item_id=r['item_id'])
             if r.get('color_id') is not None and kind=='P': params['colour']=r['color_id']
             if row['kind']=='wanted': row['url']=url_for('web.bw_collection_wish',identifier=r['id'])

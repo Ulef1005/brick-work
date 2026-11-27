@@ -91,16 +91,23 @@ def owned_counts(db, ids):
     return owned, wished
 
 
-def catalogue_rows(db, ids):
-    """`CatalogueItem` bodies for catalogue item ids, in the order given (an id the catalogue does not hold live is left out)."""
+def catalogue_rows(db, ids, element=None):
+    """`CatalogueItem` bodies for catalogue item ids, in the order given (an id the catalogue does not hold live is left out). `element` is
+    `(element id, item id, colour id)` when the query was an element id (#546): that item's body names the element, its colour and every id."""
     packed = json.dumps(sorted(set(ids)))
     found = {r['id']: r for r in db.execute('''SELECT i.id, i.name, i.year, c.name AS category, t.name AS theme FROM catalogue.item i
         LEFT JOIN catalogue.part_category c ON c.id=i.category_id LEFT JOIN catalogue.theme t ON t.id=i.theme_id
         WHERE i.retired_at IS NULL AND i.id IN (SELECT value FROM json_each(?))''', (packed,))}
     owned, wished = owned_counts(db, found)
     book = bodies(db, items=found)
-    return [{'item': book.item(i), 'name': found[i]['name'], 'year': found[i]['year'], 'owned': owned.get(i, 0),
-             'wished': i in wished, 'category': found[i]['category'], 'theme': found[i]['theme']} for i in ids if i in found]
+    out = [{'item': book.item(i), 'name': found[i]['name'], 'year': found[i]['year'], 'owned': owned.get(i, 0),
+            'wished': i in wished, 'category': found[i]['category'], 'theme': found[i]['theme']} for i in ids if i in found]
+    if element:
+        typed, item_id, color_id = element
+        for row in out:
+            if row['item']['id'] == item_id:
+                row['element'] = {'id': typed, 'color': book.color(color_id), 'element_ids': items_core.element_ids(db, item_id, color_id)}
+    return out
 
 
 def _escape(text):
@@ -156,13 +163,16 @@ def get_catalogue_items(db):
     except ValueError:
         raise errors.BadRequest('Limit must be between 1 and 200') from None
     signature = json.dumps([kind, query, sort, direction])
+    pair = items_core.element(db, query) if kind in (None, 'part') else None      # an element id names one part in one colour (#546)
     if query:
-        ids = _text_hits(db, kind, query)
+        ids = list(dict.fromkeys(([pair[0]] if pair else []) + _text_hits(db, kind, query)))
         keys = {r['id']: r for r in db.execute('SELECT id, born_key, name_key FROM catalogue.item WHERE retired_at IS NULL AND id IN (SELECT value FROM json_each(?))',
                                                (json.dumps(sorted(ids)),))}
         ids = [i for i in ids if i in keys]
         pick = (lambda i: natural(keys[i]['born_key'])) if sort == 'number' else (lambda i: keys[i]['name_key'])
         ordered = sorted(ids, key=lambda i: (pick(i), i), reverse=direction == 'desc')
+        if pair and pair[0] in keys:
+            ordered = [pair[0]] + [i for i in ordered if i != pair[0]]          # the part an element id names comes first
         start = 0
         if args.get('cursor'):
             anchor = _after(args['cursor'], signature)[1]
@@ -186,7 +196,7 @@ def get_catalogue_items(db):
         rows = db.execute(f'SELECT id, {column} AS k FROM catalogue.item WHERE {where} ORDER BY {column} {order}, id {order} LIMIT ?', (*params, limit + 1)).fetchall()
         chosen = [r['id'] for r in rows[:limit]]
         after = [rows[limit - 1]['k'], rows[limit - 1]['id']] if len(rows) > limit else None
-    data = catalogue_rows(db, chosen)
+    data = catalogue_rows(db, chosen, (query, *pair) if pair else None)
     return respond(data, page={'next_cursor': _cursor(signature, after) if after else None, 'limit': limit, 'total': total})
 
 

@@ -14,6 +14,7 @@ An item is read from the collection when it is projected there, else from the ca
 inside the caller's transaction (see `store4.identity.project`)."""
 from dataclasses import asdict, dataclass
 import json
+import re
 import sqlite3
 
 from ..store4 import identity
@@ -280,6 +281,27 @@ def find(db, kind, number, *, limit=20):
         if row is not None and (kind is None or row['kind'] == kind):
             out.append(dict(item_id=item_id, kind=row['kind'], name=row['name'], number=row['born_key'], matched_by=how))
     return out
+
+
+ELEMENT_ID = re.compile(r'[0-9]{5,7}')                           # an element id as printed on a bag or a booklet (#546)
+
+
+def element(db, word):
+    """`(item_id, color_id)` of the part and colour an element id names (#546), or None (not an element id, no catalogue, unknown).
+    A merged item is replaced by the item it was merged into."""
+    word = (word or '').strip()
+    if not ELEMENT_ID.fullmatch(word) or not has_catalogue(db):
+        return None
+    row = db.execute('SELECT item_id, color_id FROM catalogue.element WHERE element_id=?', (word,)).fetchone()
+    return (_merged_target(db, row[0]), row[1]) if row else None
+
+
+def element_ids(db, item_id, color_id):
+    """Every element id of a part in a colour, lowest first by number (the one Pick a Brick ordering uses, #314, comes first)."""
+    if not has_catalogue(db):
+        return []
+    found = [r[0] for r in db.execute('SELECT element_id FROM catalogue.element WHERE item_id=? AND color_id=?', (item_id, color_id))]
+    return sorted(found, key=lambda e: (len(e), e))
 
 
 def _merged_target(db, item_id):

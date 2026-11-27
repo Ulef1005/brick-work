@@ -31,7 +31,7 @@ Hichert's SUCCESS governs every design artifact here, not only charts: **Say** (
 
 ## Rules
 
-- Only what Ulf approved in writing is in `design/`. A new or changed screen goes through a review round (P3 artifact, light and dark, one phone and one desktop view, SUCCESS verdict per item) and moves in only with his words and its `design/APPROVALS.md` line.
+- Only what Ulf approved in writing is in `design/`. A new or changed screen goes through a review round (P3 artifact, light only, one phone and one desktop view, SUCCESS verdict per item) and moves in only with his words and its `design/APPROVALS.md` line.
 - Build a B′ screen from its frame in `design/screens-b/`: reuse the frame's classes, take the CSS from the frame's own CSS, and keep every shipped control and text that `design/screens-b/BUILD-NOTES.md` does not change. A tokens-only screen keeps its layout and takes the tokens and components of the frame its row names.
 - Colours only from the tokens, never a literal. Violet means found, complete, chosen or an action; status is shape and a word (filled, hatched, dashed, the logo's X for "not checked"); chart bars are ink (`design/BRAND.md` § 10). Catalogue pictures in dark sit on the tile with `mix-blend-mode: multiply`; the user's own photos are never blended.
 - Check light and dark, 390 px and 1440 px, and the longest real content at 320 and 375 px: nothing runs past the right edge.

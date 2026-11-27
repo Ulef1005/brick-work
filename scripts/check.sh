@@ -4,14 +4,19 @@
 # Tiers: commit = .githooks (pre-commit: private names; commit-msg: docs trailer); land = this script on the Mac;
 #        ci = this script in check.yml (CI set; four shards, shard 1 runs the non-pytest steps).
 #
-# id                 tier       trigger                                     catches
-# chrome, pytest     ci         always (land: only with BW_LOCAL_TESTS=1)  the test suite with Chrome (rendered group)
-# runtimes           ci         always (land: only with BW_LOCAL_TESTS=1)  the Node runtime harnesses
-# private-names      commit, land  always (never in CI)                    the maintainer's private names (patterns file)
-# names, tokens, docs-theme, brand, b-prime, legacy-guard, design-gate-count, screens, suite-size, api-contract,
-# api-writes         land, ci   always                                      naming, design, contract and suite checks
-# docs, docs-tests   land, ci   docs mode or full                           docs checks (docs-tests only where tests run)
-# secrets            land       always (CI: the gitleaks action, marker)   secrets in the history and the working copy
+# id                 tier       trigger                                       catches
+# private-names      commit     the staged files (never in CI)                the maintainer's private names (patterns file)
+# commit-msg         commit     every commit message                          app source changed without a user-docs change
+# private-names      land       docs and full mode, off GitHub                the same names in the whole tracked tree
+#                                                                             (full mode with tests: inside pytest)
+# names, secrets     land, ci   docs and full mode                            names; secrets in history and working copy
+#                                                                             (on GitHub: the gitleaks action, by its marker)
+# docs               land, ci   docs and full mode                            the docs checks
+# docs-tests         land, ci   docs mode, where tests run                    the docs and site tests
+# tokens, docs-theme, brand, b-prime, legacy-guard, design-gate-count, screens, suite-size, api-contract,
+# api-writes         land, ci   full mode                                     design, contract and suite checks
+# chrome, pytest     ci         full mode (land: only with BW_LOCAL_TESTS=1)  the test suite with Chrome
+# runtimes           ci         full mode (land: only with BW_LOCAL_TESTS=1)  the Node runtime harnesses
 #
 # Every step runs, so one failure cannot hide another; the failed steps are listed at the end (App Standard,
 # Repo & checks, 2026-10-23).

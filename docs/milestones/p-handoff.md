@@ -1,5 +1,10 @@
 # Milestone P handoff: build state and custom sets
 
+**Historical record: the state on 22.11.2026. It is not kept up to date, and nothing in it is an instruction for today.** The live status is on the GitHub issues #14, #13 and #37. What has changed since, as of 27.11.2026:
+
+- v1.2 has shipped, so nothing here still waits for it or for milestone U.
+- The schema has moved past 4.8 ([n-handoff.md](n-handoff.md)). A new schema step takes the next free number in `UPGRADES`.
+
 Pick-up point for milestone P ([GitHub milestone 21](https://github.com/Ulef1005/brick-work/milestone/21)), written 22.11.2026 by the milestone P cloud thread. It is a repo-only record (`docs/milestones/` is not built into the site). The issue comments it links hold the details.
 
 ## State

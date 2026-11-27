@@ -24,3 +24,4 @@ Milestone U's handoff for the next agent is [u-brand-and-redesign-handoff.md](u-
 Dated records of a milestone built by several agents. A record is not kept up to date: the live status is on the GitHub issues.
 
 - [N: Sync and files, as of 22 November 2026](n-handoff.md), gate #525
+- [O: Faster at the table, as of 22 November 2026](o-faster-at-the-table-handoff.md), umbrella #303

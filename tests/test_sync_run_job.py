@@ -432,14 +432,22 @@ def test_a_mark_only_pull_runs_no_lost_parts_step_and_renames_no_list(client, re
 def test_a_released_run_runs_every_stage_chosen_on_the_next_try(three_sends, monkeypatch):
     """A failure after a stage recorded `none` and before the next began releases the run; the record must not make the next try skip it."""
     pair, run_id, keys = three_sends
-    real = run_job._stop_requested
-    with db_of(pair) as db:
-        form = form_for(db, run_id, send=False)
-        job_id = run_job.queue(db, run_id, form)
+    real = run_job._run_one
+
+    def records_none_then_fails(db, job, http):
         run = sync_run.load(db, run_id)[0]
-        run['stages'] = {'pull': {'status': 'none'}}      # what the failed first try stored
+        run['stages'] = {'pull': {'status': 'none'}}
         sync._store_plan(db, run)
-        monkeypatch.setattr(run_job, '_run_one', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('boom')))
+        raise RuntimeError('boom')
+
+    monkeypatch.setattr(run_job, '_run_one', records_none_then_fails)
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id, send=False))
         run_job.drain(db)
         released = sync_run.load(db, run_id)[0]
         assert not released.get('job') and released['stages'] == {}
+        monkeypatch.setattr(run_job, '_run_one', real)
+        job_id = run_job.queue(db, run_id, form_for(db, run_id, send=False))       # the second try, with rows chosen to come in
+        run_job.drain(db)
+        assert sync_run.load(db, run_id)[0]['stages']['pull']['status'] == 'done'
+        assert not db.execute("SELECT 1 FROM job_step WHERE job_id=? AND state='queued'", (job_id,)).fetchall()

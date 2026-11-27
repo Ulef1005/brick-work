@@ -576,8 +576,12 @@ def test_loose_stock_comes_in_by_part_list_and_one_undo_takes_the_run_and_its_pa
     assert 'Add 5 here' in card.get_text() and 'from Bin A' in card.get_text()
     with db_of(pair) as db:                                     # frame 22: each row names its part and its colour, with the numbers under them
         named = collection.decorate(db, [dict(item_id=int(i['value'].split(':')[1]), color_id=int(i['value'].split(':')[2])) for i in card.select('input[name=part]')])
-    for row, shown in zip(named, card.select('.sr-part .sr-rowid')):
+    rows = card.select('.sr-part')
+    assert len(rows) == len(named) == 2
+    for row, shown in zip(named, rows):
+        assert row['name'] and row['color_name']
         assert shown.b.get_text() == row['name'] and row['color_name'] in shown.get_text() and shown.select_one('.sr-tile') is not None
+        assert row['name'] in shown['data-name'] and row['color_name'] in shown['data-name']     # the search field reads data-name
     apply_run(client, csrf, run_id, page)
     with db_of(pair) as db:
         assert db.execute("SELECT count(*) FROM stock s JOIN lot l ON l.id=s.lot_id WHERE l.name='Bin A' AND s.archived_at IS NULL").fetchone()[0] == 2

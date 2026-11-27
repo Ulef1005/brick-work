@@ -449,8 +449,6 @@ def _fail_unexpected(db, job_id, *, write_failed=False):
         return
     try:
         run.pop('applying', None)
-        if write_failed:      # the data folder or database refused a write: what is stored may lack what went out, and the run page warns of that
-            run['write_failed'] = True
         cut_off = []
         if 'job_progress' in run:
             run['job_progress']['now'] = None
@@ -458,6 +456,8 @@ def _fail_unexpected(db, job_id, *, write_failed=False):
             for key in ('job', 'job_form', 'job_progress'):
                 run.pop(key, None)
         elif not settled:
+            if write_failed:      # the data folder or database refused a write: what is stored may lack what went out, and the run page warns of that
+                run['write_failed'] = True
             for name, stage in run['stages'].items():
                 if stage.get('status') == 'started':
                     run['stages'][name] = dict(_interrupted(db, run, plans, run['job_form'], name), cause='error')      # no restart: the run page says so

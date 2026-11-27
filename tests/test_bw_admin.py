@@ -392,7 +392,8 @@ def test_stale_freshness_and_archives(coll, world):
     seed(coll)
     db = coll.db
     keep = lambda: [r for r in admin.stale_prices(db) if r['item_id'] == world.keep]
-    # The set is held used (copy A) and new (copy B); the world prices only the used one, on 2026-10-26.
+    # The set is held used (copy A) and new (copy B); only the used one gets a recent price. The world's own date is fixed and ages out.
+    coll.price(world.keep, '30.00', condition='used', observed=(now() - timedelta(days=2)).isoformat())
     assert [r['condition'] for r in keep()] == ['new']
     two_days = (now() - timedelta(days=2)).isoformat()
     coll.price(world.keep, '30.00', condition='used', observed=two_days)

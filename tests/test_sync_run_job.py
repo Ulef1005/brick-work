@@ -427,3 +427,19 @@ def test_a_mark_only_pull_runs_no_lost_parts_step_and_renames_no_list(client, re
         sync_run.apply(db, run_id, MultiDict())
         stage = sync_run.load(db, run_id)[0]['stages']['pull']
         assert stage['status'] == 'done' and stage['lists_changed'] == 0, stage
+
+
+def test_a_released_run_runs_every_stage_chosen_on_the_next_try(three_sends, monkeypatch):
+    """A failure after a stage recorded `none` and before the next began releases the run; the record must not make the next try skip it."""
+    pair, run_id, keys = three_sends
+    real = run_job._stop_requested
+    with db_of(pair) as db:
+        form = form_for(db, run_id, send=False)
+        job_id = run_job.queue(db, run_id, form)
+        run = sync_run.load(db, run_id)[0]
+        run['stages'] = {'pull': {'status': 'none'}}      # what the failed first try stored
+        sync._store_plan(db, run)
+        monkeypatch.setattr(run_job, '_run_one', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('boom')))
+        run_job.drain(db)
+        released = sync_run.load(db, run_id)[0]
+        assert not released.get('job') and released['stages'] == {}

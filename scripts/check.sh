@@ -8,9 +8,11 @@
 # private-names      commit     the staged files (never in CI)                the maintainer's private names (patterns file)
 # commit-msg         commit     every commit message                          app source changed without a user-docs change
 # private-names      land       docs and full mode, off GitHub                the same names in the whole tracked tree
-#                                                                             (full mode with tests: inside pytest)
+#                                                                             (full mode with tests: inside pytest);
+#                                                                             patterns file found as at commit
 # names, secrets     land, ci   docs and full mode                            names; secrets in history and working copy
-#                                                                             (on GitHub: the gitleaks action, by its marker)
+#                                                                             (on GitHub: the gitleaks action, by its marker;
+#                                                                             elsewhere it fails without gitleaks)
 # docs               land, ci   docs and full mode                            the docs checks
 # docs-tests         land, ci   docs mode, where tests run                    the docs and site tests
 # tokens, docs-theme, brand, b-prime, legacy-guard, design-gate-count, screens, suite-size, api-contract,
@@ -70,6 +72,18 @@ if [[ -n $shard ]]; then
     echo "BW_SHARD must look like 2/3 (the second of three), not $shard"; exit 2
   fi
   echo "Shard: $shard"
+fi
+# The maintainer's private names, found as the commit hook finds them (.githooks/pre-commit): BW_PRIVATE_PATTERNS_FILE,
+# else the shared file in ai-wiki, so a plain run of this script checks them too (Repo Gates). Without that file (a
+# contributor) the generic patterns apply. A BW_PRIVATE_PATTERNS_FILE that names no file fails the private-names step.
+if [[ -z ${GITHUB_ACTIONS:-} && -z ${BW_PRIVATE_PATTERNS_FILE:-} ]]; then
+  shared=${HOME:-}/Workspace/ai-wiki/scripts/brick-work-private-patterns.txt
+  if [[ -f $shared ]]; then
+    export BW_PRIVATE_PATTERNS_FILE=$shared
+    echo "Private patterns: $shared"
+  else
+    echo "NOTE: no private patterns file at $shared, so the private-names check uses the generic patterns only"
+  fi
 fi
 step() {
   local name=$1
@@ -149,10 +163,10 @@ secrets() {
     return 1
   fi
   if ! command -v gitleaks >/dev/null 2>&1; then
-    echo "NOTE: gitleaks is not installed; skipping secret scan."
-    return 0
+    echo "FAILED: gitleaks is not installed, so the secret scan cannot run; install it (https://github.com/gitleaks/gitleaks#installing)."
+    return 1
   fi
-  local rc=0 base tree f repo=$PWD
+  local rc=0 base tree repo=$PWD
   gitleaks detect --no-banner || rc=1
   # History alone misses what is not committed yet: scan the working copy of every tracked and untracked,
   # not ignored file too. Both scans always run; a copy that fails fails the step, so a partial tree never passes.
@@ -160,11 +174,29 @@ secrets() {
   tree=$base/tree
   mkdir "$tree" || { rm -rf "$base"; return 1; }
   if git ls-files -z --cached --others --exclude-standard > "$base/list"; then
-    while IFS= read -r -d '' f; do
-      if [[ -f $f ]]; then
-        mkdir -p "$tree/$(dirname "$f")" && cp -p "$f" "$tree/$f" || { echo "ERROR: cannot copy $f for the secret scan"; rc=1; }
-      fi
-    done < "$base/list"
+    # One process copies them all: three per file (dirname, mkdir, cp) took most of the scan's time. A path that is
+    # not a file (deleted, the deletion not committed) is left out; a file that cannot be copied is named and fails.
+    "$python" - "$base/list" "$tree" <<'PY' || rc=1
+import os
+import shutil
+import sys
+
+with open(sys.argv[1], 'rb') as listing:
+    names = [name for name in listing.read().split(b'\0') if name]
+tree = os.fsencode(sys.argv[2])
+failed = False
+for name in names:
+    if not os.path.isfile(name):
+        continue
+    target = os.path.join(tree, name)
+    try:
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        shutil.copyfile(name, target)
+    except OSError as error:
+        print(f'ERROR: cannot copy {os.fsdecode(name)} for the secret scan: {error}')
+        failed = True
+sys.exit(1 if failed else 0)
+PY
     # Scan from inside the copy: fingerprints are then repo-relative (path:rule:line), so .gitleaksignore matches.
     (cd "$tree" && gitleaks dir --no-banner --gitleaks-ignore-path "$repo/.gitleaksignore" .) || rc=1
   else

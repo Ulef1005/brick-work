@@ -886,9 +886,9 @@ def plan_send(db, source, *, http=None, kinds=None, fetched=None):
         extra['ids'] = {k: v for k, v in known.items()}
         if source == 'brickowl':
             extra['lots'] = remote['lots']
-            for row in out:      # a lower count that takes a whole lot away there, whatever its condition, is never ticked by default
+            for row in out:      # a send that takes a whole lot away there, whatever its condition, says so and is never ticked by default
                 lots = remote['lots'][row['kind']].get(row['remote_no'], [])
-                if row['state'] == 'change' and any(step[0] == 'delete' for step in brickowl_run.lot_changes(lots, row['send'])):
+                if row['state'] != 'unmatched' and any(step[0] == 'delete' for step in brickowl_run.lot_changes(lots, row['send'])):
                     row.update(action=None, deletes_lot=True)
     else:
         extra['per_list'] = {k: dict(v) for k, v in remote['per_list'].items()}

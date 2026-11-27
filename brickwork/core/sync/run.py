@@ -166,8 +166,10 @@ def _sets_what_syncs(db, source):
     if d['owned'] != 'off':
         rows.append(dict(what='Owned sets', direction=labels[d['owned']], linked='Quantity owned'))
     if d['wishlist'] != 'off':
-        rows.append(dict(what='Wanted sets', direction=labels[d['wishlist']],
-                         linked='Quantity wanted ↔ wishlist ' +wish_lists.get(link.get('wish_list') or 'default', 'Wanted')))
+        linked = 'Quantity wanted ↔ wishlist ' + wish_lists.get(link.get('wish_list') or 'default', 'Wanted')
+        if source == 'brickowl' and not link.get('wishlist_id'):      # nothing is read or sent without one
+            linked = 'No Brick Owl wishlist linked'
+        rows.append(dict(what='Wanted sets', direction=labels[d['wishlist']], linked=linked))
     return rows
 
 
@@ -378,7 +380,8 @@ def rows(db, run, plans):
         if r['state'] == 'conflict':
             row['state'] = 'conflict'
             if r['tickable']:
-                row['options'].append(dict(id='send', label=f"Send {r['send']} to {site}", note=f"{site} becomes {r['send']}"))
+                note = f"{site} becomes {r['send']}" + (' · deletes a lot there' if r.get('deletes_lot') else '')
+                row['options'].append(dict(id='send', label=f"Send {r['send']} to {site}", note=note))
         elif r['state'] in ('remove', 'change') and r['tickable'] and any(o['id'] == 'pull' for o in row['options']):
             # Rebrickable has more than here: a lower count there is offered only when this set was lowered here since the last run
             if (r.get('baseline_here') or 0) > r['here'] and r.get('baseline_remote') is not None:
@@ -393,7 +396,7 @@ def rows(db, run, plans):
             row['state'] = 'send_add' if r['state'] == 'add' else 'change'
             row['options'].append(dict(id='send', label=(f"Add {r['send']} there" if r['state'] == 'add' else f"Quantity {r['remote']} to {r['send']}"), note=None))
             row['default'] = row['default'] or 'send'
-        elif r.get('deletes_lot') and r['tickable']:      # Brick Owl: offered, never chosen for the person
+        elif r['state'] == 'change' and r.get('deletes_lot') and r['tickable']:      # Brick Owl: offered, never chosen for the person
             row['state'] = 'change'
             row['options'].append(dict(id='send', label=f"Quantity {r['remote']} to {r['send']}", note=_lot_note(r)))
         elif r.get('reason'):

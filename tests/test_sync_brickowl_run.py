@@ -274,3 +274,41 @@ def test_the_api_serves_brick_owl_with_a_string_wishlist_and_its_user_routes_do_
     validate(sent, 'post_sync_by_source_send_apply')
     refused = write(v2, '/sources/brickowl/user', 'put', {'value': 'x' * 12})
     assert refused.status_code == 404, refused.json
+
+
+def test_lots_read_again_after_a_failure_are_kept_for_the_rows_that_follow(db, remote):
+    remote.lots = {'owned': [], 'wanted': []}
+    for number in ('1000-1', '1000-2', '2070-1'):
+        have(db, number, 1)
+    plan = sync.plan_send(db, 'brickowl')
+    keys = [r['key'] for r in plan['rows']]
+    remote.fail['collection/create_lot'] = [OSError('cut off')]
+    assert sync.apply_send(db, plan['id'], keys[:1])['rows'][0]['result'] == 'failed'
+    before = remote.paths().count('collection/lots')
+    for key in keys:                      # as a job sends: one call, and one client, per row
+        sync.apply_send(db, plan['id'], [key])
+    assert remote.paths().count('collection/lots') == before + 1
+    assert all(remote.held('owned', n) == 1 for n in ('1000-1', '1000-2', '2070-1'))
+
+
+def test_a_conflict_whose_send_deletes_a_lot_says_so(db, remote):
+    remote.lots = {'owned': [['1', '1000-1', 1], ['2', '1000-1', 1]], 'wanted': []}
+    have(db, '1000-1', 2)
+    sync.apply_pull(db, sync.plan_pull(db, 'brickowl')['id'])                # the baseline: 2 and 2
+    remote.lots['owned'].append(['3', '1000-1', 1])                          # 3 there
+    db.execute('UPDATE main.copy SET archived_at=updated_at WHERE id=(SELECT id FROM main.copy c WHERE archived_at IS NULL AND item_id=? LIMIT 1)',
+               (Coll(db).item('sets', '1000-1'),))                            # 1 here
+    db.commit()
+    row = rows_by(sync.plan_send(db, 'brickowl'))[('owned', '1000-1')]
+    assert row['state'] == 'conflict' and row['deletes_lot'] is True and row['action'] is None
+    sync_run.save_choices(db, dict(owned_dir='both', wishlist_dir='off', wish_list='default'), 'brickowl')
+    run, plans = sync_run.load(db, sync_run.start(db, source='brickowl')['id'])
+    options = {o['id']: o for o in sync_run.rows(db, run, plans)[0]['options']}
+    assert options['send']['note'] == 'Brick Owl becomes 1 · deletes a lot there'
+
+
+def test_what_syncs_says_when_no_brick_owl_wishlist_is_linked(db, remote):
+    linked = lambda: {r['what']: r['linked'] for r in sync_run.what_syncs(db, 'brickowl')}['Wanted sets']
+    assert linked() == 'No Brick Owl wishlist linked'
+    sync.link(db, 'brickowl', LINK)
+    assert linked() == 'Quantity wanted ↔ wishlist Wishlist'

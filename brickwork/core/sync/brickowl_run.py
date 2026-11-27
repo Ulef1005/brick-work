@@ -171,7 +171,8 @@ class BrickOwlUser(BrickOwl):
             return lots
         if self._fetched is None:
             self._fetched = self.fetch(link)
-        return self._fetched['lots']
+        state['lots'] = self._fetched['lots']      # kept with the plan: a job sends one row per client, and one new read serves them all
+        return state['lots']
 
     def _forget_lots(self, state):
         """After a call that did not go through, what is there is not known: a retry reads the lots again, so it never creates a second lot

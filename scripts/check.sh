@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
+# GATE TABLE: the gate of brick-work (group: github-public; ai-wiki Test Standard § Gates, Repo Gates; ADR 0043).
+# A change to this table or to this file needs Ulf's yes: the commit carries `Gate-Approved: <date> "<his words>"`.
+# Tiers: commit = .githooks (pre-commit: private names; commit-msg: docs trailer); land = this script on the Mac;
+#        ci = this script in check.yml (CI set; four shards, shard 1 runs the non-pytest steps).
+#
+# id                 tier       trigger                                     catches
+# chrome, pytest     ci         always (land: only with BW_LOCAL_TESTS=1)  the test suite with Chrome (rendered group)
+# runtimes           ci         always (land: only with BW_LOCAL_TESTS=1)  the Node runtime harnesses
+# private-names      commit, land  always (never in CI)                    the maintainer's private names (patterns file)
+# names, tokens, docs-theme, brand, b-prime, legacy-guard, design-gate-count, screens, suite-size, api-contract,
+# api-writes         land, ci   always                                      naming, design, contract and suite checks
+# docs, docs-tests   land, ci   docs mode or full                           docs checks (docs-tests only where tests run)
+# secrets            land       always (CI: the gitleaks action, marker)   secrets in the history and the working copy
+#
 # Every step runs, so one failure cannot hide another; the failed steps are listed at the end (App Standard,
 # Repo & checks, 2026-10-23).
 set -uo pipefail

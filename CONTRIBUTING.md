@@ -61,7 +61,7 @@ For a running app, follow the Docker steps in the [README](README.md).
 
 ## Pull requests
 
-- One change per pull request, with tests, and `scripts/check.sh` green.
+- One concern per pull request: one feature, or one batch of related fixes (same issue, review round or area) with a commit per fix. Unrelated changes go in separate pull requests. With tests, `scripts/check.sh` green before the push, and the `check` run green on the latest commit before the merge.
 - Schema changes (4.0 line) go in `brickwork/store4/brickwork.sql` (the collection) or `catalogue.sql`, with a migration test; an existing file reaches the current version through an in-place step in `store4.connect.UPGRADES` (additive only; a new file from the schema must match an upgraded one, `tests/test_store4_upgrade.py`; see schema notes 4.1).
 - A new browser route in `brickwork/web/` must be added to `PORTED` in `brickwork/web/ported.py`, or it answers 503 "Not on the 4.0 store yet". `tests/test_ported_routes_311.py` fails when a registered route is missing.
 - Keep the API contract (`docs/brickwork/api-v2.md`, `openapi-v2.yaml`; v1's files stay as the reference) in step with any API change; the contract checks enforce it.

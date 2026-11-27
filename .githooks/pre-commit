@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# The private-names check at every commit (Repo Gates, the github-public group; Ulf, 2026-11-26: "Yes, commit tier
+# too"). Enabled by: git config core.hooksPath .githooks. It runs tests/test_public_snapshot.py (about 4 s) with the
+# maintainer's patterns file, which never goes to CI: BW_PRIVATE_PATTERNS_FILE, else the shared file in ai-wiki. A
+# contributor without that file gets a note and the commit goes on; CI and the maintainer's merge check still run.
+# Bypass deliberately: git commit --no-verify
+set -uo pipefail
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+file=${BW_PRIVATE_PATTERNS_FILE:-$HOME/Workspace/ai-wiki/scripts/brick-work-private-patterns.txt}
+if [[ ! -f $file ]]; then
+  echo "pre-commit: no private patterns file at $file, so the private-names check is skipped" >&2
+  exit 0
+fi
+python=python3
+if [[ -n ${APP_VENV:-} && -x $APP_VENV/bin/python ]]; then
+  python=$APP_VENV/bin/python
+elif [[ -x .venv/bin/python ]]; then
+  python=.venv/bin/python
+elif common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) \
+    && [[ -x "$(dirname "$common")/.venv/bin/python" ]]; then
+  python="$(dirname "$common")/.venv/bin/python"   # a worktree uses the canonical checkout's .venv
+fi
+if ! BW_PRIVATE_PATTERNS_FILE=$file "$python" -m pytest -q -p no:xdist -p no:cacheprovider tests/test_public_snapshot.py; then
+  echo "pre-commit: blocked: a tracked file holds a private name (see above). Fix it with invented names." >&2
+  exit 1
+fi

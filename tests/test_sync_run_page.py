@@ -399,6 +399,8 @@ def test_after_the_pull_is_undone_the_interrupted_run_says_so(three_sends, clien
     client.post('/workbench/sync/rebrickable/undo', data={'csrf_token': _csrf(client), 'event': events[0]})
     after = text(soup(page_of(client, run_id)))
     assert 'This pull was undone' in after and 'They stay done' not in after
+    card = soup(page_of(client, run_id)).select_one('[data-rb-pull] h2')
+    assert text(card) == 'Pull undone Undone' and 'sr-hatch' not in card.select_one('.sr-tag')['class'], text(card)
 
 
 def test_with_only_the_unknown_row_left_the_note_asks_for_send_again(three_sends, client):  # noqa: F811
@@ -674,6 +676,8 @@ def test_the_preview_of_a_matching_collection_offers_run_and_the_result_says_wha
     assert line == ('1 row here already matches Rebrickable. Run records where it came from.' if copies_matching == 1
                     else '2 rows here already match Rebrickable. Run records where they came from.'), line
     assert page.select_one('button[data-sy-submit]').has_attr('data-sy-marks')
+    head = text(page.select_one('.sr-head p'))
+    assert head.startswith('checked ') and 'sets compared' not in head, head
     with db_of(pair) as db:
         sync_run.apply(db, run_id, MultiDict())
     result = text(soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result')))

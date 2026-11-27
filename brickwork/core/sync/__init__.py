@@ -1,4 +1,4 @@
-"""Collection sync with Rebrickable and Brickset (#10) on the 4.0 store (M.8j, issue #110; design 3.5, 5.2): owned sets and wanted sets,
+"""Collection sync with Rebrickable, Brickset and Brick Owl (#10, #522) on the 4.0 store (M.8j, issue #110; design 3.5, 5.2): owned sets and wanted sets,
 pull and send.
 
 Pull imports what the site has and Brick Work lacks, row by row, in one undoable transaction; it never deletes here. Send writes counts
@@ -15,6 +15,7 @@ after the cutover shows a full comparison and `_changed_both` has nothing to com
 expire after 24 hours; whether a plan was applied is the `plan` table's (`core/plans.py`)."""
 import json
 import os
+import re
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -27,10 +28,10 @@ from .. import undo as undoing
 from ..admin import audit
 from ..sources.base import KeyRejected, SourceError, WaitingForBudget, now
 from ..transaction import transaction
-from . import adapters, lost_parts
+from . import adapters, brickowl_run, lost_parts
 
-SOURCES = ('rebrickable', 'brickset')
-LABELS = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset'}
+SOURCES = ('rebrickable', 'brickset', 'brickowl')
+LABELS = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset', 'brickowl': 'Brick Owl'}
 USER = {'rebrickable': 'rebrickable_user', 'brickset': 'brickset_user'}
 PLAN_TTL = timedelta(hours=24)
 KINDS = ('owned', 'wanted')      # the two kinds of row a comparison has
@@ -67,6 +68,13 @@ def _account_key(source):
     return f'{source}_account_name'
 
 
+def _account(source):
+    """A site with a per-user credential beside the API key; Brick Owl has none (#522)."""
+    if _source(source) not in USER:
+        raise errors.NotFound(LABELS[source] + ' signs in with its API key alone (Catalogues & keys)')
+    return source
+
+
 def account_name(db, source):
     _source(source)
     row = db.execute('SELECT value FROM main.setting WHERE key=?', (_account_key(source),)).fetchone()
@@ -87,7 +95,7 @@ def connect(db, source, username, password, *, http=None):
     The password is used for one request and dropped; it never reaches the database, an event,
     a log line, an error or a reply.
     """
-    _source(source)
+    _account(source)
     if not isinstance(username, str) or not username.strip() or len(username) > 200:
         raise errors.ValidationFailed('Enter your username')
     if not isinstance(password, str) or not password or len(password) > 500:
@@ -101,31 +109,35 @@ def connect(db, source, username, password, *, http=None):
 
 def paste(db, source, value):
     """Store a token/hash the user generated on the site (write-only)."""
-    _source(source)
+    _account(source)
     keys.save(db, USER[source], {keys.fields(USER[source])[0]: value})
     _set_account_name(db, source, None)
     return credential_state(db, source)
 
 
 def remove(db, source):
-    _source(source)
+    _account(source)
     keys.archive(db, USER[source])
     _set_account_name(db, source, None)
     return credential_state(db, source)
 
 
 def test(db, source, *, http=None):
-    _source(source)
+    _account(source)
     adapters.adapter(db, source, http).check_user()
     return dict(source=source, ok=True, checked_at=now().isoformat())
 
 
 def credential_state(db, source):
-    return dict(source=source, user=keys.state(db, USER[source], keys.USER_ENV[USER[source]]),
+    return dict(source=source, user=keys.state(db, USER[source], keys.USER_ENV[USER[source]]) if source in USER else None,
                 key=keys.state(db, source))
 
 
 # Link and status ---------------------------------------------------------------------------
+
+LINK_OPTIONS = {'rebrickable': {'owned', 'wishlist', 'send_to', 'wish_list', 'lost_parts', 'keep_list_names', 'part_lists'},
+                'brickset': {'wish_list'}, 'brickowl': {'wish_list', 'wishlist_id'}}
+WISHLIST_ID = re.compile(r'[A-Za-z0-9_-]{1,64}')
 
 def link(db, source, options):
     """Which remote lists are used. Rebrickable: owned (list ids, empty = all but the wishlist list),
@@ -133,11 +145,12 @@ def link(db, source, options):
     wish_list (the Brick Work wishlist that pulls and sends wishes, default 'default'). Rebrickable also takes lost_parts (true or false): the
     remembered switch "Bring in Lost Parts" of a pull (#457), on when never set; and keep_list_names (true or false): "Keep each set's
     Rebrickable list names as its source detail" (#531), on when never set; and part_lists (part list ids): the part lists a part-list pull
-    brings into loose stock (#471), none when never set."""
+    brings into loose stock (#471), none when never set. Brick Owl takes wishlist_id (the id, as text, of the one Brick Owl wishlist that
+    pulls and takes wishes, or null)."""
     _source(source)
     if not isinstance(options, dict):
         raise errors.ValidationFailed('Send the link options as an object')
-    allowed = {'owned', 'wishlist', 'send_to', 'wish_list', 'lost_parts', 'keep_list_names', 'part_lists'} if source == 'rebrickable' else {'wish_list'}
+    allowed = LINK_OPTIONS[source]
     if set(options) - allowed:
         raise errors.ValidationFailed('Unknown link option: ' + ', '.join(sorted(set(options) - allowed)))
     value = dict(_setting(db, source, 'link', {}), **options)
@@ -152,6 +165,9 @@ def link(db, source, options):
             raise errors.ValidationFailed('The wishlist list cannot also be an owned list')
         if value.get('send_to') and owned and value['send_to'] not in owned:
             raise errors.ValidationFailed('Send to one of the owned lists')
+    wid = value.get('wishlist_id')
+    if wid is not None and (not isinstance(wid, str) or not WISHLIST_ID.fullmatch(wid)):
+        raise errors.ValidationFailed('Choose a Brick Owl wishlist by id')
     from .. import wishlists
     if 'lost_parts' in value and type(value['lost_parts']) is not bool:
         raise errors.ValidationFailed('lost_parts is true or false')
@@ -824,6 +840,29 @@ def undo(db, event_id):
     return undoing.undo_event(db, event_id)
 
 
+def _no_wishlist(rows, source):
+    for row in rows:
+        if row['kind'] == 'wanted' and row['tickable']:
+            row.update(action=None, tickable=False, reason=f'Link a {LABELS[source]} wishlist to send wishes to')
+
+
+def _one_item_per_number(db, rows):
+    """Brick Owl counts per set number, and its lots read back in the form `1234-1`. A row is never sent when its number has another form (the
+    lot would not be found again, and each send would add one) or when the number does not name the row's item here (a local twin of a
+    catalogue set: its count would replace the other item's lots)."""
+    named = translate(db, {r['remote_no'] for r in rows if r['remote_no'] and r['state'] != 'unmatched'})
+    for row in rows:
+        if row['state'] == 'unmatched':
+            continue
+        if brickowl_run._normalize_set_number(row['remote_no']) != row['remote_no']:
+            reason = 'Brick Owl needs a set number like 1234-1'
+        elif named.get(row['remote_no']) != row['item_id']:
+            reason = 'Another item here has this number at Brick Owl'
+        else:
+            continue
+        row.update(state='unmatched', action=None, tickable=False, reason=reason)
+
+
 def plan_send(db, source, *, http=None, kinds=None, fetched=None):
     """The remote calls a send would make: one row per set whose count differs. Removals unticked."""
     _source(source)
@@ -851,15 +890,25 @@ def plan_send(db, source, *, http=None, kinds=None, fetched=None):
                         tickable=not unmatched_here,
                         reason='No set number on ' + LABELS[source] + ' (the item has no number yet)' if unmatched_here else None))
     extra = {}
-    if source == 'brickset':
+    if source == 'brickowl':
+        _one_item_per_number(db, out)
+        if not link_value.get('wishlist_id'):                          # a wish has nowhere to go (#514)
+            _no_wishlist(out, source)
+    if source in ('brickset', 'brickowl'):
         known = dict(remote.get('ids', {}))
-        missing = [r['remote_no'] for r in out if r['remote_no'] and r['remote_no'] not in known]
+        missing = [r['remote_no'] for r in out if r['remote_no'] and r['remote_no'] not in known and (source == 'brickset' or r['tickable'])]
         if missing:
             known.update(client.set_ids(missing))
         for row in out:
-            if row['remote_no'] and row['remote_no'] not in known and row['state'] != 'unmatched':
-                row.update(state='unmatched', action=None, tickable=False, reason='Brickset does not know this set number')
+            if row['remote_no'] and row['remote_no'] not in known and row['state'] != 'unmatched' and (source == 'brickset' or row['tickable']):
+                row.update(state='unmatched', action=None, tickable=False, reason=LABELS[source] + ' does not know this set number')
         extra['ids'] = {k: v for k, v in known.items()}
+        if source == 'brickowl':
+            extra['lots'] = remote['lots']
+            for row in out:      # a send that takes a whole lot away there, whatever its condition, says so and is never ticked by default
+                lots = remote['lots'][row['kind']].get(row['remote_no'], [])
+                if row['tickable'] and any(step[0] == 'delete' for step in brickowl_run.lot_changes(lots, row['send'])):
+                    row.update(action=None, deletes_lot=True)
     else:
         extra['per_list'] = {k: dict(v) for k, v in remote['per_list'].items()}
         owned_lists = remote.get('owned_lists') or []
@@ -869,14 +918,16 @@ def plan_send(db, source, *, http=None, kinds=None, fetched=None):
                 if row['kind'] == 'owned' and row['tickable']:         # a removal or a conflict too: none of them has a list to go to
                     row.update(action=None, tickable=False, reason='Link one owned Rebrickable list to send to')
         if not link_value.get('wishlist'):                # #514: with no wishlist linked a wish has nowhere to go, so it is not offered
-            for row in out:
-                if row['kind'] == 'wanted' and row['tickable']:
-                    row.update(action=None, tickable=False, reason='Link a Rebrickable wishlist to send wishes to')
+            _no_wishlist(out, source)
     plan = dict(id=uuid4().hex, created_at=now().isoformat(), direction='send', source=source, link=link_value,
                 remote=dict(owned=dict(remote['owned']), wanted=dict(remote['wanted'])), state=extra, rows=out, unmatched=unmatched,
                 summary=_summary(out, unmatched, rows),
                 note='Sending changes ' + LABELS[source] + '. Brick Work\'s Undo cannot reverse a remote change.')
     return _save_plan(db, plan)
+
+
+def credential_words(source):
+    return 'key or user token' if source in USER else 'key'
 
 
 def apply_send(db, plan_id, ticked=None, *, http=None):
@@ -897,11 +948,16 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
     else:
         units = [[row] for row in pending_rows]
     stop = None
+    if source == 'brickowl' and plan['state'].pop('writing', None):      # the process died inside a call: what arrived there is not known
+        plan['state'].pop('lots', None)                                 # so the lots are read again before anything is written
     for group in units:
         if stop:
             for row in group:
                 results[row['key']] = dict(result=stop, detail=None)
             continue
+        if source == 'brickowl':
+            plan['state']['writing'] = True
+            _store_plan(db, plan)
         try:
             result = client.send_set(group, plan['link'], plan['state']) if source == 'brickset' else client.send(group[0], plan['link'], plan['state'])
             outcome = dict(result=result, detail=None, at=now().isoformat())
@@ -910,9 +966,10 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
             outcome = dict(result='paused', detail='Waiting for the daily budget', retry_at=paused.retry_at)
         except KeyRejected:
             stop = 'key_rejected'
-            outcome = dict(result='key_rejected', detail=LABELS[source] + ' refused the key or user token')
+            outcome = dict(result='key_rejected', detail=LABELS[source] + ' refused the ' + credential_words(source))
         except (SourceError, errors.BrickWorkError, ValueError) as failure:
             outcome = dict(result='failed', detail=str(failure))
+        plan['state'].pop('writing', None)
         for row in group:
             results[row['key']] = dict(outcome)
         _store_plan(db, plan)

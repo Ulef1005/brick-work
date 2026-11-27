@@ -171,7 +171,14 @@ class BrickOwlUser(BrickOwl):
             return lots
         if self._fetched is None:
             self._fetched = self.fetch(link)
-        return self._fetched['lots']
+        state['lots'] = self._fetched['lots']      # kept with the plan: a job sends one row per client, and one new read serves them all
+        return state['lots']
+
+    def _forget_lots(self, state):
+        """After a call that did not go through, what is there is not known: a retry reads the lots again, so it never creates a second lot
+        for one that arrived (a new lot above quantity 1 is a create, then an update)."""
+        state.pop('lots', None)
+        self._fetched = None
 
     def _set_boid(self, number, state):
         boid = (state.get('ids') or {}).get(number)
@@ -218,7 +225,11 @@ class BrickOwlUser(BrickOwl):
         if not rows:
             return 'unchanged'
         lots_by_kind = self._state_lots(link, state)
-        changed = sum(self._apply_changes(row['kind'], row['remote_no'], row['send'], link, lots_by_kind, state) for row in rows)
+        try:
+            changed = sum(self._apply_changes(row['kind'], row['remote_no'], row['send'], link, lots_by_kind, state) for row in rows)
+        except Exception:
+            self._forget_lots(state)
+            raise
         return 'sent' if changed else 'unchanged'
 
     def send(self, row, link, state):

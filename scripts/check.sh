@@ -11,7 +11,8 @@
 #                                                                             (full mode with tests: inside pytest);
 #                                                                             patterns file found as at commit
 # names, secrets     land, ci   docs and full mode                            names; secrets in history and working copy
-#                                                                             (on GitHub: the gitleaks action, by its marker)
+#                                                                             (on GitHub: the gitleaks action, by its marker;
+#                                                                             elsewhere it fails without gitleaks)
 # docs               land, ci   docs and full mode                            the docs checks
 # docs-tests         land, ci   docs mode, where tests run                    the docs and site tests
 # tokens, docs-theme, brand, b-prime, legacy-guard, design-gate-count, screens, suite-size, api-contract,
@@ -162,8 +163,8 @@ secrets() {
     return 1
   fi
   if ! command -v gitleaks >/dev/null 2>&1; then
-    echo "NOTE: gitleaks is not installed; skipping secret scan."
-    return 0
+    echo "FAILED: gitleaks is not installed, so the secret scan cannot run; install it (https://github.com/gitleaks/gitleaks#installing)."
+    return 1
   fi
   local rc=0 base tree repo=$PWD
   gitleaks detect --no-banner || rc=1

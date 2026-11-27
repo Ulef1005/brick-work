@@ -36,7 +36,7 @@ One task per page, for someone who already knows the app.
 - [Resolve unresolved items and merge items](merge-items.md)
 - [Change an item's variant](change-variant.md)
 - [Bring your collection in from another app](migrate.md)
-- [Sync with Rebrickable and Brickset](sync-collection.md)
+- [Sync with Rebrickable, Brickset and Brick Owl](sync-collection.md)
 - [Import from BrickTracker](import-from-bricktracker.md)
 - [Undo a change](undo-a-change.md)
 - [Add a box or instructions](add-a-box-or-instructions.md)

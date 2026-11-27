@@ -1,8 +1,18 @@
 {% extends 'web/toni/base.html' %}
-{% set missing = status|default(500) == 404 %}
+{% from 'web/toni/components/system_art.html' import bricks, drawer, everywhere %}
+{# The system pages in B′ (approved 23.11., #503 review artifact version 4): a 404 rotates between three versions (`variant` A, B or C, picked per
+   response in app.py), the 500 is the stuck drawer. Only the heading, the lead and the picture change; the button row and the code line stay. #}
+{% set code = status|default(500) %}{% set missing = code == 404 %}
+{% set pages = {
+  'A': ('This page is the missing piece', 'The link may be old. Go back to your sets and check the count.'),
+  'B': ('Drawer 404 is empty', 'Nothing is filed under this link. Try another drawer, or go back to your sets.'),
+  'C': ('We looked everywhere', 'Under the sofa, behind the radiator, in the vacuum cleaner. This page is not there.')} %}
+{% set heading, lead = pages.get(variant, pages['A']) if missing else ('This drawer is stuck', 'Your data is safe. Try again.') %}
 {% block title %} · {{ 'Page not found' if missing else 'Something went wrong' }}{% endblock %}
-{% block main %}<section class="system-page" role="alert">
-{% if missing %}<h1>That page is not here</h1><p class="system-lead">The link may be old. Go back to your sets.</p><div class="actions"><a class="button primary" href="{{ url_for('web.bw_sets') }}">Back to sets</a></div>
-{% else %}<h1>Something went wrong</h1><p class="system-lead">Your data is safe. Try again.</p><div class="actions"><a class="button primary" href="{{ request.path }}">Try again</a><a class="button" href="{{ url_for('web.bw_tools') }}">Tools &amp; Admin</a></div>{% endif %}
-<p class="system-code">{{ error }}{% if status %} · {{ status }}{% endif %}</p>
-{% if trace %}<pre class="system-trace">{{ trace }}</pre>{% endif %}</section>{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-system-b.css') }}">{% endblock %}
+{% block main %}<section class="system-page b-prime sys-page" role="alert" data-system-variant="{{ (variant if variant in pages else 'A') if missing else code }}">
+<div class="sys-art">{% if not missing %}{{ drawer(code ~ ' · JAMMED', 'An empty drawer labelled ' ~ code ~ ' · JAMMED') }}{% elif variant == 'B' %}{{ drawer('404 · EMPTY', 'An empty drawer labelled 404 · EMPTY') }}{% elif variant == 'C' %}{{ everywhere() }}{% else %}{{ bricks() }}{% endif %}</div>
+<div class="sys-text"><h1>{{ heading }}</h1><p class="sys-lead">{{ lead }}</p>
+<div class="sys-actions">{% if missing %}<a class="btn" href="{{ url_for('web.bw_sets') }}">Back to sets</a>{% else %}<a class="btn" href="{{ request.path }}">Try again</a><a class="btn sec" href="{{ url_for('web.bw_sets') }}">Back to sets</a>{% endif %}</div>
+<p class="mono sys-code">{% if missing %}Page not found · 404{% else %}{{ 'Something went wrong' if error in (none, '', 'server') else error }} · {{ code }}{% endif %}</p>
+{% if trace %}<pre class="system-trace">{{ trace }}</pre>{% endif %}</div></section>{% endblock %}

@@ -5,10 +5,14 @@ network and runs outside any transaction (`write(detached=True)`), writes nothin
 is one undoable write; a send apply makes the ticked remote calls (admin; remote changes are not undone). The BrickTracker import
 (`core/importer/bricktracker.py`) takes an uploaded `app.db`, streamed to a private file that is deleted whatever happens, and answers a plan;
 applying it writes the ticked rows in one transaction that Undo reverses (admin)."""
-from flask import jsonify
+import sqlite3
+
+from flask import current_app, jsonify
 
 from ..core import errors, sync
+from ..core.sync import part_lists
 from ..core.importer import bricktracker
+from ..core import own_import
 from . import database, route
 from .read import respond
 from .writes import Done, write
@@ -63,7 +67,8 @@ def plan_of(db, body, source, direction):
 @write
 def post_sync_by_source_pull_apply(db, body, source):
     plan_of(db, body, known(source), 'pull')
-    return Done(sync.apply_pull(db, body['plan_id'], body.get('ticked'), lost=body.get('lost_ticked'), picks=body.get('copy_picks')))
+    return Done(sync.apply_pull(db, body['plan_id'], body.get('ticked'), lost=body.get('lost_ticked'), picks=body.get('copy_picks'),
+                                lists=body.get('list_choices')))
 
 
 @route('/sync/<source>/send/apply', 'POST')
@@ -71,6 +76,23 @@ def post_sync_by_source_pull_apply(db, body, source):
 def post_sync_by_source_send_apply(db, body, source):
     plan_of(db, body, known(source), 'send')
     return Done(sync.apply_send(db, body['plan_id'], body.get('ticked')))
+
+
+# ---------- Rebrickable part lists into loose stock (#471) ----------
+
+@route('/sync/rebrickable/parts/plan', 'POST')
+@write(detached=True)
+def post_sync_rebrickable_parts_plan(db, body):
+    """Compare the chosen Rebrickable part lists with the loose parts in their lots; writes nothing, the plan expires after 24 hours."""
+    return Done(part_lists.plan(db), status=201)
+
+
+@route('/sync/rebrickable/parts/apply', 'POST')
+@write
+def post_sync_rebrickable_parts_apply(db, body):
+    """Add the ticked rows' difference to loose stock in one transaction; `lots` puts a row into another live lot. Undo with POST /events/{id}/undo."""
+    sync.load_plan(db, body['plan_id'], 'parts')
+    return Done(part_lists.apply(db, body['plan_id'], body.get('ticked'), lots=body.get('lots')))
 
 
 # ---------- the BrickTracker import ----------
@@ -93,3 +115,24 @@ def post_imports_by_id_apply(db, body, id):
         return Done(bricktracker.apply(db, id, body.get('decisions', {})))
     except ValueError as error:
         raise errors.ValidationFailed(str(error)) from None
+
+
+# ---------- the Brick Work own-file import (#524) ----------
+
+@route('/imports/brickwork/plan', 'POST')
+@write(detached=True)
+def post_imports_brickwork_plan(db, body, content):
+    """Plan an import from an uploaded Brick Work export zip; nothing is written to the collection."""
+    plan = own_import.plan(db, content, sections=body.get('sections') or None)
+    return Done({k: v for k, v in plan.items() if k != 'tables'}, status=201)
+
+
+@route('/imports/brickwork/<plan_id>/apply', 'POST')
+@write
+def post_imports_brickwork_by_plan_id_apply(db, body, plan_id):
+    """Write the rows the plan marks new, in one transaction; rows that differ are left alone. Undo with POST /events/{id}/undo (admin)."""
+    try:
+        return Done(own_import.apply(db, plan_id))
+    except sqlite3.IntegrityError:
+        current_app.logger.warning('own import apply refused by the store', exc_info=True)
+        raise errors.ValidationFailed('The file holds a value this install does not accept') from None

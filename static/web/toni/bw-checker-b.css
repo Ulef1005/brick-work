@@ -1,0 +1,40 @@
+/* Set Inspector's start in B′ (#501 T3: the copy chooser). Tokens only: the sections, rows and every control stay. The toolbar and the
+   filter panel come from bw-list-b.css (T1, same scope); this file adds R3-02's pieces: the ruled heading, the label section heads, the
+   bar per copy to scale (violet for what is checked, dashed for what is still to check), the status tags (Incomplete hatched, Not checked
+   with the logo's X on a violet square) and the white catalogue tile. `#bw-check-choices` is not a `.b-prime` root, so every rule carries
+   `:not(#_)` to beat bw-collection.css and bw-checker.css. Colours only from the tokens; dark follows from them. */
+
+#bw-check-choices:not(#_):not(#_) .check-list-heading {padding:0 0 12px;border-bottom:1.5px solid var(--tw-rule)}
+#bw-check-choices:not(#_):not(#_) .check-list-heading .bc-eyebrow {margin:0 0 6px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-check-choices:not(#_):not(#_) .check-list-heading h1 {margin:0;font:600 34px/1.15 var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
+#bw-check-choices:not(#_):not(#_) .check-list-heading p {margin:4px 0 0;font:400 15px/1.45 var(--tw-font);color:var(--tw-text-2)}
+#bw-check-choices:not(#_):not(#_) .check-section-title {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-check-choices:not(#_):not(#_) :is([data-check-all-copies],.check-all-fallback) {color:var(--tw-accent-text);font:600 14px var(--tw-font)}
+#bw-check-choices:not(#_):not(#_) .check-copy {border-top:1px solid var(--tw-divider)}
+
+/* The picture on the white tile; catalogue pictures multiplied in dark */
+#bw-check-choices:not(#_):not(#_) .check-picture {background:var(--tw-tile);color:var(--tw-tile-ink);border:1px solid var(--tw-divider);border-radius:2px}
+#bw-check-choices:not(#_):not(#_) .check-picture img {object-fit:contain}
+@media(prefers-color-scheme:dark) {
+  :root:not(.tw-light) #bw-check-choices:not(#_):not(#_) .check-picture img {mix-blend-mode:multiply}
+}
+.tw-dark #bw-check-choices:not(#_):not(#_) .check-picture img {mix-blend-mode:multiply}
+
+/* The bar per copy, to scale: violet what is checked, the rest a dashed track */
+#bw-check-choices:not(#_):not(#_) .check-choice-track {position:relative;height:8px;border:0;border-radius:0;background:none;overflow:hidden}
+#bw-check-choices:not(#_):not(#_) .check-choice-track::before {content:"";position:absolute;inset:0;border:1.5px dashed var(--tw-text-muted)}
+#bw-check-choices:not(#_):not(#_) .check-choice-track i {position:relative;z-index:1;display:block;height:100%;background:var(--tw-accent);border-radius:0}
+
+/* Tags: ink outline and label type; Incomplete hatched; the check state dashed, Not checked the logo's X on a violet square */
+#bw-check-choices:not(#_):not(#_) :is(.bc-status,.check-pill) {display:inline-flex;align-items:center;gap:6px;height:22px;min-height:0;padding:0 7px;border:1.5px solid var(--tw-text);border-radius:3px;background:transparent;color:var(--tw-text);font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+#bw-check-choices:not(#_):not(#_) .bc-status::before {content:none}
+#bw-check-choices:not(#_):not(#_) :is(.bc-status.incomplete,.check-pill[data-status=incomplete]) {background:repeating-linear-gradient(135deg,transparent 0 4px,var(--tw-divider-strong) 4px 5.5px)}
+#bw-check-choices:not(#_):not(#_) :is(.bc-status.unknown,.check-pill[data-status=unknown],.check-pill[data-check-state]) {border-style:dashed}
+#bw-check-choices:not(#_):not(#_) .check-pill:not([data-check-state=unchecked])>span[aria-hidden] {display:none}
+#bw-check-choices:not(#_):not(#_) .check-pill[data-check-state=unchecked] {height:24px;padding:0 8px 0 4px;border:0;background:var(--tw-accent-soft);color:var(--tw-accent-text);font:600 12px var(--tw-font);letter-spacing:0;text-transform:none}
+#bw-check-choices:not(#_):not(#_) .check-pill[data-check-state=unchecked]>span[aria-hidden] {display:flex;align-items:center;justify-content:center;width:16px;height:16px;flex:none;border-radius:3px;background:var(--tw-accent);font-size:0}
+#bw-check-choices:not(#_):not(#_) .check-pill[data-check-state=unchecked]>span[aria-hidden]::before {content:"";width:10px;height:10px;background:var(--tw-on-accent);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.6 2.6l4.8 4.8M7.4 2.6l-4.8 4.8' stroke='%23000' stroke-width='1.9' stroke-linecap='round'/%3E%3C/svg%3E") center/10px no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.6 2.6l4.8 4.8M7.4 2.6l-4.8 4.8' stroke='%23000' stroke-width='1.9' stroke-linecap='round'/%3E%3C/svg%3E") center/10px no-repeat}
+
+@media(max-width:767.98px) {
+  #bw-check-choices:not(#_):not(#_) .check-list-heading h1 {font-size:26px}
+}

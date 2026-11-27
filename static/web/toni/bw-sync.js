@@ -9,23 +9,33 @@
     const total = form.querySelector('[data-sy-total]');
     const requests = form.querySelector('[data-sy-requests]');
     let tab = 'all';
+    const hasConflictTab = tabs.some((b) => b.dataset.syTab === 'conflict');
+    const inTab = (row) => tab === 'all' || row.dataset.state === tab || (row.dataset.also || '').split(' ').includes(tab);
     const filter = () => {
       const q = (search && search.value || '').trim().toLowerCase();
       rows.forEach((row) => {
-        if (row.dataset.state === 'conflict') return;  // conflicts sit in their own card
-        const inTab = tab === 'all' || row.dataset.state === tab;
-        row.hidden = !(inTab && (!q || (row.dataset.name || '').toLowerCase().includes(q)));
+        if (row.dataset.state === 'conflict' && !hasConflictTab) return;  // conflicts sit in their own card, and have no tab on this page
+        row.hidden = !(inTab(row) && (!q || (row.dataset.name || '').toLowerCase().includes(q)));
+      });
+      form.querySelectorAll('[data-sy-card]').forEach((card) => {     // a card whose rows are all hidden goes with them
+        const inside = [...card.querySelectorAll('[data-sy-row]')];
+        card.hidden = inside.length > 0 && inside.every((row) => row.hidden);
       });
     };
     const count = () => {
-      const ticked = form.querySelectorAll('[data-sy-tick]:checked').length + [...form.querySelectorAll('[data-sy-pick]')].filter((pick) => pick.value).length;
+      const changedLists = [...form.querySelectorAll('[data-sy-listpick]')].filter((pick) => pick.value !== 'keep' && pick.value !== 'skip').length;   // a rename or a drop is a change
+      const ticked = form.querySelectorAll('[data-sy-tick]:checked').length + [...form.querySelectorAll('[data-sy-pick]')].filter((pick) => pick.value).length + changedLists;
       if (submit) {
         const verb = submit.dataset.syVerb;
         submit.textContent = ticked ? verb + ' ' + ticked + ('syPlain' in submit.dataset ? '' : ticked === 1 ? ' change' : ' changes') : verb;
-        submit.disabled = ticked === 0;
+        submit.disabled = ticked === 0 && !('syMarks' in submit.dataset);   // #531: rows that already match are still to be recorded
       }
-      if (requests) requests.textContent = String(ticked);
-      if (total) total.textContent = ticked + ' ticked';
+      if (requests) {
+        // Brickset takes one call per set: rows that carry the same data-sy-set (an owned and a wanted row of one set) are one request
+        const sends = [...form.querySelectorAll('[data-sy-send]:checked')].map((box, i) => (box.dataset && box.dataset.sySet) || 'row' + i);
+        requests.textContent = String(form.dataset.syDirection === 'run' ? new Set(sends).size : ticked);
+      }
+      if (total) total.textContent = 'syOf' in total.dataset ? ticked + ' of ' + total.dataset.syOf + ' chosen' : ticked + ' ticked';
     };
     tabs.forEach((button) => button.addEventListener('click', () => {
       tab = button.dataset.syTab;

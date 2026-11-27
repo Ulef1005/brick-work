@@ -142,9 +142,12 @@ def part_name(value):
     return re.sub(r' - (?=[0-9])', ' · ', '' if value is None else str(value))
 
 
+_TIMES = re.compile(r'([0-9]) x (?=[0-9])')
+
+
 def nowrap_tail(value):
-    """Keep a trailing dimension group, or the final two words, together."""
-    text = '' if value is None else str(value)
+    """Keep a trailing dimension group, or the final two words, together; a dimension's " x " is shown as the times sign (frame 15, #501)."""
+    text = _TIMES.sub(r'\1 × ', '' if value is None else str(value))
     dimensions = _TAIL_DIMENSIONS.search(text)
     if dimensions:
         return text[:dimensions.start(2)] + re.sub(r'\s', '\u00a0', dimensions.group(2))

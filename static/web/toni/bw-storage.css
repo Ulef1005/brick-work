@@ -129,10 +129,10 @@
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-empty-icon{width:48px;height:48px;border-radius:10px;background:var(--tw-accent-soft);color:var(--tw-accent);display:grid;place-items:center}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-empty-icon svg{width:22px;height:22px}
 /* Sheets: side sheet from 1000 px, bottom sheet below */
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet{position:fixed;inset:0 0 0 auto;margin:0;width:min(480px,100%);max-width:none;height:100dvh;max-height:none;border:0;border-left:.5px solid var(--tw-divider-strong);border-radius:0;padding:20px 24px;background:var(--tw-bg);color:var(--tw-text);overflow:auto;box-sizing:border-box}
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet[open]{display:flex;flex-direction:column;gap:20px}
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet form{display:flex;flex-direction:column;gap:20px;flex:1;margin:0}
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet::backdrop{background:var(--tw-scrim)}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet:not(.lb-dialog){position:fixed;inset:0 0 0 auto;margin:0;width:min(480px,100%);max-width:none;height:100dvh;max-height:none;border:0;border-left:.5px solid var(--tw-divider-strong);border-radius:0;padding:20px 24px;background:var(--tw-bg);color:var(--tw-text);overflow:auto;box-sizing:border-box}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet:not(.lb-dialog)[open]{display:flex;flex-direction:column;gap:20px}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet:not(.lb-dialog) form{display:flex;flex-direction:column;gap:20px;flex:1;margin:0}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet:not(.lb-dialog)::backdrop{background:var(--tw-scrim)}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-sheet-head{display:flex;align-items:center;justify-content:space-between;min-height:44px}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-sheet-head h2{font:600 18px/24px var(--tw-font);margin:0}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-close{width:44px;height:44px;border:0;background:transparent;color:var(--tw-text-2);margin-right:-12px}
@@ -167,7 +167,7 @@
 #bw-ledger.bw-places .pl-tabs nav a{min-height:44px;padding:0 12px;display:inline-flex;align-items:center;color:var(--tw-text-2);font:500 15px var(--tw-font);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-.5px}
 #bw-ledger.bw-places .pl-tabs nav a[aria-current=page]{color:var(--tw-accent-text);border-bottom-color:var(--tw-accent)}
 #bw-ledger.bw-places .pl-add{margin-bottom:8px}
-#bw-ledger.bw-places .st-thead,#bw-ledger.bw-places .st-row{display:grid;grid-template-columns:minmax(0,1fr) 96px minmax(120px,200px);column-gap:16px;align-items:center}
+#bw-ledger.bw-places .st-thead,#bw-ledger.bw-places .st-row{display:grid;grid-template-columns:minmax(0,1fr) 180px 64px 64px 96px minmax(120px,180px);column-gap:16px;align-items:center}
 #bw-ledger.bw-places .st-thead{margin-top:8px}
 #bw-ledger.bw-places .st-thead span{font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted);padding:0 0 10px;text-align:right}
 #bw-ledger.bw-places .st-thead span:first-child{text-align:left}
@@ -190,6 +190,24 @@
 #bw-ledger.bw-places .st-chips button{min-height:32px;height:32px;padding:0 12px;border-radius:999px;border:0;background:var(--tw-accent-soft);color:var(--tw-accent-text);font:500 13px var(--tw-font)}
 #bw-ledger.bw-places .st-primary,#bw-ledger.bw-places .st-outline{height:44px;min-height:44px;padding:0 16px;border-radius:10px;font:500 14px var(--tw-font);display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:transparent;color:var(--tw-accent-text);border:.5px solid var(--tw-accent);width:auto}
 #bw-ledger.bw-places .st-outline svg{width:18px;height:18px}
+/* Purchase locations in B′ (#501 T5): tokens only, the layout and every control stay. The ruled heading with its eyebrow, label type for the
+   table head, hairline rows, the field, outlined ink controls. */
+#bw-ledger.bw-places:not(#_) .pl-head{padding-bottom:12px;border-bottom:1.5px solid var(--tw-rule)}
+#bw-ledger.bw-places:not(#_) .pl-eyebrow{margin:0 0 6px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-ledger.bw-places:not(#_) h1{font:600 34px/1.15 var(--tw-font);letter-spacing:-.015em}
+#bw-ledger.bw-places:not(#_) .pl-head .pl-lead{margin-top:4px}
+#bw-ledger.bw-places:not(#_) .pl-tabs{border-bottom:1px solid var(--tw-divider)}
+#bw-ledger.bw-places:not(#_) .st-search{border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field)}
+#bw-ledger.bw-places:not(#_) .st-search input::placeholder{color:var(--tw-text-muted);opacity:1}
+#bw-ledger.bw-places:not(#_) .st-icon{border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text)}
+#bw-ledger.bw-places:not(#_) .st-outline{border:0;border-radius:var(--tw-r-1);box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
+#bw-ledger.bw-places:not(#_) .st-chips button{border-radius:3px}
+#bw-ledger.bw-places:not(#_) .st-thead{border-bottom:1.5px solid var(--tw-rule)}
+#bw-ledger.bw-places:not(#_) .st-thead span{padding:0 0 6px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em}
+#bw-ledger.bw-places:not(#_) .st-thead span:is(:nth-child(2),:nth-child(5)){text-align:left}
+#bw-ledger.bw-places:not(#_) .st-row{border-top:0;border-bottom:1px solid var(--tw-divider)}
+#bw-ledger.bw-places:not(#_) :is(.pl-kind,.pl-kind label){margin:0}
+#bw-ledger.bw-places:not(#_) .pl-kind select{width:100%;min-height:36px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);color:var(--tw-text)}
 
 /* Narrow desktop / iPad landscape: compact list column */
 @media(max-width:1199px){
@@ -212,6 +230,8 @@
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-layout{display:block}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-list{width:100%}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-pane{display:none}
+  /* No pane beside the list here, so no row is marked as the one shown (frame 11 at 390, BUILD-NOTES R4 correction 2026-11-21; #512 pass) */
+  #bw-ledger.bw-storage:not(.st-showing-detail):not(#_):not(#_):not(#_) .st-row.is-selected{background:none;box-shadow:none}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_).st-showing-detail .st-pane{display:flex}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_).st-showing-detail .st-list,#bw-ledger.bw-storage:not(#_):not(#_):not(#_).st-showing-detail .st-head{display:none}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-back{display:inline-flex}
@@ -221,14 +241,12 @@
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-lbl{display:inline;font:500 14px var(--tw-font)}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-sort{width:44px;padding:0}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-solo,#bw-ledger.bw-places .pl-page{padding:20px}
-  #bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet{inset:auto 0 0 0;width:100%;height:auto;max-height:90dvh;border-left:0;border-top:.5px solid var(--tw-divider-strong);border-radius:16px 16px 0 0;padding:20px}
+  #bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.st-sheet:not(.lb-dialog){inset:auto 0 0 0;width:100%;height:auto;max-height:90dvh;border-left:0;border-top:.5px solid var(--tw-divider-strong);border-radius:16px 16px 0 0;padding:20px}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-bar{bottom:calc(72px + var(--tw-safe-bottom,0px))}
 }
 @media(max-width:600px){
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-lbl{display:none}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-icon{width:36px;padding:0}
-  #bw-ledger.bw-places .st-thead,#bw-ledger.bw-places .st-row{grid-template-columns:minmax(0,1fr) 72px}
-  #bw-ledger.bw-places .st-thead span:nth-child(3),#bw-ledger.bw-places .st-row .st-spent{display:none}
 }
 @media(prefers-reduced-motion:reduce){#bw-ledger.bw-storage:not(#_):not(#_):not(#_) *{transition:none;animation:none}}
 #bw-ledger.bw-places .st-none{color:var(--tw-text-muted)}
@@ -236,10 +254,22 @@
 .st-note-text { margin:4px 0 0;font:400 14px/20px var(--tw-font);color:var(--tw-text-2); }
 .st-hint { display:block;margin-top:4px;font:400 13px var(--tw-font);color:var(--tw-text-muted); }
 .st-sheet textarea { width:100%;box-sizing:border-box;min-height:72px;border-radius:10px;border:.5px solid var(--tw-divider-strong);background:var(--tw-bg);padding:10px 12px;font:400 15px var(--tw-font);color:var(--tw-text); }
-.pl-table .st-thead,.pl-table .pl-row { display:grid;grid-template-columns:minmax(0,1.6fr) minmax(140px,1fr) 70px 70px 90px minmax(0,1fr);gap:12px;align-items:center; }
 .pl-row .pl-name { color:var(--tw-text);text-decoration:none; }
 .pl-kind { margin:0; } .pl-kind select { height:36px;border-radius:8px;border:.5px solid var(--tw-divider-strong);background:var(--tw-bg);padding:0 8px;font:400 14px var(--tw-font);max-width:100%; }
-@media(max-width:767px){ .pl-table .st-thead { display:none; } .pl-table .pl-row { grid-template-columns:minmax(0,1fr) auto;row-gap:4px; } .pl-row .st-spent { grid-column:1 / -1; } }
+/* Phone: name and kind on the first line; orders, copies, last used and spent wrap below as labelled values */
+@media(max-width:767.98px){
+  #bw-ledger.bw-places .pl-table .st-thead{display:none}
+  #bw-ledger.bw-places .pl-table .pl-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:10px 0}
+  #bw-ledger.bw-places .pl-row>.pl-name{flex:1 1 calc(100% - 176px);min-width:0}
+  #bw-ledger.bw-places .pl-row>.pl-kind{flex:0 0 160px}
+  #bw-ledger.bw-places .pl-row .pl-kind select{width:100%}
+  #bw-ledger.bw-places .pl-row>:nth-child(n+3){text-align:left}
+  #bw-ledger.bw-places .pl-row>.st-num:nth-child(3)::before{content:"Orders "}
+  #bw-ledger.bw-places .pl-row>.st-num:nth-child(4)::before{content:"Copies "}
+  #bw-ledger.bw-places .pl-row>:nth-child(5)::before{content:"Used "}
+  #bw-ledger.bw-places .pl-row>:nth-child(n+3)::before{font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;color:var(--tw-text-muted)}
+  #bw-ledger.bw-places .pl-row .st-spent{flex-direction:row;gap:8px}
+}
 
 /* The set tile's bar (the Sets page's rules, scoped to this page: bw-collection.css gives them to .bp-sets only) */
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .bar i.f{background:var(--tw-accent)}

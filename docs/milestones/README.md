@@ -13,5 +13,15 @@ The decks are Slides artifacts on claude.ai (private to the owner); the PDFs her
 | 1.0 — Stability release | Stable schema, tested upgrades from 0.5.x, published image | 2–3 weeks (built 4–5 Nov; v0.9.0 tagged 5 Nov, the gate waits on the first GHCR push) | [deck](https://claude.ai/artifact/HNUr6aVaeDdsXbAwxZMyfp) | [status report PDF](1.0-stability-release.pdf) |
 | C — New functionality | The new functionality chosen after B ships: set detection, Build Scout, one order list, Change variant, grouped part lists, the docs standard | 11–16 Nov (scope decided 11 Nov, #98; built and closed 16 Nov; ships on prod with 1.1 together with D) | [deck](https://claude.ai/artifact/T43hZkMmcZAD9zzmDjAKif) | [status report PDF](c-new-functionality.pdf) |
 | D — Value, selling and custom sets | Value and gain per copy with an insurance report, Sell this copy, part out, Found in, storage labels with QR codes and instruction downloads, then a code review of everything built for C and D | Decided 12 Nov that C and D ship together as 1.1; built and reviewed by 16 Nov; its gate (#430) passes when 1.1 is on prod | [deck](https://claude.ai/artifact/FqAkwCdLQsosc3u91sKjuD) | none: the deck is the status report (Ulf, 17 Nov) |
+| M — First install, first hour | A collector on Docker, Unraid or a NAS gets to a working install without Git, and the first screen's promises work there | 18–23 Nov (v1.1.1 on 19 Nov, the rest with v1.2.0 on 23 Nov; listed in the MCP Registry 23 Nov) | [deck](https://claude.ai/artifact/LZXooxFkfQ3tq6gJDTKN6F) | [status report PDF](m-first-install-first-hour.pdf) |
+| U — Brand and redesign | Every screen in the approved B′ look, light and dark, released as v1.2 before November ends | 20–23 Nov (built in four days; v1.2.0 on prod 23 Nov, a week early) | [deck](https://claude.ai/artifact/4Xbk6uKrVY5AKit9e4RpUk) | [status report PDF](u-brand-and-redesign.pdf) |
+| V — Question pages on the site | Seven question pages on the site that answer a search and end in the demo | Built before v1.2, live with the v1.2.0 tag on 23 Nov | [deck](https://claude.ai/artifact/3YgdKdCfJV94jHwNV3X64t) | [status report PDF](v-question-pages.pdf) |
 
-Milestone O (Faster at the table) is in progress. Its handoff for the next agent is [o-faster-at-the-table-handoff.md](o-faster-at-the-table-handoff.md).
+Milestone U's handoff for the next agent is [u-brand-and-redesign-handoff.md](u-brand-and-redesign-handoff.md).
+
+## Handoffs
+
+Dated records of a milestone built by several agents. A record is not kept up to date: the live status is on the GitHub issues.
+
+- [N: Sync and files, as of 22 November 2026](n-handoff.md), gate #525
+- [O: Faster at the table, as of 22 November 2026](o-faster-at-the-table-handoff.md), umbrella #303

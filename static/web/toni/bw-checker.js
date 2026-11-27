@@ -7,7 +7,7 @@
     // #222: a missing-only run counts the parts it walks, as the server's progress does.
     const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     for (const r of state.rows.filter(r => r.kind !== 'spare' && (!walked || walked.has(r.token)))) {
-      const answer = state.session ? state.session.answers[r.token] : (r.checked || r.missing > 0 ? 'answered' : undefined);   // no session: the marks the copy already has (Edit parts, a Rebrickable pull)
+      const answer = state.session ? state.session.answers[r.token] : (r.checked || r.missing > 0 || (state.copy?.checked_by && !state.figure) ? 'answered' : undefined);   // no session: the marks the copy already has (Edit parts, a Rebrickable pull; a pull's label counts every line of the set's list, #489, never a figure's component parts)
       if (!answer) counts.remaining++;
       else if (answer === 'skipped') counts.skipped++;
       else if (r.missing > 0) counts.missing++;
@@ -19,7 +19,7 @@
   // line is a part line, or a figure line; only part lines have pieces. The same lines as progress().
   function summary(state) {
     const counts = progress(state), answers = state.session?.answers || {};
-    const marked = r => state.session ? answers[r.token] === 'answered' : (r.checked || r.missing > 0);
+    const marked = r => state.session ? answers[r.token] === 'answered' : (r.checked || r.missing > 0 || (!!state.copy?.checked_by && !state.figure));
     const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     let pieces = 0, total = 0;
     for (const r of state.rows) {
@@ -253,21 +253,24 @@
       else tile.append(el('span',r.kind==='figure'?'Figure picture':'Part picture','chk-alt'));
       return wrap;
     }
-    const nameBlock=(r,extra)=>{const n=el('div',undefined,'chk-mname');paint(n,r);n.append(el('div',(r.name||'').trim()||r.item_no,'chk-mn1'));
+    const nameBlock=(r,extra)=>{const n=el('div',undefined,'chk-mname');paint(n,r);n.append(el('div',nowrapTail((r.name||'').trim()||r.item_no),'chk-mn1'));
       const line=el('div',undefined,'chk-mn2');if(r.kind!=='figure')line.append(el('span',r.color_name+' · '));line.append(el('span',r.item_no,'mono'));if(extra)line.append(el('span',extra));n.append(line);return n;};
     function missCard(r) {
       const card=el('div',undefined,'card chk-miss'),n=nameBlock(r,' · need '+(r.quantity??'?')),step=el('div',undefined,'step'),gap=r.missing||0;
       n.append(el('div',gap+' missing','chk-mn3'));
-      const less=el('button','−'),more=el('button','+'),mid=el('span',String(gap));
-      for(const [b,delta,label] of [[less,-1,'One fewer missing'],[more,1,'One more missing']]){b.type='button';b.dataset.action='set_count';b.dataset.token=r.token;b.dataset.delta=String(delta);b.setAttribute('aria-label',label+', '+r.color_name+' '+r.item_no);}
-      less.disabled=r.quantity===null;more.disabled=r.quantity===null||gap>=r.quantity;
+      // The stepper counts what was found (#649, Ulf: it says "found"): need 1 with 1 missing reads "0 found"; + is one more found (one fewer
+      // missing), − one fewer found, from 0 to the need. The line above keeps "n missing". `delta` stays a change of the missing count.
+      const found=r.quantity===null?null:Math.max(0,r.quantity-gap);
+      const less=el('button','−'),more=el('button','+'),mid=el('span',found===null?'?':String(found),'chk-found-n');mid.append(el('small',' found','chk-found-word'));   // the space keeps "3 found" one phrase for copy and screen readers
+      for(const [b,delta,label] of [[less,1,'One fewer found'],[more,-1,'One more found']]){b.type='button';b.dataset.action='set_count';b.dataset.token=r.token;b.dataset.delta=String(delta);b.setAttribute('aria-label',label+', '+r.color_name+' '+r.item_no);}
+      less.disabled=r.quantity===null||gap>=r.quantity;more.disabled=r.quantity===null||gap<=0;
       const bl=el('b'),br=el('b');bl.append(less);br.append(more);step.append(bl,mid,br);
       card.append(pic(r,'chk-sm96'),n,step);return card;
     }
     function foundRow(r) {
       const n=el('div',undefined,'chk-found-row'),text=el('div',undefined,'chk-ft'),sub=el('div',undefined,'chk-fs');
       if(r.kind!=='figure')sub.append(el('span',r.color_name+' · '));sub.append(el('span',r.item_no,'mono'));
-      text.append(el('div',(r.name||'').trim()||r.item_no,'chk-fn'),sub);n.append(pic(r,'chk-sm44'),text,el('span',(r.quantity??'?')+' of '+(r.quantity??'?'),'mono chk-of'));return n;
+      text.append(el('div',nowrapTail((r.name||'').trim()||r.item_no),'chk-fn'),sub);n.append(pic(r,'chk-sm44'),text,el('span',(r.quantity??'?')+' of '+(r.quantity??'?'),'mono chk-of'));return n;
     }
     // "Checked so far": the lines with a missing count first, as larger cards with a stepper so the count stays editable (O10b), then the found lines, newest first.
     const RECENT=4;let allChecked=false;   // the frame draws the last four answers; the rest is one button away
@@ -388,7 +391,7 @@
       head.append(title,el('span','keys 1 to 9 count','chk-keys-note'));card.append(head,pic(r,'chk-bigpic'));
       const need=el('div',undefined,'cnt'),k=el('div',undefined,'k'),v=el('div',undefined,'v');
       k.append(el('div','Need','lbl'),el('div',r.quantity===null?'?':String(r.quantity),'chk-need'));
-      const name=(r.name||'').trim()||r.item_no;paint(v,r);v.append(el('div',name,'chk-nm'));
+      const name=nowrapTail((r.name||'').trim()||r.item_no);paint(v,r);v.append(el('div',name,'chk-nm'));   // shown as every name: the times sign, the tail kept together (#630)
       const sub=el('div',undefined,'chk-sub');if(r.kind!=='figure')sub.append(el('span',r.color_name,'chk-colour'));sub.append(el('span',r.item_no,'mono chk-no'));v.append(sub);need.append(k,v);card.append(need);
       const stepper=el('div',undefined,'chk-stepper'),minus=btn('−','decrease',null,'btn sec chk-sq'),found=btn('Found ×'+(count??'?'),'answer',r.token,'btn chk-found'),plus=btn('+','increase',null,'btn sec chk-sq');
       minus.setAttribute('aria-label','Found count, '+count+', decrease');plus.setAttribute('aria-label','Found count, '+count+', increase');
@@ -440,7 +443,8 @@
       if(name==='select')mode='part';
       const payload={action:name,token:token||current,operation:crypto.randomUUID(),session:state.session.id};
       if(name==='missing'){payload.action='answer';payload.found=0;}
-      if(name==='set_count'){const line=state.rows.find(r=>r.token===token);if(!line||line.quantity===null)return;payload.found=line.quantity-Math.max(0,Math.min(line.quantity,(line.missing||0)+Number(delta)));}
+      // set_count starts from the missing count as shown (at most the need), so a line with more missing than it needs still moves one step (#649)
+      if(name==='set_count'){const line=state.rows.find(r=>r.token===token);if(!line||line.quantity===null)return;payload.found=line.quantity-Math.max(0,Math.min(line.quantity,Math.min(line.quantity,line.missing||0)+Number(delta)));}
       if(name==='answer')payload.found=count;
       if(name==='check_skipped'||name==='check_one'){payload.action='recheck';payload.token=null;if(name==='check_one')payload.tokens=[token];mode='part';}
       if(name==='spares_yes'||name==='spares_no'){payload.action='spares';payload.include=name==='spares_yes';mode='part';}

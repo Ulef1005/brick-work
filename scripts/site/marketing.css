@@ -4,9 +4,7 @@
 .site{--r1:6px;--r2:10px;--r3:16px;--hair:.5px solid var(--tw-divider-strong);font-size:17px;line-height:27px;color:var(--tw-text)}
 .site a{color:inherit;text-decoration:none}
 .site h1,.site h2,.site h3,.site p{margin:0}
-:root{--tw-text-muted:#6A655C}   /* light: 5.0:1 on the cream surface; the app's token #8A847A is 3.2:1 there, under WCAG AA for small text (website audit 15.11.) */
-@media (prefers-color-scheme:dark){:root:not(.tw-light){--tw-text-muted:#8C857A}}
-.tw-dark{--tw-text-muted:#8C857A}
+/* The muted text is the app's token since #526: B′'s #59615F is 5.5:1 on the ground and #9AA29E 6.8:1 in dark, so the site's own override (website audit 15.11.) is gone. */
 .skip{position:absolute;left:8px;top:-60px;z-index:10;padding:10px 16px;border-radius:var(--r2);background:var(--tw-text);color:var(--tw-bg);text-decoration:none}.skip:focus{top:8px}
 .site :focus-visible{outline:2px solid var(--tw-accent);outline-offset:2px}
 .site .label{font-size:11px;line-height:14px;letter-spacing:.10em;text-transform:uppercase;color:var(--tw-text-muted);font-weight:500}
@@ -33,7 +31,7 @@
 .display{font-size:44px;line-height:48px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
 .display.page{font-size:40px;line-height:44px}
 .clay{color:var(--tw-accent-text)}
-.logo-blue{color:#007187}html.tw-dark .logo-blue{color:#3DB4CC}   /* the headline's second sentence: the logo's blue (design/logo, 5.4:1 on the paper), a lighter step on the dark page (7.7:1 on #111) */
+.logo-blue{color:var(--tw-text)}   /* the headline's second sentence: ink in light and dark since #526 (W-Q1; violet in B′ means action, found or chosen), was the logo's blue */
 .lede{color:var(--tw-text-2);max-width:56ch}
 .small{font-size:14px;line-height:20px;color:var(--tw-text-2)}
 .muted{color:var(--tw-text-muted)}
@@ -149,3 +147,62 @@ pre.code{margin:0;border:var(--hair);border-radius:var(--r2);background:var(--tw
   .mini{grid-template-columns:96px minmax(0,1fr)}.mini.nopic{grid-template-columns:minmax(0,1fr)}.mini .btn{grid-column:1 / -1}
   .rel summary{grid-template-columns:minmax(0,1fr) auto}.rel summary .sch{display:none}
 }
+
+/* B′ Drawer Tag on the site (#526, approved 2026-11-19, review artifact version 20). Rules only: the B′ values come from
+   tokens-v2.css (the app's tokens, light and dark, #492); the parts follow design/sources/b/b_frames.py (tape, tag, card, btn). */
+body{font-family:var(--tw-font)}
+h1,h2,h3,.hero h1{font-family:var(--tw-font);letter-spacing:-0.01em}
+.top{background:var(--tw-surface);border-bottom:1.5px solid var(--tw-rule)}
+.top nav a{font:600 14px var(--tw-font-label);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-text-muted)}
+.top nav a[aria-current=page]{color:var(--tw-text);border-bottom:0;box-shadow:inset 0 -3px 0 var(--tw-accent)}
+.top .gh{color:var(--tw-text)}
+/* W-Q1: the headline's second sentence in ink (recommended); the shipped exception set it in a brand colour */
+.logo-blue,.tagline-clay,.clay{color:var(--tw-text)}
+/* buttons: violet is the one primary action, the rest is the ink outline */
+.btn,.button,.layout-9,.primary{border-radius:var(--tw-r-1);font-weight:600}
+.btn.primary,.button.primary,.layout-9,.primary{background:var(--tw-accent);color:var(--tw-on-accent);border-color:transparent}
+.btn:not(.primary),.button:not(.primary),[data-theme-toggle],.top [data-theme-toggle]{background:transparent;color:var(--tw-text);border:0;box-shadow:inset 0 0 0 1.5px var(--tw-text);border-radius:var(--tw-r-1)}
+/* status is shape and a word: pills become tags */
+.pill,.layout-74,.hero>div:first-child>span{background:transparent;color:var(--tw-text);border:1.5px solid var(--tw-text);border-radius:3px;font:600 11px/18px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;padding:1px 7px}
+.pill::before{display:none}
+.pill.plain{border-width:1.5px;border-style:solid}   /* a plain fact, not a waiting state: solid (BRAND.md § 6, dashed = waiting) */
+/* section labels and breadcrumbs: one element on the site, so one look (Unify): the app's eyebrow above a heading */
+.label,.site .label{background:none;padding:0;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+/* cards: surface, divider, small radius; the page's ground stays B′'s */
+.card,.wf-card,.layout-98{background:var(--tw-surface);border:1px solid var(--tw-divider);border-radius:var(--tw-r-2)}
+.sec.alt,.foot{background:var(--tw-surface-2)}
+.sec{border-bottom:1px solid var(--tw-divider)}
+.tile,.shot,.panel{border-radius:var(--tw-r-2)}
+.wf-card .tile{border-radius:0}
+.hero>div:last-child>picture,.hero>div:last-child>picture:first-child{border-radius:var(--tw-r-2)}
+.count,.mono,code,pre.code{font-family:var(--tw-mono)}
+a{color:var(--tw-accent-text)}
+/* the category line (#467, line A), the hero's first sentence */
+.cat{margin:0;font:500 18px/1.4 var(--tw-font);color:var(--tw-text-2)}
+.top a.gh,.top .gh.link{color:var(--tw-text)}
+/* notes: the approved info box (NC-06), an ink rule on the pressed-row ground; status has no colour in B′ */
+.note-box,.note-box.warn{background:var(--tw-surface-2);border:0;border-left:3px solid var(--tw-text);border-radius:0}
+/* tokens-v2 roles B′ does not have, mapped onto B′ roles (the audit found the old tan hairline) */
+:root{--tw-divider-strong:var(--tw-divider);--hair:1px solid var(--tw-divider)}
+.site{--r1:var(--tw-r-1);--r2:var(--tw-r-2);--r3:var(--tw-r-3);--hair:1px solid var(--tw-divider)}
+.pill.plain{border-color:var(--tw-text);color:var(--tw-text)}
+.menu>summary{background:transparent;color:var(--tw-text);border:0;box-shadow:inset 0 0 0 1.5px var(--tw-text);border-radius:var(--tw-r-1)}
+
+/* code: the whole command is visible at rest, wrapped, never cut (Check; draft 5, was overflow-x scroll on main) */
+pre.code{white-space:pre-wrap;overflow-wrap:anywhere}
+/* the install tabs stay one row at 390 (Check; main wraps "NAS" to a second row): tighter label padding below 560 px */
+@media (max-width:560px){.tabs .tablist label{padding:0 12px}}
+/* focus: the B′ ring, 2 px ink, never violet (BRAND.md § 3 --tw-focus-color, § 6); main draws it in the accent */
+:focus-visible{outline:2px solid var(--tw-focus-color)!important;outline-offset:2px}
+#t1:focus-visible~.tablist label[for=t1],#t2:focus-visible~.tablist label[for=t2],#t3:focus-visible~.tablist label[for=t3],#t4:focus-visible~.tablist label[for=t4]{outline:2px solid var(--tw-focus-color)!important;outline-offset:-4px}
+
+/* install options (draft): one slot per option, a name or a logo */
+.opt-head{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.slot{min-height:48px;display:flex;align-items:center}
+.slot.ph{width:160px;height:48px;justify-content:center;padding:0 8px;text-align:center;border:1px dashed var(--tw-text-muted);border-radius:var(--r1);font-size:12px;line-height:16px;color:var(--tw-text-muted)}
+.site .optname{font-size:18px;line-height:24px;font-weight:600;margin:0}
+.opts .card .link{margin-top:auto;align-self:flex-start}
+@media (min-width:641px){.opts.logos .opt-head{min-height:80px}}
+.way{display:flex;flex-direction:column;gap:12px;border-top:var(--hair);padding-top:20px}
+.site .steps.titles{padding:0}
+.site .steps.titles li{align-items:center;padding:0}

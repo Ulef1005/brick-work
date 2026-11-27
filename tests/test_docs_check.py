@@ -41,7 +41,7 @@ def test_comment_lines_do_not_count():
     assert check_docs.strip_comments("Fix\n# Docs: none\n") == "Fix"
 
 
-@pytest.mark.parametrize("name", ["commit-msg", "post-commit"])
+@pytest.mark.parametrize("name", ["commit-msg", "post-commit", "pre-commit"])
 def test_hook_is_executable(name):
     hook = ROOT / ".githooks" / name
     assert hook.is_file() and hook.stat().st_mode & 0o111
@@ -57,6 +57,7 @@ def test_hook_blocks_and_allows(tmp_path):
 
     git("init", "-q")
     shutil.copytree(ROOT / ".githooks", tmp_path / ".githooks")
+    (tmp_path / ".githooks/pre-commit").unlink()  # the private-names hook has its own tests (test_private_names_hook.py)
     (tmp_path / "scripts").mkdir()
     shutil.copy(ROOT / "scripts/check_docs.py", tmp_path / "scripts/check_docs.py")
     git("config", "core.hooksPath", ".githooks")

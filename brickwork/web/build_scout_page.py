@@ -1,13 +1,18 @@
 """The Build Scout screen (#9): what its page and its actions read from the request and from `core/build_scout.py`.
 
 The filters and the stock sources live in the query string (a GET form), so a result is a link: `parse` reads them (a refused value keeps its
-default and is named in `problem`), `context` builds what the list page and the set page show. The page size is `PAGE`."""
+default and is named in `problem`), `context` builds what the list page and the set page show. The page size is `PAGE`.
+
+Opening the list page starts nothing (#668): the bare address (the rail, a reload of the screen) shows `idle`; the ranking runs on `scan=1`,
+which the Scan button and the filter form send and every link of a scanned page carries, or on a link that already names a filter, a source,
+a set or a page (`SCAN_KEYS`)."""
 from urllib.parse import urlencode
 
 from ..core import build_scout, collection
 
 PAGE = 25
 SHOWN_LINES = 2                 # missing lines a set's panel shows before "Show all"
+SCAN_KEYS = ('lot', 'storage', 'loose', 'damaged', 'set', 'page', 'min_percent', 'max_missing', 'theme', 'year_from', 'year_to', 'size_from', 'size_to')
 FILTERS = ('min_percent', 'max_missing', 'theme', 'year_from', 'year_to', 'size_from', 'size_to')
 
 
@@ -29,12 +34,13 @@ def parse(args):
     except ValueError:
         page = 1
     return dict(lots=args.getlist('lot'), storages=args.getlist('storage'), loose=args.get('loose') == '1', damaged=args.get('damaged') == '1',
-                filters=filters, page=page, problem=problem)
+                filters=filters, page=page, problem=problem, scan=args.get('scan') == '1' or any(k in args for k in SCAN_KEYS))
 
 
 def query(params, **extra):
     """The query string that carries a parse back into a link (`extra` replaces or adds; a None drops)."""
-    pairs = [('lot', v) for v in params['lots']] + [('storage', v) for v in params['storages']]
+    pairs = [('scan', '1')] if params.get('scan') else []
+    pairs += [('lot', v) for v in params['lots']] + [('storage', v) for v in params['storages']]
     if params['loose']:
         pairs.append(('loose', '1'))
     if params['damaged']:
@@ -51,12 +57,19 @@ def sources(params):
     return dict(lots=params['lots'], storages=params['storages'], loose=params['loose'], damaged=params['damaged'])
 
 
-def options(db):
-    """What the filter pop-overs offer: the live lots and storages and the catalogue's theme names."""
-    chosen = build_scout.scout_for(db)
+def options(db, themes=True):
+    """What the filter pop-overs offer: the live lots and storages and the catalogue's theme names (`themes=False`: none, so the index of
+    the catalogue is not built before a scan)."""
+    names = sorted({name for name, _ in build_scout.scout_for(db).themes.values()}, key=str.casefold) if themes else []
     return dict(lots=[dict(r) for r in db.execute('SELECT id, name FROM main.lot WHERE archived_at IS NULL ORDER BY lower(name), id')],
                 storages=[dict(r) for r in db.execute('SELECT id, name FROM main.storage WHERE archived_at IS NULL ORDER BY lower(name), id')],
-                themes=sorted({name for name, _ in chosen.themes.values()}, key=str.casefold))
+                themes=names)
+
+
+def idle(db, params):
+    """What the list page shows before a scan: the filters with the chosen stock in words, no ranking (#668)."""
+    return dict(answer=None, rows=[], panel=None, options=options(db, themes=False), idle=True,
+                source_text=build_scout.sources_text(db, params['lots'], params['storages'], params['loose']))
 
 
 def _named(db, rows):

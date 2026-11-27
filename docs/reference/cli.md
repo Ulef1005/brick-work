@@ -127,6 +127,55 @@ brickwork wishlist undo EVENT_ID
 
 `export` prints the file to standard output and a summary (exported and omitted lines) to standard error.
 
+## export
+
+Writes the owned collection to standard output as a file other tools open. Run `brickwork setup` first. It reads only, so it works on a read-only instance.
+
+```text
+brickwork export KIND [--format csv|bricklink|rebrickable] [--id ID ...]
+```
+
+| Argument | Meaning |
+|---|---|
+| `KIND` | `set`, `part` or `minifigure`. |
+| `--format` | `csv` (Brick Work's own columns, the default), `bricklink` (wanted-list XML) or `rebrickable` (CSV). |
+| `--id` | Export only this copy or stock row id. Repeat it for more. |
+
+The BrickLink file adds up rows of the same item, colour and condition; the Rebrickable file rows of the same item and colour. A row with no number on the target site is left out. A summary (`exported`, `skipped`) goes to standard error. The same files come from `GET /export/collection.csv`, `/export/collection.xml` and `/export/collection.rebrickable.csv`.
+
+## export-all
+
+Writes Brick Work's own export file: a zip with a manifest and one JSON Lines file per table. Run `brickwork setup` first. It reads only, so it works on a read-only instance.
+
+```text
+brickwork export-all --output FILE [--sections places,flags,collection,wishes]
+```
+
+| Argument | Meaning |
+|---|---|
+| `--output` | Required. The zip file to write. |
+| `--sections` | Comma-separated sections. All four when absent. |
+
+The file holds places and storage, flags, lots, copies with their part-line marks, loose stock, and wishlists with their wishes. Items and colours are named by provider and number, not by this install's ids. Orders, part checks, market prices, photos, secrets and history are not in it. The prices you paid and the values you recorded are. A summary of row counts goes to standard error. The same file comes from `GET /export/brickwork.zip`.
+
+## import-file
+
+Shows what importing a Brick Work export file would do, and with `--apply` adds what is new. Run `brickwork setup` first.
+
+```text
+brickwork import-file FILE [--sections places,flags,collection,wishes] [--apply]
+```
+
+| Argument | Meaning |
+|---|---|
+| `FILE` | A file made by `brickwork export-all`. |
+| `--sections` | Only these sections of the file. |
+| `--apply` | Add the rows that are new, as one event. Without it nothing is written. |
+
+For each table the command counts the rows that are new, already here, different here, or that it cannot place because an item, a colour or a parent is missing. A row that differs is listed with the fields that differ and is never overwritten. The command refuses a file that is not an export, is too large or comes from a newer Brick Work.
+
+With `--apply` the new rows are added in one step, each marked as added from a file. A row already here or different here is left alone. Importing the same file twice adds nothing the second time. Undo the event with `POST /events/ID/undo` or on the Events page; it is refused if a row the import made was changed since.
+
 ## migrate4
 
 *Since 0.6.0.*
@@ -253,7 +302,7 @@ brickwork settings set KEY VALUE
 
 *Since 0.5.0; on the 4.0 store since 4.0.*
 
-Collection sync with Rebrickable and Brickset ([Sync with Rebrickable and Brickset](../how-to/sync-collection.md)). Row keys of a plan name an item: `owned:ITEM_ID` or `wanted:ITEM_ID`.
+Collection sync with Rebrickable and Brickset ([Sync with Rebrickable, Brickset and Brick Owl](../how-to/sync-collection.md)). The command line does not take Brick Owl yet. Row keys of a plan name an item: `owned:ITEM_ID` or `wanted:ITEM_ID`.
 
 ```text
 brickwork sync {rebrickable,brickset} {status,lists,link,pull,send,connect,paste,remove,test} [options]

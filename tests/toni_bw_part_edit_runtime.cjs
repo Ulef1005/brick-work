@@ -183,6 +183,15 @@ const ok = {ok: true, json: async () => ({message: 'Saved · 2 parts marked miss
   t.module.dataset.inventory = 'parts'; t.module.bcPartEditVisibility();
   assert.equal(t.named.progress.hidden, false); assert.equal(t.named.bar.hidden, true);
 
+  // #507: on a set copy the progress, the editing bar and the checked row sit in the copy head, outside the tabbed module:
+  // on another tab while editing, the bar with Cancel stays (it is the only way out of the mode there); the module's save bar hides.
+  t = build(); const head = [t.named.progress, t.named.mode, t.named['checked-row']]; t.module.contains = n => !head.includes(n);
+  t.named.edit.fire('click');
+  t.module.dataset.inventory = 'figures'; t.module.bcPartEditVisibility();
+  assert.equal(t.named.mode.hidden, false); assert.equal(t.named.progress.hidden, true); assert.equal(t.named['checked-row'].hidden, false); assert.equal(t.named.bar.hidden, true);
+  t.named.cancel.fire('click');
+  assert.equal(t.named.mode.hidden, true); assert.equal(t.named.progress.hidden, false);
+
   // A login redirect returning HTML with 200 must keep ticks and write no receipt.
   const html = {ok: true, json: async () => { throw new SyntaxError('HTML'); }};
   t = build({response: html}); t.named.edit.fire('click'); t.rows[1].box.fire('click');

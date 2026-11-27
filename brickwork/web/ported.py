@@ -24,7 +24,7 @@ PORTED |= {'web.bw_check_parts', 'web.bw_check_copy', 'web.bw_check_figure', 'we
 # M.8e: the Workbench (Part Runner, Matchmaker, Found it, booklets, Take and Give, Undo), Storage with its history, Part Spotter (the page, its
 # save and Undo; the photo recognition behind it is Identify, M.8h) and the printable lists and their CSV.
 PORTED |= {'web.bw_lot_sorter', 'web.bw_picker', 'web.bw_matcher', 'web.bw_workbench_save', 'web.bw_storages', 'web.bw_storage_action',
-           'web.bw_inventory', 'web.bw_inventory_save', 'web.bw_inventory_undo', 'web.bw_list_print', 'web.bw_list_csv'}
+           'web.bw_inventory', 'web.bw_inventory_save', 'web.bw_inventory_undo', 'web.bw_inventory_lookup', 'web.bw_list_print', 'web.bw_list_csv'}
 # #9: Build Scout (the list, a set, Build it, Add to wishlist, Undo, the missing-parts XML).
 PORTED |= {'web.bw_build_scout', 'web.bw_build_scout_set', 'web.bw_build_scout_write', 'web.bw_build_scout_undo', 'web.bw_build_scout_xml'}
 # M.8f: the Prices screen (shell, records, details, the price refresh behind its Update buttons and the item page's).

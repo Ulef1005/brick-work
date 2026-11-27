@@ -1524,6 +1524,30 @@ def bw_inventory_detect():
         return jsonify(error=public(exc, 'Could not recognise this photo')), 400
 
 
+@web_page.get('/workbench/part-to-inventory/lookup')
+@login_required
+def bw_inventory_lookup():
+    """#42: what the review step can infer for one piece: the part's known colours (one is preselected) and, with a colour, where the same
+    part, colour and condition already sits (the "You have 12 in Box 3 · add here" group). JSON for the page's script; no screen uses it yet."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import part_inventory
+    try:
+        item_id = int(request.args.get('item_id', ''))
+        colour = request.args.get('colour')
+        colour = int(colour) if colour not in (None, '') else None
+        with database(brickwork_path(), read_only=True) as db:
+            body = dict(colours=part_inventory.known_colours(db, item_id))
+            if colour is not None:
+                body['existing'] = part_inventory.existing_rows(db, item_id, colour, request.args.get('condition', 'U'))
+    except ValueError:
+        return jsonify(error='Choose a part, a colour and used or new'), 400
+    except sqlite3.Error:
+        return jsonify(error='Could not look up your stock · saving still works'), 503
+    response = jsonify(body); response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @web_page.post('/workbench/part-to-inventory/save')
 @login_required
 def bw_inventory_save():

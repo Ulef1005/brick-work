@@ -312,3 +312,16 @@ def test_what_syncs_says_when_no_brick_owl_wishlist_is_linked(db, remote):
     assert linked() == 'No Brick Owl wishlist linked'
     sync.link(db, 'brickowl', LINK)
     assert linked() == 'Quantity wanted ↔ wishlist Wishlist'
+
+
+def test_a_local_twin_whose_send_would_delete_a_lot_is_offered_unticked(db, remote):
+    remote.lots = {'owned': [['1', '1000-1', 1], ['2', '1000-1', 1]], 'wanted': []}
+    coll = Coll(db)
+    twin = coll.local('gear', 'Syn local twin', born_key='1000-1')      # the number is the catalogue set's, which is not owned here
+    coll.add_stock('gear', twin)
+    db.commit()
+    sync_run.save_choices(db, dict(owned_dir='to', wishlist_dir='off', wish_list='default'), 'brickowl')
+    run, plans = sync_run.load(db, sync_run.start(db, source='brickowl')['id'])
+    row = next(r for r in sync_run.rows(db, run, plans) if r['item_id'] == twin)
+    assert [o['id'] for o in row['options']] == ['send'] and row['default'] is None
+    assert row['options'][0]['note'] == 'Deletes a lot there' and row['tag'] != 'Same'

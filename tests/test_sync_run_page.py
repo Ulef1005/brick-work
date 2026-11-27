@@ -678,3 +678,29 @@ def test_the_preview_of_a_matching_collection_offers_run_and_the_result_says_wha
         sync_run.apply(db, run_id, MultiDict())
     result = text(soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result')))
     assert f"Last synced from recorded on {'1 row' if copies_matching == 1 else '2 rows'}." in result and 'Nothing changed here' not in result, result
+
+
+@pytest.mark.parametrize('path', ['/workbench/sync', '/workbench/sync/rebrickable', '/workbench/sync/rebrickable/choose', '/workbench/sync/bricklink', '/collection/sets'])
+def test_a_message_shows_once_on_every_kind_of_page(client, remote, pair, path):  # noqa: F811
+    connected(client, pair)
+    client.get(path)
+    with client.session_transaction() as session:
+        session['_flashes'] = [('success', 'Run undone.')]
+    page = client.get(path, follow_redirects=True).get_data(as_text=True)
+    assert page.count('Run undone.') == 1, page.count('Run undone.')
+
+
+def test_last_runs_says_what_a_record_only_run_did(client, remote, pair):  # noqa: F811
+    from tests.app4 import Coll
+    remote.lists = {1: {'2070-1': 1, '1000-2': 1}, 2: {'1000-2': 1}, 9: {}}      # one set in two lists: two lines on one row
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-2')
+        Coll(db).add_copy('1000-2')
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='into', wishlist_dir='off')
+    with db_of(pair) as db:
+        sync_run.apply(db, run_id, MultiDict())
+        rows = db.execute('SELECT count(DISTINCT copy_id), count(*) FROM main.synced_from').fetchone()
+    assert rows[1] > rows[0] > 0, tuple(rows)
+    last = text(soup(client.get('/workbench/sync/rebrickable')).select_one('[data-rb-runs] .sr-run'))
+    assert f"Last synced from recorded on {rows[0]} row{'' if rows[0] == 1 else 's'}" in last and 'Nothing new' not in last, last

@@ -1,4 +1,5 @@
 {% extends 'web/toni/base.html' %}
+{% block flashes %}{% endblock %}{# this page shows its messages itself, in its own place: the layout must not show them again #}
 {% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bw-admin-page bw-sync-page bw-sync-rb-page{% endblock %}
 {% block page_assets %}
 <link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin.css') }}">
@@ -143,7 +144,7 @@
 <label class="bk-field">Wishlist here<select name="wish_list">{% for w in wish_lists %}<option value="{{ w.id }}" {{ 'selected' if (link.get('wish_list') or 'default') == w.id }}>{{ w.name }}</option>{% endfor %}</select></label></div></section>
 <section class="sr-card" data-rb-parts><h2>Loose stock</h2>{{ segment('parts_dir', 'parts', directions.parts) }}
 <p class="sr-lede">Tick the part lists that are loose parts. None is ticked until you choose.</p>
-<div class="sr-checks">{% for l in part_lists %}<input type="hidden" name="list_name:part:{{ l.id }}" value="{{ l.name or ('List ' ~ l.id) }}"><label class="sr-check"><input type="checkbox" name="part_list" value="{{ l.id }}" {{ 'checked' if l.id in chosen_parts }}><span>{{ l.name or ('List ' ~ l.id) }}</span><span class="mono">{{ '{:,}'.format(l.parts or 0) }} parts</span></label>{% else %}<p class="bk-text">No part lists on Rebrickable yet.</p>{% endfor %}</div>
+<div class="sr-checks">{% for l in part_lists %}<input type="hidden" name="list_name:part:{{ l.id }}" value="{{ l.name or ('List ' ~ l.id) }}"><label class="sr-check"><input type="checkbox" name="part_list" value="{{ l.id }}" {{ 'checked' if l.id in chosen_parts }}><span>{{ l.name or ('List ' ~ l.id) }}</span><span class="mono">{{ '{:,}'.format(l.parts or 0) }} {{ 'part' if l.parts == 1 else 'parts' }}</span></label>{% else %}<p class="bk-text">No part lists on Rebrickable yet.</p>{% endfor %}</div>
 <label class="bk-field">Put new loose parts in<select disabled aria-label="Put new loose parts in"><option>One lot per part list</option></select></label></section>
 </div>
 <div class="sr-col">

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Sync pages show a message once** (#722). A message such as *Run undone.* showed twice. After a run that only records where matching sets came from, Last runs now says on how many rows, in place of *Nothing new*. A part list with one part reads *1 part*.
+
 - **Last synced from only for what comes in** (#531). A pull recorded it on matching sets and wishes even when their direction was Off or only to the site, also when you only brought Lost Parts in. Now only the kinds set to Into Brick Work or Both ways get it. Records already written stay.
 
 - **A second try of a sync run does everything you chose** (#722). When a run failed before it began, running it again could skip the pull, even with sets chosen in it.

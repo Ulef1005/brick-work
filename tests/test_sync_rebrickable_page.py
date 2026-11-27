@@ -1,5 +1,6 @@
 """#519: the Rebrickable page at rest and its steps (connect, choose what, pick sets, preview, result), the run orchestration in core.sync.run
 and the Lost Parts rule's move out of Settings. Invented data against fakes of Rebrickable; no network."""
+from brickwork.core import collection
 from contextlib import closing
 import json
 import os
@@ -573,6 +574,10 @@ def test_loose_stock_comes_in_by_part_list_and_one_undo_takes_the_run_and_its_pa
     assert [i['value'] for i in card.select('input[name=part]')] == ['31:' + k.split(':', 1)[1] for k in [i['value'] for i in card.select('input[name=part]')]]
     assert [o.get_text() for o in card.select('select[name=lot_all] option')] == ['One lot per part list']
     assert 'Add 5 here' in card.get_text() and 'from Bin A' in card.get_text()
+    with db_of(pair) as db:                                     # frame 22: each row names its part and its colour, with the numbers under them
+        named = collection.decorate(db, [dict(item_id=int(i['value'].split(':')[1]), color_id=int(i['value'].split(':')[2])) for i in card.select('input[name=part]')])
+    for row, shown in zip(named, card.select('.sr-part .sr-rowid')):
+        assert shown.b.get_text() == row['name'] and row['color_name'] in shown.get_text() and shown.select_one('.sr-tile') is not None
     apply_run(client, csrf, run_id, page)
     with db_of(pair) as db:
         assert db.execute("SELECT count(*) FROM stock s JOIN lot l ON l.id=s.lot_id WHERE l.name='Bin A' AND s.archived_at IS NULL").fetchone()[0] == 2

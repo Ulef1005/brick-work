@@ -250,8 +250,9 @@
 {% if lost_out.unmatched %}<ul class="sy-lost-list">{% for u in lost_out.unmatched %}<li><span class="mono">{{ u.set_no }}</span> · {{ u.parts }} {{ 'part' if u.parts == 1 else 'parts' }} not matched · {{ u.reason }}</li>{% endfor %}</ul>{% endif %}</section>{% endif %}
 {% if run.send or run.lost_out %}<section class="sr-info sr-before" data-rb-before><p><b>Before you send.</b> Brick Work’s Undo cannot take a sent change back. Removals are unticked until you tick them.</p>
 <dl class="sr-kv"><dt>Requests</dt><dd>about <span data-sy-requests>{{ requests }}</span></dd>{% if source == 'rebrickable' %}<dt>Time</dt><dd>about <span data-sr-seconds>{{ requests }}</span> seconds at 1 request a second</dd>{% endif %}{% if budget %}<dt>Budget today</dt><dd class="mono">{{ '{:,}'.format(budget.used) }} / {{ '{:,}'.format(budget.budget) }}</dd>{% endif %}</dl></section>{% endif %}
+{% if matching %}<p class="sr-info" data-sr-matching>{% if matching == 1 %}1 row here already matches {{ label }}. Run records where it came from.{% else %}{{ '{:,}'.format(matching) }} rows here already match {{ label }}. Run records where they came from.{% endif %}</p>{% endif %}
 <div class="sr-foot sy-footer"><a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_pick', run_id=run.id) }}">‹ Back</a><p class="mono sy-total" data-sy-total data-sy-of="{{ choosable }}" role="status" aria-live="polite"></p>
-{% if can_edit %}<button class="bk-btn bk-primary bk-lg" data-sy-submit data-sy-verb="Run" data-busy-label="Running changes">Run</button>{% endif %}</div>
+{% if can_edit %}<button class="bk-btn bk-primary bk-lg" data-sy-submit data-sy-verb="Run"{% if matching %} data-sy-marks{% endif %} data-busy-label="Running changes">Run</button>{% endif %}</div>
 </form>
 
 {% elif screen == 'progress' %}
@@ -333,7 +334,7 @@
   (c.lost_cleared ~ ' ' ~ ('mark' if c.lost_cleared == 1 else 'marks') ~ ' cleared') if c.get('lost_cleared') else '',
   (list_changes ~ ' list ' ~ ('name' if list_changes == 1 else 'names') ~ ' changed') if list_changes else '',
   ((parts_stage.counts.pieces) ~ ' loose pieces added from part lists') if parts_stage.get('counts') and parts_stage.counts.pieces else ''
-]|select|join(' · ') }}.{% else %}Nothing changed here.{% endif %}</p>
+]|select|join(' · ') }}.{% elif pull.marked and not undone %}Last synced from recorded on {{ '{:,}'.format(pull.marked) }} {{ 'row' if pull.marked == 1 else 'rows' }}.{% else %}Nothing changed here.{% endif %}</p>
 {% if lost_in and (lost_in.left_out or lost_in.skipped or lost_in.unmatched_sets) %}<ul class="sy-lost-list">
 {% for l in lost_in.left_out %}<li><span class="mono">{{ l.set_no }}</span> · {{ l.parts }} {{ 'part' if l.parts == 1 else 'parts' }} left out · {{ l.reason }}. Run again and pick the copy.</li>{% endfor %}
 {% for l in lost_in.skipped %}<li><span class="mono">{{ l.set_no }}</span> · left out · {{ l.reason }}</li>{% endfor %}

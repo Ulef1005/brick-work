@@ -365,6 +365,7 @@ def step_preview(source, run_id):
         lots = _lots(db)
         status = sync.status(db, source)
         parts = decorate(db, sync_run.part_rows(plans))      # #471, frame 22: a loose row names its part and colour
+        matching = sync_run.marked_rows(db, run, plans)      # #531: Run has something to record even with nothing ticked
     lost_in = sync_run.lost_in(run, plans)
     lost_out = sync_run.lost_out(run)
     lines = ((plans['pull'] or {}).get('lists') or {}).get('preview', ())
@@ -383,7 +384,7 @@ def step_preview(source, run_id):
     last = ((status.get('last_pull') or {}).get('at') or (status.get('last_send') or {}).get('at'))
     return _render(source, screen='preview', title=LABEL[source], run=run, rows=main, conflicts=conflicts, counts=counts,
                  lost_in=lost_in, lost_out=lost_out, parts=parts, parts_unmatched=(plans['parts'] or {}).get('unmatched', ()), parts_lists=(plans['parts'] or {}).get('lists', ()), lots=lots, lines=changed_lines,
-                 list_words=sync_run.LIST_WORDS, budget=budget, choosable=choosable, requests=send_requests, rule_labels=lost_parts.RULE_LABELS,
+                 list_words=sync_run.LIST_WORDS, budget=budget, choosable=choosable, requests=send_requests, matching=matching, rule_labels=lost_parts.RULE_LABELS,
                  send_rule_labels={v: l for v, l, _ in lost_parts_send.RULES}, last_run=last, compared=len(run['candidates']),
                  checked=(plans['pull'] or plans['send'] or plans['parts'] or {}).get('created_at'), picked_count=len(run['picked'] if run['picked'] is not None else run['candidates']),
                  **_steps(4))

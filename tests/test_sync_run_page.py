@@ -657,3 +657,24 @@ def test_a_cut_off_lost_parts_stage_is_named_on_the_card(client, remote, pair): 
         run_job.drain(db)
     page = text(soup(page_of(client, run_id)))
     assert 'Lost Parts were being sent when the server restarted' in page and 'No send was cut off' not in page
+
+
+@pytest.mark.parametrize('copies_matching', [1, 2])
+def test_the_preview_of_a_matching_collection_offers_run_and_the_result_says_what_was_recorded(client, remote, pair, copies_matching):  # noqa: F811
+    from tests.app4 import Coll
+    from tests.test_sync_rebrickable_page import preview_of
+    remote.lists = {1: {'2070-1': 1} if copies_matching == 1 else {'2070-1': 1, '1000-2': 1}, 2: {}, 9: {}}      # the counts match what is here
+    with db_of(pair) as db:
+        if copies_matching == 2:
+            Coll(db).add_copy('1000-2')
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='into', wishlist_dir='off')
+    page = preview_of(client, run_id)
+    line = text(page.select_one('[data-sr-matching]'))
+    assert line == ('1 row here already matches Rebrickable. Run records where it came from.' if copies_matching == 1
+                    else '2 rows here already match Rebrickable. Run records where they came from.'), line
+    assert page.select_one('button[data-sy-submit]').has_attr('data-sy-marks')
+    with db_of(pair) as db:
+        sync_run.apply(db, run_id, MultiDict())
+    result = text(soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result')))
+    assert f"Last synced from recorded on {'1 row' if copies_matching == 1 else '2 rows'}." in result and 'Nothing changed here' not in result, result

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **A first sync records where matching sets came from** (#531). A run that had nothing to add or send into Brick Work did not mark the sets, loose sets and wishes that already matched the site, so they showed no list name and no Last synced from. Now it does, Run is available for that alone, the preview says how many rows already match, and Undo this run removes only what the run recorded.
+
 - **A sync run starts at once** (#685). After Run on a sync page, the run could stay at "Waiting to start" until Brick Work was restarted or another job woke it.
 
 - **A sync run that fails unexpectedly says so** (#722). The run page no longer says the server restarted. Last runs lists the run as Interrupted, and Jobs no longer shows a finished step as failed. On a phone, the step line under the progress bar now reads like the step labels elsewhere.

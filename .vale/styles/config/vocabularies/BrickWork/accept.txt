@@ -2,6 +2,7 @@ Brick Work
 BrickLink
 Rebrickable
 Brickset
+Brick Owl
 Matchmaker
 Part Runner
 Set Inspector

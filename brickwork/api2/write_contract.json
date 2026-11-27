@@ -1323,6 +1323,10 @@
       "schema": {
         "additionalProperties": false,
         "properties": {
+          "keep_list_names": {
+            "description": "Rebrickable only: the remembered switch \"Keep each set's Rebrickable list names as its source detail\" (#531). On when never set.",
+            "type": "boolean"
+          },
           "lost_parts": {
             "description": "Rebrickable only: the remembered switch \"Bring in Lost Parts\" of a pull (#457). On when never set.",
             "type": "boolean"
@@ -1332,6 +1336,16 @@
               "type": "integer"
             },
             "type": "array"
+          },
+          "part_lists": {
+            "description": "Rebrickable only: the ids of the part lists to pull into loose stock (#471). null clears the choice.",
+            "items": {
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
           },
           "send_to": {
             "type": [
@@ -1347,8 +1361,73 @@
               "integer",
               "null"
             ]
+          },
+          "wishlist_id": {
+            "description": "Brick Owl only: the id of the Brick Owl wishlist that pulls and takes wishes (#522). null unlinks it.",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_sync_rebrickable_parts_plan",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sync/rebrickable/parts/plan",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        201
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_sync_rebrickable_parts_apply",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sync/rebrickable/parts/apply",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "lots": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Row key to lot id: puts a row into another live lot than its list's own.",
+            "type": "object"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "ticked": {
+            "description": "Row keys to apply. Left out: every row that adds.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
         "type": "object"
       },
       "statuses": [
@@ -1390,6 +1469,19 @@
               "type": "string"
             },
             "description": "Lost Parts: the copy to use for a set with several copies, `{set number: copy id}`. A set without a pick is left out and listed.",
+            "type": "object"
+          },
+          "list_choices": {
+            "additionalProperties": {
+              "enum": [
+                "rename",
+                "keep",
+                "drop",
+                "skip"
+              ],
+              "type": "string"
+            },
+            "description": "Rebrickable list names (#531): the choice per preview line of `lists.preview`, `{list id: rename | keep | drop | skip}`. Left out: each line's default (Rename it, Drop the name, Skip).",
             "type": "object"
           },
           "lost_ticked": {
@@ -1731,6 +1823,54 @@
         },
         "type": "object"
       },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_imports_brickwork_plan",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/imports/brickwork/plan",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "format": "binary",
+            "type": "string"
+          },
+          "sections": {
+            "description": "Comma-separated sections to import (places, flags, collection, wishes). All the file holds when absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_imports_brickwork_by_plan_id_apply",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/imports/brickwork/{plan_id}/apply",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
       "statuses": [
         200
       ],
@@ -2471,6 +2611,15 @@
           "pattern": "^[0-9]+(\\.[0-9]+)?$",
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "rating": {
+          "description": "Your own stars for the copy, 1 to 5 (#690); null when not rated.",
+          "maximum": 5,
+          "minimum": 1,
+          "type": [
+            "integer",
             "null"
           ]
         },
@@ -3435,6 +3584,22 @@
           ],
           "type": "string"
         },
+        "rebrickable_lost_parts_send": {
+          "default": false,
+          "description": "Whether Brick Work may send your missing parts to Rebrickable's Lost Parts list (#469). Locked in this version: it reads false, and true is refused.",
+          "type": "boolean"
+        },
+        "rebrickable_lost_parts_send_rule": {
+          "default": "add_only",
+          "description": "Which count wins when Brick Work sends Lost Parts (#469). `add_only` only adds parts and raises counts. `per_part` also lowers a count and offers a part for removal. `per_set` makes a set with a missing part here exactly your list. `everything` does that for every synced set.",
+          "enum": [
+            "add_only",
+            "per_part",
+            "per_set",
+            "everything"
+          ],
+          "type": "string"
+        },
         "repair": {},
         "retail_country": {
           "enum": [
@@ -3923,6 +4088,15 @@
         "note": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "priority": {
+          "description": "How much you want the wish, 1 is highest (#690); null when not set.",
+          "maximum": 999,
+          "minimum": 1,
+          "type": [
+            "integer",
             "null"
           ]
         },

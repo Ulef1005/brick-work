@@ -11,6 +11,7 @@
   <script src="{{ bw_static('web/toni/remaining.js') }}" defer></script>
   {% include 'web/toni/pwa-head.html' %}
   <link rel="stylesheet" href="{{ bw_static('brickwork/brick-work.css') }}">
+  <link rel="stylesheet" href="{{ bw_static('web/toni/bw-touch-fields.css') }}">
 
   <script src="{{ bw_static('web/toni/pwa.js') }}" defer></script>
   <script src="{{ bw_static('web/toni/shell.js') }}" defer></script>
@@ -48,7 +49,7 @@
   </div>
   <div class="layout">
     <main id="content" tabindex="-1" class="{% block content_class %}standard{% endblock %}">
-      {% for category,message in get_flashed_messages(with_categories=true) %}<p class="notice" role="status">{{ message }}</p>{% endfor %}{% if flow_return %}<p class="flow-return" data-flow-return><a href="{{ url_for('web.bw_get_started_collection') }}">‹ Back to Get started</a></p>{% endif %}
+      {% block flashes %}{% for category,message in get_flashed_messages(with_categories=true) %}<p class="notice" role="status">{{ message }}</p>{% endfor %}{% endblock %}{% if flow_return %}<p class="flow-return" data-flow-return><a href="{{ url_for('web.bw_get_started_collection') }}">‹ Back to Get started</a></p>{% endif %}
       {% block main %}{% endblock %}
     </main>
   </div>

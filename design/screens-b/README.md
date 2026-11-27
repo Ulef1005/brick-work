@@ -1,6 +1,6 @@
 # Screens, direction B′ Drawer Tag
 
-The approved frames of commission U, built by `../sources/b/b_frames.py` (`build`, `check`). One folder per screen, `<theme>-<width>.html` and `.png` (device scale 2). Light and dark: Ulf approved light, one phone and one desktop view per screen, and then, at his request, every frame in dark (the dark round, #512). The dark frames are the light ones with the dark token values, the on-dark lockup and, for catalogue pictures, a light grey tile with the picture multiplied. The other widths are built from them (App Design Standard, review scope).
+The approved frames of commission U, built by `../sources/b/b_frames.py` (`build`, `check`), and of commission N (below). One folder per screen, `<theme>-<width>.html` and `.png` (device scale 2). Light and dark: Ulf approved light, one phone and one desktop view per screen, and then, at his request, every frame in dark (the dark round, #512). The dark frames are the light ones with the dark token values, the on-dark lockup and, for catalogue pictures, a light grey tile with the picture multiplied. The other widths are built from them (App Design Standard, review scope).
 
 | Folder | Item | Approved |
 |---|---|---|
@@ -21,8 +21,65 @@ The approved frames of commission U, built by `../sources/b/b_frames.py` (`build
 | `14-lot-sorter/` | R6-03 Lot Sorter: Set detection, ink score bar, Make a copy sheet | round 6 |
 | `15-order-missing-parts/` | R6-01 Order missing parts: missing bars, order list, source choice | round 6 |
 | `16-orders/` | R6-04 Orders: Count what arrived, status by shape | round 6 |
+| `17-sync-hub/` | N1-01 Workbench · Sync, the hub (#518) | N round 1 |
+| `18-rebrickable/` | N1-02 Rebrickable, the page at rest (#519) | N round 1 |
+| `19-rebrickable-connect/` | N1-03 Rebrickable step 1, Connect, with the step bar | N round 1 |
+| `20-rebrickable-choose-what/` | N1-04 Rebrickable step 2, Choose what, with the Lost Parts rule moved from Settings | N round 1 |
+| `21-rebrickable-pick-sets/` | N1-05 Rebrickable step 3, Pick sets | N round 1 |
+| `22-rebrickable-preview/` | N1-06 Rebrickable step 4, Preview, with the three-way conflict choice | N round 1 |
+| `23-rebrickable-run/` | N1-07 Rebrickable step 5, Run | N round 1 |
+| `24-rebrickable-result/` | N1-08 Rebrickable step 6, Result | N round 1 |
+| `25-brickset/` | N2-01 Brickset, the page at rest | N round 2 |
+| `26-brickset-choose-what/` | N2-02 Brickset, choose what | N round 2 |
+| `27-bricklink/` | N2-03 BrickLink, the page at rest | N round 2 |
+| `28-bricklink-connect/` | N2-04 BrickLink, connect (IP-bound token) | N round 2 |
+| `29-bricklink-choose-what/` | N2-05 BrickLink, choose what | N round 2 |
+| `30-bricklink-wanted-file/` | N2-06 BrickLink, wanted list by file | N round 2 |
+| `31-brickowl/` | N2-07 Brick Owl, the page at rest | N round 2 |
+| `32-brickowl-choose-what/` | N2-08 Brick Owl, choose what | N round 2 |
+| `33-brickowl-run/` | N2-09 Brick Owl, run with a daily budget | N round 2 |
+| `34-import-export/` | N2-10 Import & export | N round 2 |
+| `35-own-export/` | N2-11 The complete export | N round 2 |
+| `36-re-import-preview/` | N2-12 Re-import, preview | N round 2 |
+| `41-bricklink-pick-lots/` | N2-17 BrickLink, pick orders and lots | N round 2 |
+| `42-bricklink-preview/` | N2-18 BrickLink, preview | N round 2 |
+| `43-sync-errors/` | N2-19 When a run stops | N round 2 |
 | `44-source-chip/` | N2-20 Set detail with the source of a copy: Added via, Last synced from, Checked on Rebrickable (#551, #489); early landing for U, the rest of N round 2 is on `design/sync-n` | N round 2 |
+| `45-sets-source-filter/` | N2-21 Sets with the Source filter: Added via and Last synced from (#551) | N round 2 |
+| `46-rebrickable-pick-sources/` | N2-22 Rebrickable step 3, Pick sets, the list names as source detail (#531, #551) | N round 2 |
+| `47-rebrickable-preview-sources/` | N2-23 Rebrickable step 4, Preview of list names (#531, #551) | N round 2 |
 | `48-sets-pulled-copy/` | N2-24 Sets with the label of a pulled copy, "Checked on Rebrickable" (#489); early landing for U | N round 2 |
 | `49-storage-select-mode/` | N2-25 Storage, Select mode: a checkbox beside each copy's bar, "2 copies picked" with Move to another storage (#500) | N round 2 |
+| `50-404-missing-piece/`, `50-404-drawer/`, `50-404-everywhere/` | System pages: three funny 404 pages (A, B, C) the app rotates, light and dark, 1440 and 390 (#503, Ulf 23.11.) | #503 |
+| `51-500-drawer-stuck/` | The 500 page in the drawer tone ("This drawer is stuck") | #503 |
+| `52-order-allocation-line/` | Review allocation, an item line on the phone: "6 available · 0 allocated" on its own line below the name and colour | #503 |
+| `53-offline/` | The offline page in the drawer tone: "Your drawers are out of reach" with a Try again button (#503) | #503 |
+| `54-sync-rate-limit/` | R3-01 A site asks us to wait: the run pauses and goes on by itself | N round 3 |
+| `55-sync-budget-used/` | R3-02 The day's budget is used up: what is done, what waits, when the budget is back | N round 3 |
+| `56-sync-conflicts-waiting/` | R3-03 Rows that differ on both sides wait for your choice | N round 3 |
+| `57-sync-long-run/` | R3-04 A long run: closing the page is safe (restart copy as of round 6) | N round 3 |
+| `58-sync-nothing-to-sync/` | R3-05 Nothing to sync: both sides match, what was compared and when | N round 3 |
+| `59-wishlist/` | Wishlist, all lists, with the price states (#654) | #654, redrawn to the build |
+| `60-wishlist-list/` | One wishlist | #654, redrawn to the build |
+| `61-wishlist-empty/` | Wishlist, empty | #654, redrawn to the build |
+| `62-wishlist-detail/` | Wishlist set detail (#655) | #655, redrawn to the build |
+| `63-edit-set/` | E-01 Edit set, with a rating per copy | N round 5 review |
+| `64-edit-wish/` | E-02 Edit wish, with priority | N round 5 review |
+| `65-build-scout-idle/` | E-03 Build Scout before a scan | N round 5 review |
+| `66-sync-run-busy/` | Preview while the run is applied | N round 4 |
+| `67-brickset-pick/` to `69-brickset-result/` | Brickset: pick, preview, result (#520) | N round 4 |
+| `70-bricklink-result/` | BrickLink result (#521) | N round 4 |
+| `71-brickowl-pick/` to `73-brickowl-result/` | Brick Owl: pick, preview, result (#522) | N round 4 |
+| `74-import-choose-file/` to `77-export-result/` | Import and Export: choose and result (#523) | N round 4 |
+| `78-stock-added-via/`, `79-wishes-added-via/` | Added via on loose stock and on the wishlist (#551) | N round 5 |
+| `80-bricklink-prices-preview/`, `81-bricklink-prices-result/` | BrickLink price guide: preview and result (#521) | N round 5 |
+| `82-import-bricklink-xml/` to `86-import-brickwork-csv/` | Import, choose file, for five formats (#523) | N round 5 |
+| `87-export-database/` to `92-export-other-formats/` | Export, six kinds (#523, #470) | N round 5 |
+| `93-re-import-result/` | Re-import result (#524) | N round 5 |
+| `94-rebrickable-run-applying/` | A run while the pull is applied (#685); the greyed Stop is dashed (picture check PC-3) | N round 5, picture check |
+| `95-sync-long-run-applying/` | A long run during the sends (#685) | N round 5, copy in round 6 |
+| `96-sync-run-interrupted/` | The run after a restart (#685); the states it does not draw are in `../APPROVALS.md` | N rounds 6 to 8 |
+
+Commission N (Sync and files, #517) adds `17` to `24` (round 1), built by `../sources/n/n_frames.py` (`build`, `check`, `narrow`), which imports `b_frames.py`, and `25` to `36` and `41` to `48` (round 2: Brickset, BrickLink, Brick Owl, Import & export, the complete export, the source of a row and the list names as its detail, #551 and #531, and the label of a pulled copy, #489; `37` to `40` were the first form of the list names, as tags on the copy, replaced by `44` to `47` on 2026-11-20), built by `../sources/n/n2_frames.py` (same commands, default folder `screens-b`); its review artifact is https://claude.ai/artifact/1sWRRsfiYxkEgHXxKxrsUn. Round 1 also changed approved frames: Sync is the last Workbench entry in `06`, `07`, `09`, `10`, `11`, `13`, `14` and `16` (C-01), Tools & Admin drops Collection sync (C-02, `01`) and Settings points to Sync (C-03, `02`). Its new components NC-01 to NC-06 (step bar, radio row, select field, filter chip, three-way choice, info box) are drawn inside the frames; `BUILD-NOTES.md` describes them.
 
 These frames replace the v1.3 frames in `../screens/` screen by screen as each is approved; `../screens/` and its manifest stay the record of what is built today until the app is rebuilt (milestone U). Set pictures are empty white tiles with their alt text, because this public repo carries no catalogue pictures; the review showed the real pictures (https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a, version 3).

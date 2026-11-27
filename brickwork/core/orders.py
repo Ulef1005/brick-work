@@ -319,9 +319,9 @@ def parse_email(db, text):
     return rows, dict(currency='EUR', date_ordered=date)
 
 
-def api_data(db, number):
-    client = BrickLink(db)
-    headers = client.list_orders()
+def api_data(db, number, client=None, headers=None):
+    client = BrickLink(db) if client is None else client
+    headers = client.list_orders() if headers is None else headers
     header = next((r for r in headers if str(r['order_id']) == str(number)), None)
     if header is None:
         raise ValueError('Order is not in your BrickLink purchases')

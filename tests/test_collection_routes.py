@@ -43,7 +43,7 @@ def test_the_item_page_by_id_shows_the_copy_asked_for(world, client):
     page = client.get(f'/collection/item/{world.keep}?copy={world.copy_b}')
     html = soup(page)
     assert page.status_code == 200 and html.select_one('h1').get_text(strip=True).replace('\xa0', ' ') == 'Syn Castle Keep'
-    assert 'Sealed' in html.get_text() and html.select_one('a.bc-copy-chip[aria-current=page]').get_text(strip=True) == 'Set 2'
+    assert 'Sealed' in html.get_text() and html.select_one('a.bc-copy-chip[aria-current=page]').get_text(strip=True) == 'Copy 2'
     chips = [a['href'] for a in html.select('a.bc-copy-chip')]
     assert chips == [f'/collection/item/{world.keep}?copy={world.copy_a}', f'/collection/item/{world.keep}?copy={world.copy_b}']
     assert page.headers['Cache-Control'] == 'no-store'
@@ -151,7 +151,7 @@ def test_a_screen_that_is_not_ported_says_so_and_every_screen_is_ported_since_m8
     with monkeypatch.context() as patch:
         patch.setattr(ported, 'PORTED', ported.PORTED - {'web.bw_sync'})                    # the hold still works for a screen a later piece adds
         assert client.get('/manage/sync').status_code == 503
-    for served in ('/manage/sync', '/manage/import-legacy', '/', '/collection/sets', f'/collection/item/{world.keep}', '/collection/jump?q=a', '/workbench/matcher', '/workbench/storage', '/planning/wishlist',
+    for served in ('/manage/sync', '/workbench/sync', '/workbench/sync/rebrickable', '/manage/import-legacy', '/', '/collection/sets', f'/collection/item/{world.keep}', '/collection/jump?q=a', '/workbench/matcher', '/workbench/storage', '/planning/wishlist',
                    '/planning/prices', '/planning/complete-sets', '/workbench/orders', '/workbench/what-is-this', '/manage/tools', '/manage/unresolved', '/manage/catalogues', '/manage/settings',
                    '/manage/tokens', '/manage/database'):
         assert client.get(served).status_code != 503, served

@@ -1,0 +1,88 @@
+/* Item detail in B′ (#501 T2: minifigure, part, instruction, box, gear, book and catalog detail, and a wish's or a loose set's page). Tokens only:
+   the layouts stay; the fields, buttons, tabs, cards and colour block take the components of R2-04 and R3-02 as Set detail (frame 12) draws them.
+   `#bw-collection[data-b-detail]` is not a `.b-prime` root, so every rule carries `:not(#_)` to beat bw-collection.css. A set copy's page has
+   its own stylesheet (bw-setdetail-b.css, [data-b-copy]). Colours only from the tokens; dark follows from them. */
+
+#bw-collection[data-b-detail]:not(#_):not(#_) {font:400 15px/1.45 var(--tw-font),system-ui,sans-serif;color:var(--tw-text);-webkit-font-smoothing:antialiased}
+#bw-collection[data-b-detail]:not(#_):not(#_) .mono {font-family:var(--tw-mono),ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+/* Back link and hero (frame 12's hero: white tile, mono identity, 34 px title) */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-back {display:flex;width:max-content;align-items:center;gap:4px;min-height:0;margin:0;padding:0;font:600 13px var(--tw-font);color:var(--tw-accent-text);text-decoration:none}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-back svg {width:16px;height:16px;flex:none}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-hero {margin-top:14px;gap:20px}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-picture {background:var(--tw-tile)!important;color:var(--tw-tile-ink);border:1px solid var(--tw-divider)!important;border-radius:2px}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-picture.bc-no-image span {font:400 11px var(--tw-font);color:var(--tw-tile-ink)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-picture.bc-no-image span.mono {font-family:var(--tw-mono),ui-monospace,monospace}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-picture img {object-fit:contain}
+@media(prefers-color-scheme:dark) {
+  :root:not(.tw-light) #bw-collection[data-b-detail]:not(#_):not(#_) .bc-picture img {mix-blend-mode:multiply}
+}
+.tw-dark #bw-collection[data-b-detail]:not(#_):not(#_) .bc-picture img {mix-blend-mode:multiply}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-hero-heading>.mono,
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-hero-heading .bc-identity {font:400 13px/1.4 var(--tw-mono),ui-monospace,monospace;color:var(--tw-text-muted)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-hero h1 {margin:3px 0 10px;font:600 34px/1.15 var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-figure-context {margin:0;font:400 15px var(--tw-font);color:var(--tw-text-2)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-quantity-pill,
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-status {display:inline-flex;align-items:center;height:22px;padding:0 7px;border:1.5px solid var(--tw-text);border-radius:3px;background:transparent;color:var(--tw-text);font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-status::before {content:none}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-external-links a {display:inline-flex;align-items:center;gap:6px;height:32px;min-height:0;padding:0 12px;border:0;border-radius:var(--tw-r-1);box-shadow:inset 0 0 0 1.5px var(--tw-text);background:transparent;color:var(--tw-text);font:600 14px var(--tw-font);text-decoration:none;white-space:nowrap}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-external-links a svg {width:14px;height:14px}
+
+/* Cards: surface, hairline, label heading, one outlined action at the right (frame 12's aside cards) */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-layout {gap:28px}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside {gap:10px}
+#bw-collection[data-b-detail]:not(#_):not(#_) :is(.bc-detail-aside,.bc-detail-main)>.bc-module:is(.bc-figure-card,.bf-card,[data-module]),
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside>.bc-module,
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-colour-chooser {background:var(--tw-surface);border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);box-shadow:none;padding:14px}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-module h2 {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-module>.actions:first-child {align-items:center;min-height:0}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-module :is(.button.bc-outline,button.bc-outline,a.bc-outline),
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-copy-details {display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;min-height:32px;padding:0 12px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 13px var(--tw-font);white-space:nowrap;text-decoration:none;cursor:pointer}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-module :is(.button.bc-outline,button.bc-outline):disabled,
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-module :is(.button.bc-outline,button.bc-outline)[aria-disabled=true] {box-shadow:inset 0 0 0 1.5px var(--tw-text-muted);color:var(--tw-text-muted);background:transparent;border:0;outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-module :is(.button.bc-outline,button.bc-outline) svg {width:14px;height:14px}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-module dt {color:var(--tw-text-2)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-module dd {font-weight:500;color:var(--tw-text)}
+
+/* The colour chooser: each colour an outlined ink chip with its colour block and count */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-colour-chooser>a.button.bc-outline {height:38px;min-height:38px;padding:0 10px 0 8px;gap:8px;border:0;border-radius:var(--tw-r-1);box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);background:transparent}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-colour-chooser>a.button.bc-outline .mono {font-size:12px;color:var(--tw-text-2)}
+
+/* Row lists inside a card (consists of, used in sets): hairline rows */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-module .bc-row {border-radius:0;box-shadow:none}
+/* #655 (Ulf's check on a phone): the aside cards keep their 10px gap at every width (the aside was a block on a phone, so the gap did not
+   apply and Wish details sat on Prices); a closed disclosure card has no hairline under its summary, so no empty strip; the status row
+   (Wanted · 1) keeps 8px from the links above it when it wraps under them. */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside {display:flex;flex-direction:column}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside>details.bc-module:not([open]) {gap:0}
+/* the aside's own gap (10px) is the space between its cards: the module's inherited margin would stack on it */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside>.bc-module {margin-bottom:0}
+/* the status row keeps 8px from the links above it where the hero text has no gap of its own (the S hero text has one, except on a phone) */
+#bw-collection[data-b-detail]:not(#_):not(#_):not([data-type=S]) .bc-hero-heading+.bc-hero-status {margin-top:8px}
+@media(max-width:767.98px) {
+  #bw-collection[data-b-detail]:not(#_):not(#_)[data-type=S] .bc-hero-heading+.bc-hero-status {margin-top:8px}
+}
+
+/* The wish page (#655, frame 62): the answer first, then Your wish and Prices. */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-answer {display:block;margin:0 0 14px;padding:12px 0 0;border-top:1.5px solid var(--tw-rule)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-answer h2 {margin:0;font:600 18px/24px var(--tw-font);letter-spacing:0;text-transform:none;color:var(--tw-text)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-answer p {margin:3px 0 0;font:400 12.5px/18px var(--tw-mono);color:var(--tw-text-2)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv {display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 24px;margin:0}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dt {margin:0;color:var(--tw-text-2);font:400 14px/20px var(--tw-font)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dd {margin:0;color:var(--tw-text);font:500 14px/20px var(--tw-font)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dd strong {font:600 15px/20px var(--tw-mono)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-facts {margin:0}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-no-sales {display:flex;justify-content:space-between;align-items:baseline;margin:0;padding:8px 0;border-bottom:1px solid var(--tw-divider);color:var(--tw-text-2)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-no-sales small {font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted)}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-price-single {margin:8px 0 0;font:400 13px/18px var(--tw-font);color:var(--tw-text-2)}
+/* The tags of the Wishlist (state is shape and a word): the hero tag and the answer share the tile's look */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bp-state-under {background:var(--tw-text);color:var(--tw-bg)}
+#bw-collection[data-b-detail]:not(#_):not(#_) :is(.bp-state-nomax,.bp-state-differs,.bp-state-noprice) {border-style:dashed}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dt .bc-wish-limit {all:unset;box-sizing:border-box;cursor:pointer;color:var(--tw-text-2);font:400 14px/20px var(--tw-font);text-decoration:underline dotted;text-underline-offset:3px}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dt .bc-wish-limit:focus-visible {outline:2px solid var(--tw-accent);outline-offset:2px}
+/* A wish on a phone (product, 23.11.): the picture is 110px beside the title, as on Set detail, so the answer stays on the first screen */
+@media(max-width:1023.98px) {
+  #bw-collection[data-b-detail][data-b-wish]:not(#_):not(#_) .bc-detail-hero {grid-template-columns:110px minmax(0,1fr);column-gap:16px;align-items:start}
+  #bw-collection[data-b-detail][data-b-wish]:not(#_):not(#_) .bc-hero-picture {width:110px;height:84px;min-height:0;aspect-ratio:auto;padding:4px;box-sizing:border-box}
+}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-conversion {margin:2px 0 0;font:400 12px/18px var(--tw-mono);color:var(--tw-text-2)}

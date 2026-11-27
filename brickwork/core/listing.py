@@ -9,7 +9,7 @@ import re
 
 from .errors import BadRequest, UnknownFilter
 
-FILTERS = set('type condition status storage place flag flags tag has stock lot problem duplicates theme category year colour inventory item_no archived under_max since color_id source guide currency kind state entity field copy_id source_id item_type completes has_file owned spare parent bricklink_order_id via undoable failed'.split())
+FILTERS = set('type condition status storage place flag flags tag has stock lot problem duplicates theme category year colour inventory item_no archived under_max since color_id source guide currency kind state entity field copy_id source_id item_type completes has_file owned spare parent bricklink_order_id via undoable failed list'.split())
 SORTS = set('number name year quantity missing damaged used_price colour index ranking added'.split())
 
 

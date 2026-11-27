@@ -27,7 +27,7 @@ Docker Desktop is free for personal use; check its terms if you use it at work.
 
 ## 3. Add two files
 
-1. **`compose.yaml`** tells Docker which Brick Work to run. Open [compose.yaml of release 1.1.1](https://raw.githubusercontent.com/Ulef1005/brick-work/v1.1.1/compose.yaml), save it with **Save page as** into the `brick-work` folder, and check that the name is exactly `compose.yaml`, not `compose.yaml.txt`.
+1. **`compose.yaml`** tells Docker which Brick Work to run. Open [compose.yaml of release 1.2.0](https://raw.githubusercontent.com/Ulef1005/brick-work/v1.2.0/compose.yaml), save it with **Save page as** into the `brick-work` folder, and check that the name is exactly `compose.yaml`, not `compose.yaml.txt`.
 2. **`data/.env`** holds your settings. Make a plain text file in the `data` folder with this one line, using a password of your own:
 
     ```

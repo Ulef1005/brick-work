@@ -41,6 +41,8 @@ STATUS = {'complete': ['built'], 'gaps': ['built', 'needs-check'], 'progress': [
 CHECKED_SETS = ('7938-1', '10210-1', '7213-1')        # the copies the loose stock can finish: a finished check is behind them
 # Parts whose picture is also stored without a colour: the Change variant screen shows an item with no colour chosen, and looks for (item, NULL) before (item, colour).
 COLOURLESS = {('32039', '0'), ('42135', '0')}
+# Build Scout: sets whose parts sit loose in a drawer, with the share of their pieces the loose stock covers (the screen lists sets from 60 %)
+SCOUT_STOCK = {'10254-1': 0.72, '21028-1': 0.8, '8043-1': 0.66}   # none of the three the finishing stock works on, so the Matchmaker's numbers stay as they were
 FINISHING = {'7938-1': 1.0, '10210-1': 1.0, '7213-1': 0.5}
 STICKER_SETS = ('7938-1', '8043-1', '7213-1')          # the sets that hold a sticker sheet (a part of the category Stickers)
 LOT = uid('lot', 'flea-market-bag')
@@ -75,8 +77,12 @@ class Layer(showcase.Layer):
 
     It reuses the showcase layer's storage, loose-stock and order steps (which draw from `stockpool`) and replaces everything that names a set."""
 
-    def __init__(self, folder=FOLDER, pictures=True):   # does not call the showcase's __init__: its sets are invented ones
-        self.folder, self.pictures = Path(folder), pictures
+    element_ids = True      # the real sets' lines carry Rebrickable's element ids (#676); `dataset.write_dump` writes them
+
+    def __init__(self, folder=FOLDER, pictures=True, demo=False):   # does not call the showcase's __init__: its sets are invented ones
+        # `demo`: the exported public demo only. The screen gate's frames worlds and the site's pictures build on this layer and pin its numbers, so the demo's own
+        # touches (Build Scout stock, no damage on Complete copies, no queued picture job) stay out of them.
+        self.folder, self.pictures, self.demo = Path(folder), pictures, demo
         rng = self.rng = random.Random(SEED)
         data = snapshot(self.folder)
         self.sets, self.catalogue, self.inventories, self.figures = [], [], {}, []
@@ -88,6 +94,10 @@ class Layer(showcase.Layer):
             checked, missing, damaged = mark(counted, rng, state)
             for rows in figure_lines.values():
                 mark([r for r in rows if not r['spare']], rng, 'complete' if state in ('complete', 'gaps') else state)
+            if self.demo and state == 'complete':   # Complete is about parts and damage is its own fact (#638), but a demo set that reads Complete and damaged looks like a contradiction (product, 2026-11-23)
+                for row in counted + [r for rows in figure_lines.values() for r in rows]:
+                    row['damaged'] = 0
+                damaged = 0
             pieces = sum(r['quantity'] for r in counted)
             summary = {'rows': len(counted), 'pieces': pieces, 'rows_checked': len(counted) if state == 'complete' else (checked if state in ('gaps', 'progress') else 0),
                        'pieces_missing': missing, 'pieces_damaged': damaged, 'minifigures': len(entry['minifigures'])}
@@ -133,6 +143,8 @@ class Layer(showcase.Layer):
                 self.loose_parts(db)
                 self.loose_figures(db, ids)
                 self.finishing_stock(db)
+                if self.demo:
+                    self.scout_stock(db)
                 self.finished_checks(db)
                 self.prices(db)
                 self.damaged_prices(db)
@@ -142,6 +154,8 @@ class Layer(showcase.Layer):
                 self.flea_market(db)
                 if self.pictures:
                     self.illustrate(db)
+                if self.demo:
+                    self.clear_picture_queue(db)
         finally:
             clock.thaw_clock(patched)
 
@@ -160,6 +174,21 @@ class Layer(showcase.Layer):
                 for row in rows[:max(1, round(len(rows) * share))]:
                     stock.add_loose(db, item_id=dataset.item_by(db, 'parts', row['part']), color_id=dataset.colour_by(db, row['color']['id']),
                                     quantity=row['missing'] + row['damaged'], condition='used', storage_id='storage-drawer-8', via='cli')
+
+    def scout_stock(self, db):
+        """Loose parts in the parts drawer that make three sets buildable or nearly buildable, so Build Scout has something to list. Whole part lines,
+        the biggest first, until the share of the set's pieces is reached."""
+        with transaction(db):
+            for number, share in SCOUT_STOCK.items():
+                rows = sorted((r for r in self.inventories[number]['parts'] if not r['spare'] and r['category'] != 'Stickers'), key=lambda r: (-r['quantity'], r['part']))
+                total = sum(r['quantity'] for r in rows)
+                held = 0
+                for row in rows:
+                    if held >= share * total:
+                        break
+                    stock.add_loose(db, item_id=dataset.item_by(db, 'parts', row['part']), color_id=dataset.colour_by(db, row['color']['id']),
+                                    quantity=row['quantity'], condition='used', storage_id='storage-parts-drawer-unit', via='cli')
+                    held += row['quantity']
 
     def finished_checks(self, db):
         """The copies the loose stock can finish have a finished check behind them (the status 'Set is checked', completeness worked out by the app), as
@@ -244,6 +273,13 @@ class Layer(showcase.Layer):
 
     # ---------- the pictures ----------
 
+    def clear_picture_queue(self, db):
+        """Adding the stock queued a picture job for each item that had none while the world was built; a static demo has no worker, so the Jobs page would
+        show 'running, 0 of 7' for ever. The pictures the folder holds are already in place, so the queue is dropped."""
+        with transaction(db):
+            db.execute("DELETE FROM job_step WHERE job_id IN (SELECT id FROM job WHERE state IN ('queued', 'waiting_for_budget', 'running'))")
+            db.execute("DELETE FROM job WHERE state IN ('queued', 'waiting_for_budget', 'running')")
+
     def illustrate(self, db):
         """The pictures of not-mit/rebrickable/images/, stored the way the app stores any picture: a file under data/images/ in the media folder and a
         `picture` row, source "Rebrickable". An item without one keeps the missing-picture tile."""
@@ -297,5 +333,5 @@ def size_of(path):
     raise ValueError('not a PNG or JPEG: %s' % path)
 
 
-def layer(folder=FOLDER, pictures=True):
-    return Layer(folder, pictures)
+def layer(folder=FOLDER, pictures=True, demo=False):
+    return Layer(folder, pictures, demo)

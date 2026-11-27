@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# The private-names check at every commit (Repo Gates, the github-public group; Ulf, 2026-11-26: "Yes, commit tier
+# too"). Enabled by: git config core.hooksPath .githooks. It scans the staged files (scripts/check_private_names.py)
+# with the maintainer's patterns file, which never goes to CI: BW_PRIVATE_PATTERNS_FILE, else the shared file in
+# ai-wiki. A contributor without the shared file gets a note and the commit goes on; CI and the maintainer's land
+# check still run. A BW_PRIVATE_PATTERNS_FILE that is set and names no file blocks the commit.
+# Bypass deliberately: git commit --no-verify
+set -uo pipefail
+root=$(git rev-parse --show-toplevel) || exit 1
+file=${BW_PRIVATE_PATTERNS_FILE:-${HOME:-}/Workspace/ai-wiki/scripts/brick-work-private-patterns.txt}
+if [[ ! -f $file ]]; then
+  if [[ -n ${BW_PRIVATE_PATTERNS_FILE:-} ]]; then
+    echo "pre-commit: blocked: BW_PRIVATE_PATTERNS_FILE names no file: $file" >&2
+    exit 1
+  fi
+  echo "pre-commit: no private patterns file at $file, so the private-names check is skipped" >&2
+  exit 0
+fi
+BW_PRIVATE_PATTERNS_FILE=$file exec python3 "$root/scripts/check_private_names.py"

@@ -97,9 +97,11 @@
     const secondary=[[r.theme||r.category,r.type==='S'&&r.entity!=='wish'?r.subtheme:''].filter(Boolean).join(' / '),r.year].filter(Boolean).join(' · ');
     if(secondary)identity.append(el('span','secondary',secondary));
     if(r.unresolved)identity.append(el('span','status',r.number?'To check':'Unidentified'));
+    // #551 (frames 78, 79): where the row came from, one chip per origin; the pieces inside sets have none of their own.
+    if(config.bList!==undefined&&r.scope!=='sets'){const words=JSON.parse(config.sourceWords||'{}');(r.via||[]).forEach(v=>identity.append(el('span','bc-source-chip',words[v]||v)));}
     link.append(identity);row.append(link);
     if(r.unresolved){const unresolved=el('a','','Unresolved items');unresolved.href=config.unresolvedUrl;row.append(unresolved);}
-    if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),el('strong','mono',r.max_price||'Not recorded'));row.append(max);}
+    if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),(r.max_price?el('strong','mono',r.max_price):el('span','bc-wish-max-none','No max set')));row.append(max);}
     const foot=el('div','bc-card-foot');
     if(r.entity==='wish'){
       foot.append(el('span','mono',r.defects||r.quantity+' wanted'));
@@ -142,7 +144,7 @@
   function copyBar(bar,index,several){
     const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
     const [found,missing,total,figures]=bar,bartxt=el('div','bartxt'),track=el('div','bar');
-    const never=!found&&!missing&&!figures,pct=n=>(Math.round(n/total*10000)/100).toFixed(2)+'%';
+    const never=!found&&!missing&&!figures&&!bar[4],pct=n=>(Math.round(n/total*10000)/100).toFixed(2)+'%';
     if(never){
       track.append(el('i','c'));
       const chip=el('span','xchip'),box=document.createElement('i'),svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -297,7 +299,7 @@
       else {
         const values=Object.fromEntries(new FormData(form));
         newPhoto=values.new_photo;newPhotoCaption=values.new_photo_caption||'';delete values.new_photo;delete values.new_photo_caption;        // the photo goes up after the save, from the same button
-        if(form.dataset.bcFlags!==undefined)values.flags=[...form.querySelectorAll('[name=flags]:checked')].map(c=>c.value);      // switches and the multi-select fields all post the flag ids that stay on
+        if(form.dataset.bcFlags!==undefined)values.flags=[...form.querySelectorAll('[name=flags]:checked,input[type=hidden][name=flags]')].map(c=>c.value);      // switches and the multi-select fields all post the flag ids that stay on; a wish's Status and Owners ride along hidden (#670)
         data=action==='save'?{...identity,values}:{...identity,...values};
         if(action==='save'&&photoRows.length) {
           const captions={},removals=[];
@@ -396,8 +398,9 @@
     const picks=[...list.querySelectorAll('[data-bc-pick]')],groupPicks=[...list.querySelectorAll('[data-bc-group-pick]')];
     // Quick chips (Parts, kit 7a) set one of a small family of filters; All clears the family.
     const quick=[...list.querySelectorAll('[data-bc-quick]')],quickKeys=[...new Set(quick.map(b=>b.dataset.bcQuick.split(':')[0]).filter(Boolean))];
+    const srcButtons=[...list.querySelectorAll('[data-bc-src]')],srcPair=b=>{const t=b.dataset.bcSrc,i=t.indexOf(':');return [t.slice(0,i),t.slice(i+1)];};
     const tabs=[...list.querySelectorAll('[data-bc-tab]')],statusButtons=[...list.querySelectorAll('[data-bc-status]')];
-    const more=list.querySelector('[data-bc-more]'),loaded=list.querySelector('[data-bc-loaded]');let limit=60,selecting=false;
+    const more=list.querySelector('[data-bc-more]'),loaded=list.querySelector('[data-bc-loaded]');let limit=60,selecting=false,missingExpanded=false;
     /* Paging (4.8d): optional, switched on per list by data-bc-page-size. The main list saves its page with its scroll offset so Back returns to the same page. */
     const pageSize=Math.max(0,Math.floor(Number(list.dataset?.bcPageSize))||0);let page=1;const pager=pageSize?buildPager():null;
     function buildPager(target=container, section=null){
@@ -473,6 +476,8 @@
     const params=new URLSearchParams(location.search);
     if(tabs.length){const requested=params.get('inventory')||saved?.filters?.inventory;if(tabs.some(t=>t.dataset.bcTab===requested))inventory=requested;}
     filterControls.forEach(c=>{if(params.has(c.dataset.bcFilter)){c.value=params.get(c.dataset.bcFilter);if(!c.value)c.value=preset(c);}});
+    // #551: a Source filter that no chip offers any more (a set archived, a run undone, a stale link) is dropped, not kept invisible; a select drops it by itself.
+    filterControls.forEach(c=>{if(c.type==='hidden'&&c.value&&!srcButtons.some(b=>{const [k,v]=srcPair(b);return k===c.dataset.bcFilter&&v===c.value;}))c.value='';});
     function filters(){return {...Object.fromEntries(filterControls.map(c=>[c.dataset.bcFilter,c.value])),...(tabs.length && inventory!=='extras'?{inventory}:{})};}
     function selection(){if(virtual)return selectedInstances(records.map(r=>({checked:r.selected,entity:r.entity,ids:r.ids})));return selectedInstances([...list.querySelectorAll('[data-bc-selected]')].map(c=>({checked:c.checked,hidden:c.closest('[data-bc-row]').hidden,entity:c.dataset.entity,ids:JSON.parse(c.value)})));}
     if(virtual)mainSelection=selection;
@@ -556,15 +561,20 @@
           quick.forEach(b=>{const total=b.querySelector('.mono'),[k,v]=b.dataset.bcQuick.split(':');if(total)total.textContent=String(filterRows(records,'',{stock:scope,...(k?{[k]:v}:{})}).length);});
         }
       }
+      // #551: the Added via row of a loose-stock list is about loose stock: under In sets it is gone and filters nothing.
+      const sourceRow=list.querySelector('[data-bc-source]');
+      if(sourceRow){sourceRow.hidden=scope==='sets';if(scope==='sets')sourceRow.querySelector('input').value='';}
       const result=filterRows(records,search?.value||'',filters(),sort?sort.value:'index',direction?.value,group?.value,bpRank);
       if(pageSize)page=Math.min(Math.max(1,page),Math.max(1,Math.ceil(result.length/pageSize)));
       const focused=document.activeElement,focusedRow=focused?.closest?.('[data-bc-row]');
-      const sections=inventorySections(result),split=!groupedInventory && inventory!=='figures' && !!list.querySelector('[data-bc-missing]') && sections.missing.length>0;
+      const copyCards=groupedInventory && root.hasAttribute('data-b-copy') && !list.hasAttribute('data-bc-pl-editing') && inventory!=='figures' && !!list.querySelector('[data-bc-missing]');
+      const sections=inventorySections(result),split=(!groupedInventory || copyCards) && inventory!=='figures' && !!list.querySelector('[data-bc-missing]') && sections.missing.length>0;
+      const missingSet=new Set(sections.missing);
       let displayed=visibleSlice(split?[...sections.missing,...sections.present]:result); // one array for retention and render
       if(groupedInventory){
         displayed=[];
         partSections.forEach(section=>{
-          const matches=result.filter(r=>r.part_group===section.name && r.type!=='M');
+          const matches=result.filter(r=>r.part_group===section.name && r.type!=='M' && !(copyCards && split && missingSet.has(r)));
           section.element.hidden=inventory==='figures'||!matches.length;
           section.page=Math.min(Math.max(1,section.page),Math.max(1,Math.ceil(matches.length/25)));
           updatePager(matches.length,section.pager,section.page,25,true);
@@ -577,6 +587,7 @@
           figureBatch.pager.nav.hidden=inventory!=='figures'||figures.length<=25;
           displayed.push(...figures.slice((figureBatch.page-1)*25,figureBatch.page*25));
         }
+        if(copyCards && split)displayed.push(...sections.missing);
       }
       if(virtual){
         const matching=new Set(result),shown=new Set(displayed);
@@ -586,11 +597,11 @@
       else nodes.forEach(n=>n.hidden=true);container.querySelectorAll('[data-bc-group-heading]').forEach(n=>n.remove());if(bpSets)container.querySelectorAll('[data-bp-group]').forEach(n=>n.remove());   // the tiles are kept by their records and placed again
       const missingSection=list.querySelector('[data-bc-missing]'),presentSection=list.querySelector('[data-bc-present]'),missingRows=list.querySelector('[data-bc-missing-rows]'),presentRows=list.querySelector('[data-bc-present-rows]');
       // #33 (frame 1d): the first three present lines show inline above "Show all N present parts".
-      const presentInline=list.querySelector('[data-bc-present-inline]'),inlinePresent=new Set(split&&presentInline?displayed.filter(r=>Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)===0).slice(0,3):[]);
-      if(presentInline)presentInline.hidden=!inlinePresent.size;
+      const presentInline=list.querySelector('[data-bc-present-inline]'),inlinePresent=new Set(split&&!copyCards&&presentInline?displayed.filter(r=>Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)===0).slice(0,3):[]);
+      if(presentInline)presentInline.hidden=copyCards || !inlinePresent.size;
       if(missingSection)missingSection.hidden=!split;
       if(missingSection){const label='Missing '+(inventory==='figures'?'minifigures':'parts');missingSection.setAttribute('aria-label',label);}
-      if(presentSection){presentSection.hidden=!split || sections.present.length<=inlinePresent.size;list.querySelector('[data-bc-present-summary]').textContent='Show all '+sections.present.length+(sections.present.some(r=>r.missing_recorded===false)?' other ':' present ')+(inventory==='figures'?'minifigures':'parts');}
+      if(presentSection){presentSection.hidden=copyCards || !split || sections.present.length<=inlinePresent.size;list.querySelector('[data-bc-present-summary]').textContent='Show all '+sections.present.length+(sections.present.some(r=>r.missing_recorded===false)?' other ':' present ')+(inventory==='figures'?'minifigures':'parts');}
       const basis=root.querySelector('[data-bc-price-basis]');if(basis && list.hasAttribute('data-bc-main'))basis.textContent=priceBasis(result);
       let previous;const groupCounts=new Map();const bpTiles=bpSets?bpGroups(result):null;
       if(group?.value)result.forEach(r=>{const k=groupValue(r,group.value)||'Not recorded';groupCounts.set(k,(groupCounts.get(k)||0)+1);});
@@ -598,9 +609,21 @@
         if(group?.value && !partSections.length && !bpSets) {const name=groupValue(r,group.value)||'Not recorded';if(name!==previous){const h=document.createElement('h3');h.dataset.bcGroupHeading='';const control=filterControls.find(c=>c.dataset.bcFilter===group.value);const headingLabel=control?[...control.options].find(o=>o.value===name)?.textContent||name:name;h.textContent=headingLabel;const n=groupCounts.get(name)||0,noun=singularNoun(root.dataset.type);h.append(Object.assign(document.createElement('span'),{className:'bc-group-count',textContent:' · '+n+' '+(n===1?noun:listNoun(root.dataset.type))}));if(group.value==='lot'&&name!=='null'&&root.dataset.lotBase){const open=document.createElement('a');open.className='bc-group-open';open.textContent='Open';open.setAttribute('aria-label','Open lot '+headingLabel);open.href=root.dataset.lotBase.replace('LOT',encodeURIComponent(name));h.append(open);}container.append(h);previous=name;}}
         const node=virtual?(r.node ||= buildRow(r,root.dataset,selecting,selectionCount)):r.node;
         if(virtual){const check=node.querySelector('[data-bc-selected]');if(check)check.checked=r.selected;const label=node.querySelector('.bc-selection');if(label)label.hidden=!selecting;}
-        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=partSection?partSection.rows:figureRows&&r.type==='M'?figureRows:split?(defect(r,'missing')+defect(r,'damaged')+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):(bpSets?bpTiles(r):container);destination.append(node);if(virtual)nodes.push(node);
+        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=(copyCards && split && missingSet.has(r))?missingRows:partSection?partSection.rows:figureRows&&r.type==='M'?figureRows:split?(defect(r,'missing')+defect(r,'damaged')+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):(bpSets?bpTiles(r):container);destination.append(node);if(virtual)nodes.push(node);
         bindRow(node);
       });
+      const missingLabel=list.querySelector('[data-bc-missing-label]'),missingMore=list.querySelector('[data-bc-missing-more]');
+      if(copyCards && split){
+        const n=sections.missing.length,unfiltered=!search?.value && filterControls.every(c=>!c.value || c.value===preset(c));
+        if(missingLabel){missingLabel.textContent='Missing parts · '+n+(n===1?' line':' lines');missingLabel.hidden=false;}
+        if(unfiltered && !missingExpanded)sections.missing.slice(2).forEach(r=>{if(r.node)r.node.hidden=true;});
+        if(missingMore){const canCollapse=unfiltered && n>2;missingMore.hidden=!canCollapse;if(canCollapse)missingMore.textContent=missingExpanded?'Show fewer':'+ '+(n-2)+' more missing lines';}
+      }else{
+        if(missingLabel)missingLabel.hidden=true;
+        if(missingMore)missingMore.hidden=true;
+      }
+      list.querySelectorAll('[data-bc-view-only]').forEach(n=>n.hidden=!copyCards);
+      list.querySelectorAll('[data-bc-edit-only]').forEach(n=>n.hidden=copyCards);
       if(focusedRow && nodes.includes(focusedRow) && !focusedRow.hidden && document.activeElement!==focused)focused.focus({preventScroll:true});
       list.querySelectorAll('[data-bc-selected]').forEach(c=>{if(c.closest('[data-bc-row]').hidden)c.checked=false;});
       if(count){const countKind=root.dataset.bcCollectionList!==undefined?root.dataset.type:'',countNoun=tabs.length?(inventory==='figures'?'minifigures':'parts'):listNoun(countKind),countOne=tabs.length?(inventory==='figures'?'minifigure':'part'):singularNoun(countKind),noun=resultCount(result.length,countNoun,countOne);count.hidden=root.dataset.type==='S' && tabs.length>0;count.textContent=count.hidden?'':(pageSize&&result.length?rangeText(result.length):noun);if(pageSize&&result.length)count.setAttribute('aria-label',rangeText(result.length)+' '+(result.length===1?countOne:countNoun));else count.removeAttribute('aria-label');}
@@ -608,10 +631,11 @@
       const apply=list.querySelector('[data-bc-apply]');if(apply)apply.textContent='Show '+resultCount(result.length,listNoun(root.dataset.type),singularNoun(root.dataset.type));if(loaded)loaded.textContent='Loaded '+Math.min(limit,result.length)+' of '+result.length;
       if(more)more.hidden=limit>=result.length;updatePager(result.length);
       const empty=list.querySelector('[data-bc-empty]');if(empty)empty.hidden=result.length>0;
-      if(chips){chips.replaceChildren();const active=[...(search?.value?[{label:'Search: '+search.value,clear:()=>search.value=''}]:[]),...filterControls.filter(c=>c.value&&c.value!==preset(c)).map(c=>({label:c.parentElement.firstChild.textContent.trim()+': '+c.options[c.selectedIndex].textContent,clear:()=>c.value=preset(c)}))];active.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a.label+' ×';b.setAttribute('aria-label','Remove '+a.label);b.addEventListener('click',()=>{a.clear();render(true);});chips.append(b);});}
+      if(chips){chips.replaceChildren();const active=[...(search?.value?[{label:'Search: '+search.value,clear:()=>search.value=''}]:[]),...filterControls.filter(c=>c.options&&c.value&&c.value!==preset(c)).map(c=>({label:c.parentElement.firstChild.textContent.trim()+': '+c.options[c.selectedIndex].textContent,clear:()=>c.value=preset(c)}))];active.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a.label+' ×';b.setAttribute('aria-label','Remove '+a.label);b.addEventListener('click',()=>{a.clear();render(true);});chips.append(b);});}
       picks.forEach(b=>b.setAttribute('aria-pressed',String(filters()[b.dataset.bcPick]===b.dataset.value)));
       groupPicks.forEach(b=>b.setAttribute('aria-pressed',String((group?.value||'')===b.dataset.bcGroupPick)));
       quick.forEach(b=>{const [k,v]=b.dataset.bcQuick.split(':');b.setAttribute('aria-pressed',String(k?filters()[k]===v:quickKeys.every(x=>!filters()[x])));});
+      srcButtons.forEach(b=>{const [k,v]=srcPair(b);b.setAttribute('aria-pressed',String((filters()[k]||'')===v));});
       statusButtons.forEach(b=>{const on=b.dataset.bcStatus===(filters().status||'');b.setAttribute('aria-pressed',String(on));if(bpSets)b.classList.toggle('on',on);});
       list.querySelectorAll('[data-bc-view]').forEach(b=>{const on=b.dataset.bcView===container.dataset.view;b.setAttribute('aria-pressed',String(on));if(bpSets)b.classList.toggle('on',on);});
       if(bpSets)bpState(result);
@@ -619,6 +643,8 @@
       list.querySelectorAll('[data-bc-order-pick]').forEach(b=>b.setAttribute('aria-pressed',String(direction?.value===b.dataset.bcOrderPick)));
       selectionCount();saveState();
     }
+    list.bcRender=()=>render();
+    list.querySelector('[data-bc-missing-more]')?.addEventListener('click',()=>{missingExpanded=!missingExpanded;render();});
     const searchRender=debounce(()=>render(true),120);
     // #226: Date added starts newest first; the order buttons still turn it round.
     const sorted=()=>{if(sort?.value==='added'&&direction)direction.value='desc';render(true);};
@@ -656,6 +682,8 @@
       const setFilter=(k,v)=>{const control=filterControls.find(c=>c.dataset.bcFilter===k);if(control)control.value=v;};
       quickKeys.forEach(k=>setFilter(k,''));const [k,v]=b.dataset.bcQuick.split(':');if(k)setFilter(k,v);render(true);
     }));
+    // #551 (frame 45): the two Source chip rows, Added via and Last synced from, combine with each other and with the status tabs; a pressed chip clears its row.
+    srcButtons.forEach(b=>b.addEventListener('click',()=>{const [k,v]=srcPair(b),control=filterControls.find(c=>c.dataset.bcFilter===k);if(control){const on=control.value===v;srcButtons.forEach(o=>{if(srcPair(o)[0]===k)o.setAttribute('aria-pressed','false');});control.value=on?'':v;}render(true);}));
     statusButtons.forEach(b=>b.addEventListener('click',()=>{const control=filterControls.find(c=>c.dataset.bcFilter==='status');if(control)control.value=b.dataset.bcStatus;render(true);}));
     tabs.forEach(b=>b.addEventListener('click',()=>{inventory=b.dataset.bcTab;render(true);const query=new URLSearchParams(location.search);query.set('inventory',inventory);try{window.history?.replaceState(null,'',location.pathname+'?'+query.toString()+ (location.hash||''));}catch(_){}}));
     list.querySelector('[data-bc-reset]')?.addEventListener('click',()=>{filterControls.forEach(c=>c.value=preset(c));if(search)search.value='';render(true);});
@@ -717,7 +745,7 @@ document.addEventListener?.('click',async event=>{
   const before=Number(pending?.dataset.priced || 0);
   button.disabled=true;
   if(pending)button.textContent=`Fetching ${items.length} part prices`;
-  if(status)status.textContent='Queued with the market price refresh · the card updates here';
+  if(status){status.textContent='Queued with the market price refresh · the card updates here';delete status.dataset.state;}
   scope?.setAttribute('aria-busy','true');
   try{
     const response=await fetch(button.dataset.refreshUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,csrf_token:root.dataset.csrf})});
@@ -760,13 +788,15 @@ document.addEventListener?.('click',async event=>{
       else if(complete && missing)notes.push(`${missing} ${missing===1?'part has':'parts have'} no sales yet`);
     }
     if(notes.length){
-      const note=document.createElement('p');note.className='secondary';note.setAttribute('role','status');
+      const note=document.createElement('p');note.className='secondary';note.setAttribute('role','status');if(failed)note.dataset.state='error';   // a job the worker failed or cancelled is said in the danger colour (R2-04)
       note.textContent=notes.join(' · ');(updated || fresh).append(note);
     }
     const card=scope?.closest('[data-module="prices"]') || document.querySelector('[data-module="prices"]');
     card?.replaceWith(fresh);
+    // A wish's page opens with the answer and a state tag that come from the same prices: they follow the card (#654).
+    for(const selector of ['[data-wish-answer]','.bc-hero-status']){const next=doc.querySelector(selector),current=document.querySelector(selector);if(next&&current)current.replaceWith(next);}
     button.disabled=false;button.textContent=label;
-  }catch(error){button.disabled=false;button.textContent=label;if(status)status.textContent=error.message;}
+  }catch(error){button.disabled=false;button.textContent=label;if(status){status.textContent=error.message;status.dataset.state='error';}}
   finally{scope?.setAttribute('aria-busy','false');}
 });
 

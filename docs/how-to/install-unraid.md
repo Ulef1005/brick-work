@@ -36,7 +36,7 @@ Brick Work is for a home network or a VPN: do not forward its port to the intern
 
 ## Keeping it up to date
 
-The template uses the image tag `latest`, so Unraid offers each new release on the **Docker** tab. Read the [upgrade guide](upgrade.md) first and back up the **Data** folder before you update. To stay on one release, edit the container and put its version after the repository name, for example `ghcr.io/ulef1005/brick-work:1.1.1`. The upgrade guide's Git steps do not apply to you.
+The template uses the image tag `latest`, so Unraid offers each new release on the **Docker** tab. Read the [upgrade guide](upgrade.md) first and back up the **Data** folder before you update. To stay on one release, edit the container and put its version after the repository name, for example `ghcr.io/ulef1005/brick-work:1.2.0`. The upgrade guide's Git steps do not apply to you.
 
 ## When something goes wrong
 

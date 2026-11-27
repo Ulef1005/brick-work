@@ -1,0 +1,208 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="frame-size" content="390 844"><style>/* Vendored from ai-wiki .claude/skills/design-builder/base/tokens.css
+   ai-wiki commit d76eb51b
+   Date: 2026-11-04
+   source SHA-256: c2a4d5b21540af3735c4698fe7115dbee7e0a80849679a41fc4a4f1ecfba860c
+   Never edit this copy: scripts/tokens_base.py sync writes it, check pins it.
+*/
+
+/* Neutral design base · v1 (2026-11-03) — the design builder skill's brand-free base (App Design Standard).
+
+   What it is: the structural tokens every app shares (spacing, motion, touch, safe areas, layout, z-index, focus,
+   a type-scale skeleton) and the colour ROLES every app must define. On its own it renders black on white with
+   system type: that is the look of the black-and-white wireframes (workflow step 2). No brand colour, no web
+   font, no font CDN, no brand radii.
+
+   How an app uses it: copy this file unchanged to design/tokens/tokens.css with a provenance header naming the
+   source path (.claude/skills/design-builder/base/tokens.css), the ai-wiki commit and the file's SHA-256, and pin
+   it with the drift check (engram's scripts/tokens_base.py is the reference implementation). Never edit the copy.
+   The app layer design/tokens/<app>-tokens.css, loaded after it, redefines every colour role light and dark, the
+   type families and scale, and the radii. A switch to a newer base is its own step with a frame comparison.
+
+   The --tw-* names are the house's contract names, kept so existing app layers and components work unchanged;
+   they carry no Toni's World brand here.
+
+   Theme mechanism (as before): default light; prefers-color-scheme: dark switches unless .tw-light is on <html>;
+   .tw-dark / .tw-light force a subtree. A token defined as a reference (--tw-focus-color: var(--tw-accent)) is
+   repeated in every theme block of the app layer. */
+
+:root {
+  /* Colour roles: neutral placeholders the app layer must redefine (light) */
+  --tw-bg:             #FFFFFF;
+  --tw-surface:        #FFFFFF;
+  --tw-surface-2:      #F2F2F2;
+  --tw-divider:        #D9D9D9;
+  --tw-divider-strong: #8C8C8C;
+  --tw-text:           #111111;
+  --tw-text-2:         #333333;
+  --tw-text-muted:     #595959;   /* 7.0:1 on white */
+  --tw-text-faint:     #595959;   /* no fainter text than muted until an app defines one that passes 4.5:1 */
+  --tw-accent:         #111111;
+  --tw-accent-soft:    #E6E6E6;
+  --tw-accent-text:    #111111;
+  --tw-on-accent:      #FFFFFF;
+  --tw-success:        #111111;  --tw-success-soft: #F2F2F2;
+  --tw-warning:        #111111;  --tw-warning-soft: #F2F2F2;
+  --tw-danger:         #111111;  --tw-danger-soft:  #F2F2F2;
+  --tw-info:           #111111;  --tw-info-soft:    #F2F2F2;
+  --tw-scrim:          rgba(0, 0, 0, 0.40);
+  --tw-sheet-bg:       var(--tw-bg);
+  --tw-toast-bg:       var(--tw-text);
+  --tw-toast-fg:       var(--tw-bg);
+
+  /* Data roles (charts, base/charts.md): actual, previous, plan, forecast and two neutrals */
+  --tw-viz-ac: #111111;   /* actual */
+  --tw-viz-py: #8C8C8C;   /* previous period: quieter, same hue */
+  --tw-viz-n1: #D9D9D9;   /* track, gridlines */
+  --tw-viz-n2: #595959;   /* comparison series, reference lines, axis labels */
+
+  /* Type: system faces and a scale skeleton; the app layer sets its own families and may retune the scale */
+  --tw-font:    -apple-system, system-ui, sans-serif;
+  --tw-font-alt: var(--tw-font);
+  --tw-mono:    ui-monospace, SFMono-Regular, monospace;
+  --tw-fs-display: 34px;  --tw-lh-display: 40px;
+  --tw-fs-h1:      28px;  --tw-lh-h1:      34px;
+  --tw-fs-h2:      22px;  --tw-lh-h2:      28px;
+  --tw-fs-h3:      18px;  --tw-lh-h3:      24px;
+  --tw-fs-body:    17px;  --tw-lh-body:    27px;
+  --tw-fs-small:   14px;  --tw-lh-small:   20px;
+  --tw-fs-label:   12px;  --tw-lh-label:   16px;   /* 12 px is the smallest text */
+
+  /* Spacing: 4 px steps */
+  --tw-s-0: 0; --tw-s-1: 4px; --tw-s-2: 8px; --tw-s-3: 12px; --tw-s-4: 16px;
+  --tw-s-5: 20px; --tw-s-6: 24px; --tw-s-7: 32px; --tw-s-8: 40px; --tw-s-9: 56px;
+
+  /* Radii: square until the app layer decides */
+  --tw-r-1: 0; --tw-r-2: 0; --tw-r-3: 0;
+  --tw-sheet-radius: var(--tw-r-3);
+  --tw-sheet-edge:   1px solid var(--tw-divider-strong);
+
+  /* Touch */
+  --tw-hit:    44px;   /* minimum target, every tappable thing */
+  --tw-hit-lg: 56px;   /* primary actions */
+
+  /* Motion */
+  --tw-ease:     cubic-bezier(0.2, 0.6, 0.2, 1);
+  --tw-dur-fast: 120ms;   /* state changes, pressed */
+  --tw-dur-base: 240ms;   /* sheets, drawers, pushes */
+
+  /* Focus */
+  --tw-focus-width:  2px;
+  --tw-focus-offset: 2px;
+  --tw-focus-color:  var(--tw-accent);
+
+  /* Layout and safe areas (Home Screen app) */
+  --tw-safe-top:    env(safe-area-inset-top, 0px);
+  --tw-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tw-safe-left:   env(safe-area-inset-left, 0px);
+  --tw-safe-right:  env(safe-area-inset-right, 0px);
+  --tw-gutter:      20px;    /* side gutter at 390 */
+  --tw-grid-gap:    8px;     /* 12-column grid gap */
+  --tw-col-max:     640px;   /* reading column at wide sizes */
+  --tw-topbar-h:    52px;
+  --tw-tabbar-h:    49px;
+
+  /* Stacking */
+  --tw-z-bar:   10;
+  --tw-z-sheet: 20;
+  --tw-z-toast: 30;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.tw-light) {
+    --tw-bg: #111111; --tw-surface: #1A1A1A; --tw-surface-2: #262626;
+    --tw-divider: #333333; --tw-divider-strong: #8C8C8C;
+    --tw-text: #F2F2F2; --tw-text-2: #D9D9D9; --tw-text-muted: #A6A6A6; --tw-text-faint: #A6A6A6;
+    --tw-accent: #F2F2F2; --tw-accent-soft: #333333; --tw-accent-text: #F2F2F2; --tw-on-accent: #111111;
+    --tw-success: #F2F2F2; --tw-success-soft: #262626; --tw-warning: #F2F2F2; --tw-warning-soft: #262626;
+    --tw-danger: #F2F2F2;  --tw-danger-soft: #262626;  --tw-info: #F2F2F2;    --tw-info-soft: #262626;
+    --tw-scrim: rgba(0, 0, 0, 0.55); --tw-sheet-bg: var(--tw-surface);
+    --tw-toast-bg: var(--tw-text); --tw-toast-fg: var(--tw-bg); --tw-focus-color: var(--tw-accent);
+    --tw-viz-ac: #F2F2F2; --tw-viz-py: #8C8C8C; --tw-viz-n1: #333333; --tw-viz-n2: #A6A6A6;
+  }
+}
+
+.tw-dark {
+  --tw-bg: #111111; --tw-surface: #1A1A1A; --tw-surface-2: #262626;
+  --tw-divider: #333333; --tw-divider-strong: #8C8C8C;
+  --tw-text: #F2F2F2; --tw-text-2: #D9D9D9; --tw-text-muted: #A6A6A6; --tw-text-faint: #A6A6A6;
+  --tw-accent: #F2F2F2; --tw-accent-soft: #333333; --tw-accent-text: #F2F2F2; --tw-on-accent: #111111;
+  --tw-success: #F2F2F2; --tw-success-soft: #262626; --tw-warning: #F2F2F2; --tw-warning-soft: #262626;
+  --tw-danger: #F2F2F2;  --tw-danger-soft: #262626;  --tw-info: #F2F2F2;    --tw-info-soft: #262626;
+  --tw-scrim: rgba(0, 0, 0, 0.55); --tw-sheet-bg: var(--tw-surface);
+  --tw-toast-bg: var(--tw-text); --tw-toast-fg: var(--tw-bg); --tw-focus-color: var(--tw-accent);
+  --tw-viz-ac: #F2F2F2; --tw-viz-py: #8C8C8C; --tw-viz-n1: #333333; --tw-viz-n2: #A6A6A6;
+}
+
+.tw-light {
+  --tw-bg: #FFFFFF; --tw-surface: #FFFFFF; --tw-surface-2: #F2F2F2;
+  --tw-divider: #D9D9D9; --tw-divider-strong: #8C8C8C;
+  --tw-text: #111111; --tw-text-2: #333333; --tw-text-muted: #595959; --tw-text-faint: #595959;
+  --tw-accent: #111111; --tw-accent-soft: #E6E6E6; --tw-accent-text: #111111; --tw-on-accent: #FFFFFF;
+  --tw-success: #111111; --tw-success-soft: #F2F2F2; --tw-warning: #111111; --tw-warning-soft: #F2F2F2;
+  --tw-danger: #111111;  --tw-danger-soft: #F2F2F2;  --tw-info: #111111;    --tw-info-soft: #F2F2F2;
+  --tw-scrim: rgba(0, 0, 0, 0.40); --tw-sheet-bg: var(--tw-bg);
+  --tw-toast-bg: var(--tw-text); --tw-toast-fg: var(--tw-bg); --tw-focus-color: var(--tw-accent);
+  --tw-viz-ac: #111111; --tw-viz-py: #8C8C8C; --tw-viz-n1: #D9D9D9; --tw-viz-n2: #595959;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --tw-dur-fast: 0ms; --tw-dur-base: 0ms; }
+}
+
+:focus-visible {
+  outline: var(--tw-focus-width) solid var(--tw-focus-color);
+  outline-offset: var(--tw-focus-offset);
+}
+
+*{box-sizing:border-box;margin:0}
+body{font:var(--tw-fs-body)/var(--tw-lh-body) var(--tw-font);color:var(--tw-text);background:var(--tw-bg)}
+.top{display:flex;align-items:center;gap:24px;height:56px;padding:0 32px;border-bottom:1px solid var(--tw-divider-strong)}
+.logo{width:120px;height:28px;border:1px dashed var(--tw-divider-strong);display:grid;place-items:center;font-size:12px;color:var(--tw-text-muted)}
+.tabs{display:flex;gap:4px}.tabs span{padding:6px 14px;font-size:15px}.tabs .on{font-weight:700;border-bottom:3px solid var(--tw-text)}
+.search{margin-left:auto;width:360px;height:36px;border:1px solid var(--tw-divider-strong);font-size:14px;color:var(--tw-text-muted);display:flex;align-items:center;padding:0 12px}
+.sub{display:flex;gap:22px;padding:0 32px;height:44px;align-items:center;border-bottom:1px solid var(--tw-divider);font-size:14px;white-space:nowrap;overflow:hidden}
+.sub .on{font-weight:700;text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:2px}
+.main{padding:28px 32px 48px;display:flex;flex-direction:column;gap:20px}
+.ptop{display:flex;align-items:center;gap:14px;height:52px;padding:0 16px;border-bottom:1px solid var(--tw-divider-strong)}
+.psub{display:flex;gap:18px;padding:0 16px;height:42px;align-items:center;border-bottom:1px solid var(--tw-divider);font-size:14px;white-space:nowrap;overflow:hidden}
+.psub .on{font-weight:700;text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:2px}
+.pmain{padding:16px 16px 90px;display:flex;flex-direction:column;gap:16px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:64px;border-top:1px solid var(--tw-divider-strong);display:flex;background:var(--tw-bg)}
+.tabbar div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;gap:2px}
+.tabbar i{width:22px;height:22px;border:1.5px solid var(--tw-text);display:block}
+.tabbar .on{font-weight:700}.tabbar .on i{background:var(--tw-text)}
+.lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--tw-text-muted)}
+h1{font-size:28px;line-height:34px}h2{font-size:18px;line-height:24px}
+.head{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}.head>div:first-child{flex:1;min-width:0}
+.head p{color:var(--tw-text-2);font-size:15px;margin-top:4px}
+.back{font-size:14px;text-decoration:underline}
+.card{border:1px solid var(--tw-divider-strong);padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--tw-surface)}
+.grid{display:grid;gap:16px}.g4{grid-template-columns:repeat(4,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr 1fr}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:1.5px solid var(--tw-text);background:var(--tw-text);color:var(--tw-on-accent);font:600 15px var(--tw-font);white-space:nowrap}
+.btn.sec{background:var(--tw-bg);color:var(--tw-text)}.btn.q{background:none;border-color:transparent;color:var(--tw-text);text-decoration:underline;padding:0 8px}
+.btn.lg{min-height:56px;padding:0 28px}
+.acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;border:1px solid var(--tw-text);padding:1px 8px;white-space:nowrap}
+.st.dash{border-style:dashed}.st.none{border-color:var(--tw-divider-strong);color:var(--tw-text-2);font-weight:400}
+.st.fill{background:var(--tw-text);color:var(--tw-on-accent)}
+.n{font-size:14px;color:var(--tw-text-2)}.mono{font-family:var(--tw-mono);font-size:13px}
+dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:14px}dl.kv dt{color:var(--tw-text-muted)}
+table{border-collapse:collapse;width:100%;font-size:14px}th{text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--tw-text-muted);font-weight:400;padding:6px 8px;border-bottom:1px solid var(--tw-divider-strong)}
+td{padding:9px 8px;border-bottom:1px solid var(--tw-divider);vertical-align:top}
+.steps{display:flex;gap:0;border:1px solid var(--tw-divider-strong)}.steps span{flex:1;padding:10px 12px;font-size:14px;border-right:1px solid var(--tw-divider)}
+.steps span:last-child{border-right:0}.steps .on{background:var(--tw-text);color:var(--tw-on-accent);font-weight:700}.steps .done{color:var(--tw-text-2)}.steps .done::before{content:"✓ "}
+.pstep{font-size:13px;color:var(--tw-text-2)}.pbar{height:6px;border:1px solid var(--tw-text);margin-top:6px}.pbar b{display:block;height:100%;background:var(--tw-text)}
+.field{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:600}.field .in{height:44px;border:1px solid var(--tw-divider-strong);font-weight:400;display:flex;align-items:center;padding:0 12px;color:var(--tw-text-muted)}
+.sel::after{content:"▾";margin-left:auto;color:var(--tw-text)}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;min-height:32px}.chk i{width:20px;height:20px;border:1.5px solid var(--tw-text);flex:none;margin-top:2px;display:grid;place-items:center;font-style:normal;font-size:14px;font-weight:700}
+.chk i.on::after{content:"✓";line-height:1}.chk .r{margin-left:auto;font-family:var(--tw-mono);font-size:13px;color:var(--tw-text-2)}
+.rad i{border-radius:50%}.rad i.on::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--tw-text)}
+.seg{display:inline-flex;border:1.5px solid var(--tw-text)}.seg span{padding:8px 12px;font-size:13px;border-right:1px solid var(--tw-text);white-space:nowrap}.seg span:last-child{border-right:0}.seg .on{background:var(--tw-text);color:var(--tw-on-accent);font-weight:700}
+.block{border:1px solid var(--tw-divider-strong);padding:16px;display:flex;flex-direction:column;gap:12px}
+.block h2{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.note{font-size:13px;color:var(--tw-text-2)}.warn{border:2px solid var(--tw-text);padding:12px 14px;font-size:14px}
+.row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--tw-divider);font-size:14px;flex-wrap:wrap}
+.row .id{flex:1;min-width:180px}.row .id b{display:block}.foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-top:1.5px solid var(--tw-text);padding-top:16px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid var(--tw-text);padding:4px 10px;font-size:13px}.chip.on{background:var(--tw-text);color:var(--tw-on-accent)}
+.tile{width:56px;height:44px;border:1px solid var(--tw-divider-strong);flex:none;font-size:10px;display:grid;place-items:center;color:var(--tw-text-muted)}
+html,body{width:390px;min-height:844px}</style></head><body><div style="position:relative;min-height:844px"><div class="ptop"><div class="logo" style="width:96px">[logo]</div><span style="margin-left:auto" class="n">Search</span><span class="n">Add</span></div><div class="psub"><span class="">Matchmaker</span><span class="">Build Scout</span><span class="">Orders</span><span class="">Storage</span><span class="on">Sync</span></div><div class="pmain"><a class="back">‹ Sync</a><div class="head"><div><div class="lbl">Workbench · Sync</div><h1>Rebrickable</h1><p>[37] sets compared · checked [19 Nov, 16:52] · last run [18 Nov, 21:40]</p></div></div><div><div class="pstep">Step 4 of 6 · <b>Preview</b> · next: Run</div><div class="pbar"><b style="width:67%"></b></div></div><p class="n">Nothing in Brick Work is deleted unless you choose. Choose what happens to each difference, then run.</p><div class="block"><div class="chips"><span class="chip on">All <span class="mono">[44]</span></span><span class="chip ">Into Brick Work <span class="mono">[31]</span></span><span class="chip ">To Rebrickable <span class="mono">[13]</span></span><span class="chip ">Changed in both places <span class="mono">[1]</span></span><span class="chip ">Lost Parts <span class="mono">[6]</span></span><span class="chip ">Loose stock <span class="mono">[9]</span></span></div><div class="field"><div class="in">Number or name</div></div><div><div class="row"><div class="chk"><i class="on"></i><span></span></div><div class="id"><b>[Ferrari Daytona SP3]</b><span class="mono">[42143-1]</span> <span class="n">· Owned</span></div><span class="st ">New there</span><span style="">Add [1] here</span></div><div class="row"><div class="chk"><i class="on"></i><span></span></div><div class="id"><b>[Titanic]</b><span class="mono">[10294-1]</span> <span class="n">· Owned</span></div><span class="st dash">Different</span><span style="">Quantity [1] to [2] there</span></div><div class="row"><div class="chk"><i class=""></i><span></span></div><div class="id"><b>[Bugatti Chiron]</b><span class="mono">[42083-1]</span> <span class="n">· Owned</span></div><span class="st none">Only here</span><span style="">Removes there</span></div><div class="row"><div class="chk"><i class="on"></i><span></span></div><div class="id"><b>[Typewriter]</b><span class="mono">[21327-1]</span> <span class="n">· Wishlist</span></div><span class="st ">New there</span><span style="">Add [1] here</span></div></div><span class="btn q" style="align-self:flex-start">Show [40] more</span></div><div class="block"><h2>Changed in both places <span class="mono">[1]</span></h2><p class="n">[1] item changed here and on Rebrickable since the last run on [18 Nov]. Nothing happens to these unless you choose.</p><div class="row"><div class="id"><b>[Lamborghini Sián FKP 37]</b><span class="mono">[42115-1]</span> <span class="n">Here [2] · Rebrickable [1]</span></div><div style="width:100%"><div class="chk rad"><i class="on"></i><span>Keep here</span></div><div class="chk rad"><i class=""></i><span>Take Rebrickable: [1] here</span></div><div class="chk rad"><i class=""></i><span>Send [2] there</span></div></div></div><p class="note">Checks, storage and notes stay here either way; only quantities are compared.</p></div><div class="block"><h2>Lost Parts <span class="mono">[6]</span></h2><p class="mono">[4] added · [1] replaced · [1] cleared · [0] not matched · [1] set needs a copy</p><div class="row"><div class="id"><b>[Porsche 911 RSR]</b><span class="mono">[42096-1]</span> <span class="n">[3] parts · [5] pieces</span></div><span class="st dash">Choose a copy</span><div class="field" style="min-width:200px">Mark the parts on<div class="in sel">[Copy 1 · Shelf B]</div></div></div><div class="row"><div class="chk"><i class="on"></i><span></span></div><div class="id"><b>[Titanic]</b><span class="mono">[10294-1]</span></div><span>To Rebrickable: [2] found here, remove from Lost Parts</span></div></div><div class="block"><h2>Loose stock <span class="mono">[9]</span></h2><div class="row"><div class="chk"><i class="on"></i><span></span></div><div class="id"><b>[Brick 2 x 4]</b><span class="mono">[3001] · [Red]</span> <span class="n">from [Bulk bin]</span></div><span class="st">New there</span><span>Add [24] here</span><div class="field" style="min-width:200px">Put in<div class="in sel">[Lot · Bulk bin]</div></div></div></div><div class="warn"><b>Before you send.</b> Brick Work's Undo cannot take a sent change back. Removals are unticked until you tick them.<dl class="kv" style="margin-top:8px"><dt>Requests</dt><dd class="mono">about [46]</dd><dt>Time</dt><dd class="mono">about [50 s] at 1 request a second</dd><dt>Budget today</dt><dd class="mono">[140] / [2,000]</dd></dl></div><div class="foot"><span class="btn q">‹ Back</span><span class="mono">[43] of [44] ticked</span><span class="btn lg" style="margin-left:auto">Run [43] changes</span></div></div><div class="tabbar"><div class=""><i></i><span>Collection</span></div><div class="on"><i></i><span>Workbench</span></div><div class=""><i></i><span>Planning</span></div><div class=""><i></i><span>Manage</span></div></div></div></body></html>

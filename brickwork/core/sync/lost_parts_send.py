@@ -1,0 +1,576 @@
+"""Send local missing part marks to Rebrickable's Lost Parts list (#469 part B).
+
+Candidate sets are the live copies' sets that have a Rebrickable set number. Missing counts on live set lines
+(`copy_figure_id IS NULL AND retired_at IS NULL`) are capped per copy at the line's quantity, summed across all live copies of each
+candidate set, and translated to Rebrickable `(set_no, part_no, color_id, is_spare)` coordinates through `lost_parts._copies` and
+`lost_parts.copy_label`, so a copy on a BrickLink part list is translated through confirmed Rebrickable links.
+
+Rule mapping (`RULES`, mirroring `lost_parts.RULES` in the send direction):
+- `add_only`: adds parts missing locally that are not on Rebrickable (`add`). A larger local count is listed as a `change` that cannot be
+  sent, because a change removes the old entry. Never lowers a remote count and never removes a remote Lost Part.
+- `per_part`: adds new missing parts (`add`), changes differing counts both upward and downward (`change`), and removes remote Lost Parts
+  whose part line is present on the local copies of sets listed on both sides (`remove`, unticked by default).
+- `per_set`: every candidate set with at least one local missing mark becomes the local list (`add`, `change`, and `remove` for any other
+  remote Lost Part on that set whose live copies have a part list). Sets with no local missing marks are left alone.
+- `everything`: every candidate set becomes the local list, including candidate sets with zero local missing marks (`remove` for all
+  remaining remote Lost Parts on candidate sets whose live copies have a part list).
+
+Limits:
+`apply` keeps no progress between requests: the page must persist per-row progress (as `sync.apply_send` does with the plan file) and
+re-plan before `apply`. The inventory part id of a new Lost Part comes from the cached set parts (`source_record` with
+`source='rebrickable'` and `kind='set_parts'`, written when a set newer than the catalogue was fetched; `RebrickableUser.lost_parts()`
+returns none for parts not yet on Rebrickable). A catalogue set the catalogue already had has no such record and stays at "Rebrickable
+inventory part id unknown": the page needs a live `GET /sets/<num>/parts/` lookup for those. The settings `rebrickable_lost_parts_send`
+and `rebrickable_lost_parts_send_rule` must be added to `admin.patch_settings`' allowlist with the page.
+
+A change, checked live on 2026-11-26 (#469): Rebrickable refuses an add for a listed part and has no `PATCH` on the entry, so a change
+removes the old entry and adds the new count. If the add fails, the old count is added back; if that fails too, the row names the part
+and the old count. A budget pause or a refused key between the two keeps the row's progress, and a retry adds the new count. A DELETE with
+an empty reply cannot be told from an empty-bodied error. Candidate sets are the sets of all live copies that have a Rebrickable number, not only the sets on a linked list.
+"""
+import json
+import sqlite3
+
+from .. import wishlists
+from . import adapters, lost_parts
+
+KEY = 'rebrickable_lost_parts_send'
+RULE_KEY = 'rebrickable_lost_parts_send_rule'
+DEFAULT_RULE = 'add_only'
+RULES = (
+    ('add_only', 'Add only',
+     'Only sends new Lost Parts. A larger count on a listed part is shown and not sent. Nothing is removed on Rebrickable.'),
+    ('per_part', 'Brick Work wins per part',
+     "For parts on sets listed on both sides, Brick Work's missing count replaces Rebrickable's, also when smaller or zero."),
+    ('per_set', 'Brick Work wins per set',
+     'A set with at least one missing part in Brick Work becomes exactly your list. Other Lost Parts on that set are offered for removal.'),
+    ('everything', 'Brick Work wins everywhere',
+     'Every synced set becomes exactly your list. A synced set with no missing parts here has its Lost Parts offered for removal.'),
+)
+RULE_VALUES = tuple(r[0] for r in RULES)
+UNDO_NOTE = 'Undo cannot reverse a remote change on Rebrickable.'
+
+
+ADD_ONLY_CHANGE = 'Rebrickable cannot change a count in place, and Add only removes nothing.'
+
+# Locked for 1.2.1 (the owner, 2026-11-26, #469): the planner cannot name the inventory id of a part that is not listed yet, and a restart
+# between a change's removal and its add names nothing. While True the setting reads off, a run planned earlier sends no Lost Parts, and no
+# route can switch the send on. Pulling Lost Parts in is not affected. The code below stays for the release that fixes both.
+SEND_LOCKED = True
+LOCKED_MESSAGE = 'Sending Lost Parts to Rebrickable is not available in this version.'
+
+def enabled(db):
+    """Whether sending Lost Parts to Rebrickable is switched on in `main.setting` (off by default; never while `SEND_LOCKED`)."""
+    if SEND_LOCKED:
+        return False
+    row = db.execute('SELECT value FROM main.setting WHERE key=?', (KEY,)).fetchone()
+    return bool(row and str(row[0]).strip().lower() in ('1', 'true', 'yes', 'on'))
+
+
+def valid_rule(value):
+    """The send rule named by `value`, or ValueError naming the four."""
+    if value not in RULE_VALUES:
+        raise ValueError('Choose add_only, per_part, per_set or everything for ' + RULE_KEY)
+    return value
+
+
+def send_rule(db):
+    """The send rule in force: the stored value when it is one of the four, else `DEFAULT_RULE`."""
+    row = db.execute('SELECT value FROM main.setting WHERE key=?', (RULE_KEY,)).fetchone()
+    return row[0] if row and row[0] in RULE_VALUES else DEFAULT_RULE
+
+
+def row_key(set_no, part_no, color_id, is_spare):
+    """Stable identifier for one planned `(set_no, part_no, color_id, is_spare)` row."""
+    return f'{set_no}:{part_no}:{int(color_id)}:{int(bool(is_spare))}'
+
+
+def _candidate_set_numbers(db, remote_rows):
+    item_ids = [r[0] for r in db.execute('SELECT DISTINCT item_id FROM main.copy WHERE archived_at IS NULL')]
+    numbers = {r['set_no'] for r in remote_rows}
+    for names in wishlists._rebrickable_numbers(db, set(item_ids)).values():
+        numbers.update(names)
+    return numbers
+
+
+def _parse_colour_id(value):
+    if type(value) is int:
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if text and text.isascii() and (text.isdecimal() or (text[0] == '-' and len(text) > 1 and text[1:].isdecimal())):
+            return int(text)
+    return None
+
+
+def _colour_sort_key(value):
+    parsed = _parse_colour_id(value)
+    return (0, parsed) if parsed is not None else (1, str(value))
+
+
+def _set_parts_map(db, set_no):
+    index = {}
+    try:
+        row = db.execute(
+            "SELECT payload FROM main.source_record WHERE source='rebrickable' AND kind='set_parts' AND key=? ORDER BY fetched_at DESC, id DESC LIMIT 1",
+            (set_no,),
+        ).fetchone()
+        if row and row[0]:
+            loaded = json.loads(row[0])
+            if isinstance(loaded, dict):
+                entries = loaded.get('results')
+            elif isinstance(loaded, list):   # a list of pages (each with `results`) or of entries
+                entries = [e for page in loaded for e in (page.get('results') or () if isinstance(page, dict) and 'results' in page else (page,))]
+            else:
+                entries = None
+            for entry in entries or ():
+                if not isinstance(entry, dict):
+                    continue
+                part = (entry.get('part') or {}).get('part_num')
+                colour = _parse_colour_id((entry.get('color') or {}).get('id'))
+                if part is None or colour is None:
+                    continue
+                key = (str(part), colour, bool(entry.get('is_spare')))
+                if key not in index:
+                    inv_id = adapters._optional_id(entry.get('inv_part_id'))
+                    if inv_id is not None:
+                        index[key] = inv_id
+    except (sqlite3.Error, ValueError, TypeError, AttributeError):
+        pass
+    return index
+
+
+def _lookup_inv_part_id(db, set_no, part_no, color_id, is_spare, remote_inv_parts, cache=None):
+    direct = remote_inv_parts.get((set_no, str(part_no), int(color_id), bool(is_spare)))
+    if direct is not None:
+        return direct
+    if cache is None:
+        parts_map = _set_parts_map(db, set_no)
+    else:
+        if set_no not in cache:
+            cache[set_no] = _set_parts_map(db, set_no)
+        parts_map = cache[set_no]
+    return parts_map.get((str(part_no), int(color_id), bool(is_spare)))
+
+
+def _unmatched_entry(set_no, reason, *, parts=1, pieces=0, copy_id=None, copy_label=None, item_id=None, color_id=None, is_spare=None,
+                     missing=None):
+    return dict(
+        set_no=set_no,
+        reason=reason,
+        parts=int(parts),
+        pieces=int(pieces),
+        copy_id=copy_id,
+        copy_label=copy_label,
+        item_id=item_id,
+        color_id=color_id,
+        is_spare=is_spare,
+        missing=missing,
+    )
+
+
+def _collect_set_lines(db, set_no, held):
+    """Aggregate live set lines across all live `held` copies of one set into Rebrickable coordinates."""
+    aggregated = {}
+    present_keys = set()
+    line_quantities = {}
+    unmatched = []
+    missing_part_list = False
+    for copy in held:
+        label = lost_parts.copy_label(copy)
+        inv_row = db.execute('SELECT inventory_source FROM main.copy WHERE id=?', (copy['id'],)).fetchone()
+        inv_source = inv_row[0] if inv_row else None
+        lines = [dict(r) for r in db.execute(
+            '''SELECT id, item_id, color_id, is_spare, quantity, missing FROM main.copy_part
+               WHERE copy_id=? AND copy_figure_id IS NULL AND retired_at IS NULL ORDER BY id''', (copy['id'],))]
+        if inv_source == 'none' or not lines:
+            missing_part_list = True
+            continue
+        numbers = wishlists._rebrickable_numbers(db, {l['item_id'] for l in lines})
+        colours = wishlists._rebrickable_colours(db, {l['color_id'] for l in lines})
+        for line in lines:
+            part_nos = sorted(numbers.get(line['item_id'], ()))
+            colour_ids = sorted(colours.get(line['color_id'], ()), key=_colour_sort_key)
+            spare = bool(line['is_spare'])
+            line_qty = max(0, line['quantity'])
+            capped = min(line['missing'], line_qty)
+            if len(part_nos) != 1 or len(colour_ids) != 1:
+                if capped > 0:
+                    reason = ('No Rebrickable number for this part or colour'
+                              if not part_nos or not colour_ids else
+                              'Several Rebrickable numbers match this part or colour')
+                    unmatched.append(_unmatched_entry(
+                        set_no, reason, parts=1, pieces=capped, copy_id=copy['id'], copy_label=label,
+                        item_id=line['item_id'], color_id=line['color_id'], is_spare=spare, missing=capped,
+                    ))
+                continue
+            parsed_colour = _parse_colour_id(colour_ids[0])
+            if parsed_colour is None:
+                if capped > 0:
+                    unmatched.append(_unmatched_entry(
+                        set_no, 'Rebrickable colour number is not an integer', parts=1, pieces=capped,
+                        copy_id=copy['id'], copy_label=label, item_id=line['item_id'], color_id=line['color_id'],
+                        is_spare=spare, missing=capped,
+                    ))
+                continue
+            key = (part_nos[0], parsed_colour, spare)
+            present_keys.add(key)
+            line_quantities[key] = line_quantities.get(key, 0) + line_qty   # what all the copies' lines together hold
+            if capped > 0:
+                bucket = aggregated.setdefault(key, dict(missing=0, copies={}, inv_part_id=None))
+                bucket['missing'] += capped
+                entry = bucket['copies'].setdefault(copy['id'], dict(id=copy['id'], label=label, missing=0))
+                entry['missing'] += capped
+    return aggregated, present_keys, line_quantities, unmatched, missing_part_list
+
+
+def plan(db, remote, translate, *, rule=None, on=True):
+    """Build the pure send plan comparing local missing set-line sums with `remote` (`RebrickableUser.lost_parts()` or failure text)."""
+    how = valid_rule(send_rule(db) if rule is None else rule)
+    out = dict(on=bool(on), rule=how, status='off', message=None, unreadable=0, clearing=False, rows=[], unmatched=[],
+               summary=dict(add=0, change=0, remove=0, unmatched=0, unreadable=0))
+    if not on:
+        return out
+    if not isinstance(remote, dict):
+        out.update(status='unavailable', clearing=False,
+                   message='Lost Parts were not read: ' + (remote or 'no answer') + '. Nothing can be sent until the list is read.')
+        return out
+    unreadable = int(remote.get('unreadable') or 0)
+    if unreadable > 0:
+        out.update(status='unavailable', unreadable=unreadable, clearing=False,
+                   message='%d %s could not be read, so nothing can be sent this time.' % (
+                       unreadable, 'Lost Parts row' if unreadable == 1 else 'Lost Parts rows'))
+        out['summary']['unreadable'] = unreadable
+        return out
+    remote_rows = list(remote.get('rows') or ())
+    remote_inv_parts = dict(remote.get('inv_parts') or {})
+    out.update(status='read', unreadable=0, clearing=True)
+
+    remote_by_set = lost_parts.by_set(remote_rows)
+    numbers = _candidate_set_numbers(db, remote_rows)
+    mapping = translate(db, numbers)
+    copies_by_item = lost_parts._copies(db, [i for i in mapping.values() if i])
+    set_parts_cache = {}
+
+    for set_no in sorted(numbers):
+        item_id = mapping.get(set_no)
+        if not item_id:
+            continue
+        held = copies_by_item.get(item_id, [])
+        if not held:
+            continue
+        local_map, present_keys, line_quantities, unmatched, missing_part_list = _collect_set_lines(db, set_no, held)
+        out['unmatched'].extend(unmatched)
+        remote_map = {}
+        for r in remote_by_set.get(set_no, ()):
+            rkey = (str(r['part_no']), int(r['color_id']), bool(r['is_spare']))
+            remote_map[rkey] = r
+            if r.get('inv_part_id') is not None:
+                remote_inv_parts[(set_no, rkey[0], rkey[1], rkey[2])] = r['inv_part_id']
+
+        has_local_marks = bool(local_map or unmatched)
+        has_remote_marks = bool(remote_map)
+        noted_missing_list = False
+        if missing_part_list and has_remote_marks and how in ('per_set', 'everything'):
+            out['unmatched'].append(_unmatched_entry(
+                set_no, 'The set has no part list yet',
+                parts=len(remote_map),
+                pieces=sum(int(r['quantity']) for r in remote_map.values()),
+            ))
+            noted_missing_list = True
+        all_keys = sorted(set(local_map) | set(remote_map))
+        for part_no, color_id, is_spare in all_keys:
+            local_entry = local_map.get((part_no, color_id, is_spare))
+            remote_entry = remote_map.get((part_no, color_id, is_spare))
+            local_qty = local_entry['missing'] if local_entry else 0
+            remote_qty = int(remote_entry['quantity']) if remote_entry else 0
+            if local_qty == remote_qty:
+                continue
+            if local_qty > 0 and remote_qty == 0:
+                state = 'add'
+            elif local_qty > 0 and remote_qty > 0:
+                if local_qty < remote_qty:
+                    if how == 'add_only':
+                        continue
+                    if unmatched or missing_part_list:
+                        if missing_part_list and not noted_missing_list:
+                            out['unmatched'].append(_unmatched_entry(
+                                set_no, 'The set has no part list yet',
+                                parts=len(remote_map),
+                                pieces=sum(int(r['quantity']) for r in remote_map.values()),
+                            ))
+                            noted_missing_list = True
+                        continue
+                state = 'change'
+            else:
+                if how == 'add_only':
+                    continue
+                if how == 'per_part' and not (has_local_marks and has_remote_marks and (part_no, color_id, is_spare) in present_keys):
+                    continue
+                if how == 'per_set' and not has_local_marks:
+                    continue
+                if unmatched or missing_part_list:
+                    if missing_part_list and not noted_missing_list:
+                        out['unmatched'].append(_unmatched_entry(
+                            set_no, 'The set has no part list yet',
+                            parts=len(remote_map),
+                            pieces=sum(int(r['quantity']) for r in remote_map.values()),
+                        ))
+                        noted_missing_list = True
+                    continue
+                state = 'remove'
+
+            if state in ('add', 'change'):
+                inv_part_id = (remote_entry.get('inv_part_id') if remote_entry else None) or _lookup_inv_part_id(
+                    db, set_no, part_no, color_id, is_spare, remote_inv_parts, set_parts_cache)
+            else:
+                inv_part_id = remote_entry.get('inv_part_id') if remote_entry else None
+            ids = list(remote_entry.get('ids') or ()) if remote_entry else []
+            ids_complete = (bool(remote_entry.get('ids_complete', bool(ids))) and bool(ids)) if remote_entry else True
+            reason = None
+            line_qty = line_quantities.get((part_no, color_id, is_spare))
+            needs_remove = state == 'remove' or (state == 'change' and how != 'add_only')
+            if state == 'change' and how == 'add_only':
+                tickable = False
+                ticked = False
+                reason = ADD_ONLY_CHANGE
+            elif state in ('add', 'change') and line_qty is not None and local_qty > line_qty:
+                tickable = False
+                ticked = False
+                reason = 'The copies together miss more than the set holds'
+            elif needs_remove and not ids_complete:
+                tickable = False
+                ticked = False
+                reason = 'Missing Rebrickable lost part id'
+            elif state in ('add', 'change') and not inv_part_id:
+                tickable = False
+                ticked = False
+                reason = 'Rebrickable inventory part id unknown'
+            else:
+                tickable = True
+                ticked = state == 'add'
+            copies = (list(local_entry['copies'].values()) if local_entry else
+                      [dict(id=c['id'], label=lost_parts.copy_label(c), missing=0) for c in held])
+            row = dict(
+                key=row_key(set_no, part_no, color_id, is_spare),
+                set_no=set_no,
+                part_no=part_no,
+                color_id=color_id,
+                is_spare=is_spare,
+                state=state,
+                rule=how,
+                before=remote_qty,
+                after=local_qty,
+                quantity=local_qty if state != 'remove' else remote_qty,
+                tickable=tickable,
+                ticked=ticked,
+                reason=reason,
+                copies=copies,
+                inv_part_id=inv_part_id,
+                ids=ids,
+                ids_complete=ids_complete,
+                added=False,
+                removed=False,
+            )
+            out['rows'].append(row)
+            out['summary'][state] += 1
+
+    out['summary']['unmatched'] = len(out['unmatched'])
+    return out
+
+
+def _matches_tick(row, selected):
+    if 'key' in row and row['key'] in selected:
+        return True
+    if all(k in row for k in ('set_no', 'part_no', 'color_id', 'is_spare')):
+        try:
+            tuple_key = (row['set_no'], row['part_no'], int(row['color_id']), bool(row['is_spare']))
+            return tuple_key in selected
+        except (TypeError, ValueError):
+            return False
+    return False
+
+
+def _is_pos_int(value):
+    return type(value) is int and value >= 1
+
+
+def _reply_lost_part_id(reply):
+    if isinstance(reply, dict):
+        lost_id = reply.get('lost_part_id')
+        if _is_pos_int(lost_id):
+            return lost_id
+    return None
+
+
+def _validate_row(row, plan_rule):
+    if not row.get('tickable', True):
+        return row.get('reason') or 'Row is not sendable'
+    state = row.get('state')
+    if state not in ('add', 'change', 'remove'):
+        return f'Unknown state: {state}'
+    if state == 'change' and (row.get('rule') or plan_rule) == 'add_only':
+        return ADD_ONLY_CHANGE
+    if state in ('add', 'change'):
+        if not _is_pos_int(row.get('inv_part_id')):
+            return row.get('reason') or (
+                'Rebrickable inventory part id unknown'
+                if row.get('inv_part_id') is None
+                else 'Invalid Rebrickable inventory part id'
+            )
+        if not _is_pos_int(row.get('after')):
+            return 'Invalid target quantity'
+    if state == 'change' and not _is_pos_int(row.get('before')):
+        return 'Invalid old quantity'
+    ids = row.get('ids')
+    if ids is not None:
+        if not isinstance(ids, (list, tuple)) or not all(_is_pos_int(lost_id) for lost_id in ids):
+            return 'Invalid Rebrickable lost part id'
+    if state in ('remove', 'change') and not row.get('removed'):
+        if not row.get('ids_complete', True) or not ids:
+            return row.get('reason') or 'Missing Rebrickable lost part id'
+    return None
+
+
+def _gone(row, *, tried=False):
+    """`tried`: putting the old count back failed too. Otherwise nothing has tried yet (a pause, a refused key, a removal that stopped halfway)."""
+    return (f"Part {row.get('part_no')} of set {row.get('set_no')} may be gone from Rebrickable's Lost Parts: it had {row.get('before')}. "
+            f"Brick Work {'could not put it back' if tried else 'stopped before putting it back'}. Check it there.")
+
+
+def _put_back(client, row):
+    """After the new count failed: add the old one again. The new Lost Part id, or None when that failed too. A refused key or a used-up budget
+    goes on to the caller: the row keeps `removed`, and a retry adds the new count."""
+    try:
+        return _reply_lost_part_id(client.lost_part_add(row['inv_part_id'], row['before']))
+    except (adapters.KeyRejected, adapters.RemoteBudgetExceeded, adapters.WaitingForBudget):
+        raise
+    except Exception:
+        return None
+
+
+def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
+    """Send the ticked rows of `planned` through `client`. Writes nothing locally."""
+    del db, via, actor
+    plan_rule = (planned or {}).get('rule')
+    rows = list((planned or {}).get('rows') or ())
+    if ticked is None:
+        chosen = [r for r in rows if r.get('ticked')]
+    else:
+        if isinstance(ticked, (str, bytes, bytearray)):
+            raise ValueError('ticked must be an iterable of hashable keys')
+        try:
+            selected = set(ticked)
+        except TypeError as exc:
+            raise ValueError('ticked must be an iterable of hashable keys') from exc
+        chosen = [r for r in rows if _matches_tick(r, selected)]
+
+    def _partition_tail(tail_rows):
+        for tail in tail_rows:
+            copy_row = dict(tail)
+            err = _validate_row(copy_row, plan_rule)
+            if err is not None:
+                failed.append(dict(copy_row, reason=err))
+            else:
+                copy_row['ticked'] = True
+                remaining.append(copy_row)
+
+    sent, failed, remaining = [], [], []
+    for idx, orig_row in enumerate(chosen):
+        row = dict(orig_row)
+        err = _validate_row(row, plan_rule)
+        if err is not None:
+            failed.append(dict(row, reason=err))
+            continue
+        state = row['state']
+        row.pop('gone', None)
+        added = bool(row.get('added'))
+        added_id = row.get('added_id') if _is_pos_int(row.get('added_id')) else None
+        removed = bool(row.get('removed'))
+        removed_ids = list(row.get('removed_ids') or ())
+
+        def _save_progress():
+            if state in ('add', 'change'):
+                row['added'] = added
+                if added_id is not None:
+                    row['added_id'] = added_id
+            if state in ('remove', 'change'):
+                row['removed'] = removed
+                if removed_ids:
+                    row['removed_ids'] = removed_ids
+
+        def _warn():
+            if state == 'change' and (removed or removed_ids) and not added:      # something of the old count is gone and the new one is not there
+                row['gone'] = _gone(row, tried=bool(row.get('put_back_failed')))
+
+        try:
+            if state == 'add':
+                if not added:
+                    reply = client.lost_part_add(row['inv_part_id'], row['after'])
+                    added = True
+                    added_id = _reply_lost_part_id(reply)
+            elif state == 'change':
+                # Rebrickable has no update call and refuses an add for a listed part (#469): remove the old entry, then add the new count.
+                if not removed:
+                    for lost_id in row.get('ids') or ():
+                        if lost_id in removed_ids:
+                            continue
+                        client.lost_part_remove(lost_id)
+                        removed_ids.append(lost_id)
+                    removed = True
+                if not added:
+                    try:
+                        added_id = _reply_lost_part_id(client.lost_part_add(row['inv_part_id'], row['after']))
+                        added = True
+                        row.pop('put_back_failed', None)
+                    except (adapters.KeyRejected, adapters.RemoteBudgetExceeded, adapters.WaitingForBudget):
+                        raise
+                    except Exception:
+                        back = _put_back(client, row)
+                        if back is None:
+                            row['put_back_failed'] = True      # a retry that stops again must not say that nothing tried
+                            reason = row['gone'] = _gone(row, tried=True)      # kept on the row: a later pause or refused key shows it again
+                        else:      # the old count is there again, under a new id: a retry starts over from it
+                            reason = f"Rebrickable did not take the new count. The old count, {row['before']}, was put back."
+                            row['ids'], row['ids_complete'] = [back], True
+                            removed, removed_ids = False, []
+                            row.pop('put_back_failed', None)
+                            row.pop('removed_ids', None)
+                        _save_progress()
+                        row['ticked'] = True
+                        failed.append(dict(row, reason=reason))
+                        continue
+            elif state == 'remove':
+                if not removed:
+                    for lost_id in row.get('ids') or ():
+                        if lost_id in removed_ids:
+                            continue
+                        client.lost_part_remove(lost_id)
+                        removed_ids.append(lost_id)
+                    removed = True
+        except adapters.KeyRejected as exc:
+            _save_progress()
+            _warn()
+            row['ticked'] = True
+            remaining.append(row)
+            _partition_tail(chosen[idx + 1:])
+            exc.partial = dict(sent=sent, failed=failed, remaining=remaining, note=UNDO_NOTE)
+            raise
+        except (adapters.RemoteBudgetExceeded, adapters.WaitingForBudget):
+            _save_progress()
+            _warn()                      # a paused run can be stopped, and then nothing sends the new count
+            row['ticked'] = True
+            remaining.append(row)
+            _partition_tail(chosen[idx + 1:])
+            break
+        except Exception as exc:
+            _save_progress()
+            _warn()
+            row['ticked'] = True
+            failed.append(dict(row, reason=' '.join(filter(None, (str(exc) or 'Rebrickable API unsuccessful', row.get('gone'))))))
+            continue
+        _save_progress()
+        if row.get('reason') is not None:
+            row['reason'] = None
+        sent.append(row)
+    return dict(sent=sent, failed=failed, remaining=remaining, note=UNDO_NOTE)

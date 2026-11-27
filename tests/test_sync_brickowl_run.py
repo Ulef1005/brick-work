@@ -314,14 +314,19 @@ def test_what_syncs_says_when_no_brick_owl_wishlist_is_linked(db, remote):
     assert linked() == 'Quantity wanted ↔ wishlist Wishlist'
 
 
-def test_a_local_twin_whose_send_would_delete_a_lot_is_offered_unticked(db, remote):
-    remote.lots = {'owned': [['1', '1000-1', 1], ['2', '1000-1', 1]], 'wanted': []}
+@pytest.mark.parametrize('lots', [[['1', '1000-1', 1], ['2', '1000-1', 1]], []])
+def test_a_local_twin_is_never_sent_under_a_number_that_belongs_to_another_item(db, remote, lots):
+    remote.lots = {'owned': [list(lot) for lot in lots], 'wanted': []}
     coll = Coll(db)
-    twin = coll.local('gear', 'Syn local twin', born_key='1000-1')      # the number is the catalogue set's, which is not owned here
+    twin = coll.local('gear', 'Syn local twin', born_key='1000-1')      # the number is the catalogue set's
     coll.add_stock('gear', twin)
-    db.commit()
+    have(db, '1000-1', 3)
+    plan = sync.plan_send(db, 'brickowl')
+    row = next(r for r in plan['rows'] if r['item_id'] == twin)
+    assert not row['tickable'] and row['action'] is None and 'deletes_lot' not in row
+    assert row['reason'] == 'Another item here has this number at Brick Owl'
+    sync.apply_send(db, plan['id'])
+    assert remote.held('owned', '1000-1') == 3
     sync_run.save_choices(db, dict(owned_dir='to', wishlist_dir='off', wish_list='default'), 'brickowl')
     run, plans = sync_run.load(db, sync_run.start(db, source='brickowl')['id'])
-    row = next(r for r in sync_run.rows(db, run, plans) if r['item_id'] == twin)
-    assert [o['id'] for o in row['options']] == ['send'] and row['default'] is None
-    assert row['options'][0]['note'] == 'Deletes a lot there' and row['tag'] != 'Same'
+    assert all(not shown['options'] for shown in sync_run.rows(db, run, plans) if shown['item_id'] == twin)

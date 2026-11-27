@@ -396,8 +396,7 @@ def rows(db, run, plans):
             row['state'] = 'send_add' if r['state'] == 'add' else 'change'
             row['options'].append(dict(id='send', label=(f"Add {r['send']} there" if r['state'] == 'add' else f"Quantity {r['remote']} to {r['send']}"), note=None))
             row['default'] = row['default'] or 'send'
-        elif r['state'] in ('add', 'change') and r.get('deletes_lot') and r['tickable']:      # Brick Owl: offered, never chosen for the person
-                                                      # ('add': the lots there carry this number for another item, a local twin)
+        elif r['state'] == 'change' and r.get('deletes_lot') and r['tickable']:      # Brick Owl: offered, never chosen for the person
             row['state'] = 'change'
             row['options'].append(dict(id='send', label=f"Quantity {r['remote']} to {r['send']}", note=_lot_note(r)))
         elif r.get('reason'):

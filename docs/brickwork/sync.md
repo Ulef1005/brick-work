@@ -28,7 +28,7 @@ Brick Owl is a source of the core, the API and the MCP tools (#522). It has no p
 - **Link.** `wishlist_id` (text) names the one Brick Owl wishlist that pulls and takes wishes; `wish_list` is the Brick Work wishlist, as for the other sites. `GET /sync/brickowl/lists` lists the wishlists, each with its number of lots. With no wishlist linked, wishes are not read, and a wish row cannot be ticked in a send.
 - **Counts.** Brick Owl keeps a separate lot for each condition of a set. The count of a set is the sum of its lots. A send adds to the first lot, and creates a lot (condition new) where there is none. It takes a lower count from the last lot first, whatever its condition. A send that deletes a lot is never ticked by default; its row has `deletes_lot: true`. This holds for conflicts and removals too.
 - **Retry.** When a call does not go through, or the process dies inside one, the next attempt reads the lots again before it writes. A lot that did arrive is not created twice.
-- **Numbers.** A set lot without a readable set number or quantity is left out. A set number that Brick Owl's lookup does not resolve to exactly one item is listed as unmatched. The lookup is one call per set number.
+- **Numbers.** A set lot without a readable set number or quantity is left out. A local copy of a catalogue set under the same number is never sent. A set number that Brick Owl's lookup does not resolve to exactly one item is listed as unmatched. The lookup is one call per set number.
 - **Run.** `core.sync.run` takes the source `brickowl`, with the directions setting `brickowl_sync_directions`. Each row is one send.
 - **Budget.** At most 2,000 calls a day (`BW_BRICKOWL_DAILY_BUDGET` can lower it).
 

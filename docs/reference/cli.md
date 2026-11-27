@@ -302,7 +302,7 @@ brickwork settings set KEY VALUE
 
 *Since 0.5.0; on the 4.0 store since 4.0.*
 
-Collection sync with Rebrickable and Brickset ([Sync with Rebrickable and Brickset](../how-to/sync-collection.md)). Row keys of a plan name an item: `owned:ITEM_ID` or `wanted:ITEM_ID`.
+Collection sync with Rebrickable and Brickset ([Sync with Rebrickable, Brickset and Brick Owl](../how-to/sync-collection.md)). The command line does not take Brick Owl yet. Row keys of a plan name an item: `owned:ITEM_ID` or `wanted:ITEM_ID`.
 
 ```text
 brickwork sync {rebrickable,brickset} {status,lists,link,pull,send,connect,paste,remove,test} [options]

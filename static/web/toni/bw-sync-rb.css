@@ -201,3 +201,9 @@
 [data-sr-live] { display: flex; flex-direction: column; gap: 16px; }
 .sr-also { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; justify-self: start; font: 500 15px var(--tw-font); }
 .sr-also input { width: 20px; height: 20px; }
+
+/* #522: the Brick Owl page (frames 31 and 71): the day's one budget as a row; a pick row without a picture tile; the count in the foot. */
+.sr-budget { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--tw-divider); font: 400 14px/22px var(--tw-font); }
+.sr-budget b { font: 600 15px var(--tw-font); }
+.sr-pickrow.sr-notile { grid-template-columns: 24px minmax(0, 1fr); }
+

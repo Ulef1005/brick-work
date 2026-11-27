@@ -44,8 +44,8 @@ PORTED |= {'web.bw_tools', 'web.bw_admin', 'web.bw_admin_write', 'web.bw_tokens'
 # M.8j: Collection sync (sources, link, pull and send plans, their writes) and Import from BrickTracker (upload, plan, apply, Undo).
 PORTED |= {'web.bw_sync', 'web.bw_sync_hub', 'web.bw_sync_site', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_write', 'web.bw_import_legacy', 'web.bw_import_upload',
            'web.bw_import_plan', 'web.bw_import_apply', 'web.bw_import_undo'}
-# #519, #520: the Rebrickable and Brickset pages' steps (connect and its key, choose what, pick, preview, apply, result, undo, start, retry).
-PORTED |= {f'web.bw_sync_{site}_{step}' for site in ('rb', 'bs') for step in ('connect', 'key', 'choose', 'choose_save', 'start', 'pick', 'pick_save', 'preview',
+# #519, #520, #522: the Rebrickable, Brickset and Brick Owl pages' steps (connect and its key, choose what, pick, preview, apply, result, undo, start, retry).
+PORTED |= {f'web.bw_sync_{site}_{step}' for site in ('rb', 'bs', 'bo') for step in ('connect', 'key', 'choose', 'choose_save', 'start', 'pick', 'pick_save', 'preview',
                                                                           'apply', 'result', 'undo', 'retry', 'progress', 'stop')}
 # #521: the BrickLink page's steps (its own module, the same step names; no retry, nothing is sent).
 PORTED |= {f'web.bw_sync_bl_{step}' for step in ('site', 'connect', 'key', 'choose', 'choose_save', 'start', 'pick', 'pick_save', 'preview', 'apply', 'result', 'undo')}

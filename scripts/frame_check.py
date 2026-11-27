@@ -28,7 +28,7 @@ if __name__ == '__main__':
     import venv_python
     venv_python.ensure()   # re-exec into the app's venv before anything imports the app (PIL, ...); only as a script, never on import
 import screen_gate as gate  # noqa: E402
-from brickwork.demo import frames  # noqa: E402
+from brickwork.demo import frames, frames_brickowl  # noqa: E402
 
 FRAMES = ROOT / 'design' / 'screens-b'
 SCALE = 2
@@ -54,6 +54,9 @@ TARGETS = {'01-tools-and-admin': ('/manage/tools', 'frames'),
            '15-order-missing-parts': ('/planning/order-missing-parts', 'frames-order'),   # the three copies of frame 15 (brickwork/demo/frames_order.py)
            '16-orders': ('/workbench/orders/2?view=count', 'frames-orders'),   # 9900102 counting, 56 of 95 (brickwork/demo/frames_orders.py; the id is pinned in its test)
            '44-source-chip': ('/collection/item/set/7213-1', 'frames-source'),   # frame 44 supersedes 12 for the copy page (wiki-agent, 2026-11-24): copy 1 of 7213-1 pulled from Rebrickable (brickwork/demo/frames_setdetail.py SourceLayer)
+           '31-brickowl': ('/workbench/sync/brickowl', 'frames-brickowl'),   # #522: the invented Brick Owl of brickwork/demo/frames_brickowl.py
+           '32-brickowl-choose-what': ('/workbench/sync/brickowl/choose', 'frames-brickowl'),
+           '71-brickowl-pick': ('/workbench/sync/brickowl/run/' + frames_brickowl.RUN_ID + '/pick', 'frames-brickowl'),
            '07-part-runner': (frames.runner_path(), 'frames')}   # the four incomplete copies as one run of 52 parts, on the 7th (brickwork/demo/frames.py RUNNER)
 # JS run in the app's page before its capture (capture_screens.cjs `script`) when the frame draws a state the page keeps in the browser. Part Spotter's queue is
 # filled through the page's own code: `fetch` answers the recognition calls with the frame's candidates, and the photos go in through the file input.

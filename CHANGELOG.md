@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- **Brick Owl sync in the API and MCP** (#522). The sync routes and MCP tools take `brickowl`: owned and wanted sets with their counts, with one linked Brick Owl wishlist. A send that would delete a lot there is never ticked by default. There is no Brick Owl page yet.
+- **The Brick Owl sync page, up to the pick step** (#522). **Workbench → Sync → Brick Owl** shows your key, the one daily budget, what syncs and, after a first run, the last runs. **Start a sync** takes you through connect (the API key alone), choose what (a direction for owned and for wanted sets, one Brick Owl wishlist and the wishlist here) and pick sets. A wishlist read that fails shows why and keeps your link. Preview, run and result are the shared steps; their Brick Owl details follow. See [A Brick Owl run](docs/how-to/sync-collection.md#a-brick-owl-run).
+
+- **Brick Owl sync in the API and MCP** (#522). The sync routes and MCP tools take `brickowl`: owned and wanted sets with their counts, with one linked Brick Owl wishlist. A send that would delete a lot there is never ticked by default.
 
 - **Clearer sync run headings** (#722). After you undo the pull of an interrupted run, its card reads *Pull undone*. A preview that only records where matching sets came from no longer starts with *0 sets compared*.
 

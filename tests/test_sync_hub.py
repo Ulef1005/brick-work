@@ -29,6 +29,7 @@ def remote(pair, monkeypatch):
     monkeypatch.setenv('BW_SECRET_KEY', Fernet.generate_key().decode())
     monkeypatch.setenv('BW_REBRICKABLE_API_KEY', 'synthetic-rebrickable-key')
     monkeypatch.delenv('BW_BRICKSET_API_KEY', raising=False)
+    monkeypatch.delenv('BW_BRICKOWL_API_KEY', raising=False)
     with closing(connect(pair)) as db:
         Coll(db).add_copy('2070-1')
     return fake
@@ -57,7 +58,7 @@ def test_hub_renders_four_site_cards_in_order_and_sections(client, remote):
         assert 'Never' in card.select_one('.sh-meta').get_text()
         btn = card.select_one('a.bk-btn')
         assert btn.get_text(strip=True) == 'Connect'
-        assert btn['href'].endswith('/workbench/sync/bricklink/connect' if key == 'bricklink' else '/manage/catalogues')   # BrickLink has its page (#521), Brick Owl not yet
+        assert btn['href'].endswith(f'/workbench/sync/{key}/connect')       # both have their page (#521, #522)
     imp =page.select_one('[data-sync-import]')
     assert imp.select_one('.sh-name').get_text(strip=True) == 'Import & export'
     assert imp.select_one('a.bk-btn').get_text(strip=True) == 'Open'
@@ -105,7 +106,7 @@ def test_site_page_restricts_source_has_back_link_and_404s_unknown(client, remot
     back = rb.select_one('a.bw-back')
     assert back['href'].endswith('/workbench/sync') and back.get_text(strip=True) == 'Sync'
     assert client.get('/workbench/sync/bricklink').status_code == 200      # its own page since #521
-    assert client.get('/workbench/sync/brickowl').status_code == 404
+    assert client.get('/workbench/sync/brickowl').status_code == 200       # and this one since #522
     assert client.get('/workbench/sync/unknown').status_code == 404
 
 

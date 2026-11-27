@@ -24,6 +24,11 @@
 {% macro segment(name, kind, current) %}
 <div class="sr-seg" role="radiogroup" aria-label="Direction">{% for v in segments[kind] %}<label><input type="radio" name="{{ name }}" value="{{ v }}" {{ 'checked' if v == current }}><span>{{ segment_labels[v] }}</span></label>{% endfor %}</div>
 {% endmacro %}
+{# The pick step's mode switch, chips and search, and what each of its rows needs. They read the pick page's variables. #}
+{% macro rowkeys(c) %}{{ (c.lists if mode == 'list' else [c.theme] if mode == 'theme' and c.theme else [c.year|string] if mode == 'year' and c.year else [])|join('|') }}{% endmacro %}
+{% macro modebar() %}<nav class="sr-seg" aria-label="Which sets">{% for v, text in modes %}<a href="{{ url_for('web.bw_sync_' ~ pre ~ '_pick', run_id=run.id, by=v) }}" {% if v == mode %}aria-current="true"{% endif %}><span>{{ text }}</span></a>{% endfor %}</nav>
+{% if chips %}<div class="sr-chips" role="group" aria-label="Choose by {{ mode }}">{% for name, n in chips %}<button type="button" class="sr-chip" data-sr-chip="{{ name }}" aria-pressed="false">{{ name }} <span class="mono">{{ n }}</span></button>{% endfor %}</div>{% endif %}
+<label class="sy-search sr-search"><span class="bc-visually-hidden">Search</span>{{ toni_icon('search') }}<input type="search" data-sr-search placeholder="Number or name" aria-label="Search sets"></label>{% endmacro %}
 {% block main %}
 
 {% if screen == 'site' %}
@@ -44,18 +49,27 @@
 {% for u in lr.unmatched_sets %}<li><span class="mono">{{ u.set_no }}</span> · {{ u.parts }} {{ 'part' if u.parts == 1 else 'parts' }} not matched · {{ u.reason }}</li>{% endfor %}
 {% for u in lr.unmatched %}<li><span class="mono">{{ u.set_no }} · {{ u.part_no }} · colour {{ u.color_id }}</span> · {{ u.quantity }} not matched · {{ u.reason }}</li>{% endfor %}
 </ul>{% endif %}{% endif %}</section>{% endif %}
+{% set key_only = source == 'brickowl' %}{# the API key is the whole credential: the account card tests and removes the key #}
 <div class="sr-grid">
 <section class="sr-card" data-rb-account><h2>Your {{ label }} account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
 <dl class="sr-kv">
 {% if account %}<dt>Account</dt><dd>{{ account }}</dd>{% endif %}
 <dt>API key</dt><dd>{% if key_gap %}Not set{% elif key.origin == 'env' %}Set in the environment{% else %}Set{% if key_day %} · checked {{ key_day }}{% endif %}{% endif %}</dd>
 {% if source == 'rebrickable' %}<dt>Speed</dt><dd>About 1 request a second</dd>
+{% elif speed %}<dt>Speed</dt><dd>At most {{ speed }} requests a second</dd>
 {% endif %}{% if budget and source == 'brickset' %}<dt>Today’s budget</dt><dd class="mono">{{ budget.used }} of {{ budget.budget }} calls</dd>
-{% elif budget %}<dt>Budget today</dt><dd class="mono">{{ '{:,}'.format(budget.used) }} / {{ '{:,}'.format(budget.budget) }}</dd>{% endif %}
+{% elif budget and not key_only %}<dt>Budget today</dt><dd class="mono">{{ '{:,}'.format(budget.used) }} / {{ '{:,}'.format(budget.budget) }}</dd>{% endif %}
 </dl>
-<div class="sr-actions">{% if connected and can_edit %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='test') }}">{{ csrf() }}<input type="hidden" name="next" value="site"><button class="bk-btn bk-outline">Test</button></form>{% endif %}
+<div class="sr-actions">{% if connected and can_edit %}{% if key_only %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_key') }}">{{ csrf() }}<input type="hidden" name="action" value="test"><input type="hidden" name="next" value="site"><button class="bk-btn bk-outline">Test</button></form>{% else %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='test') }}">{{ csrf() }}<input type="hidden" name="next" value="site"><button class="bk-btn bk-outline">Test</button></form>{% endif %}{% endif %}
 <a class="bk-btn bk-quiet" href="{{ url_for('web.bw_sync_' ~ pre ~ '_connect') }}">{{ 'Change' if connected else 'Connect' }}</a>
-{% if connected and can_edit %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='remove') }}">{{ csrf() }}<input type="hidden" name="next" value="site"><button class="bk-btn bk-quiet">Remove</button></form>{% endif %}</div></section>
+{% if connected and can_edit %}{% if not key_only %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='remove') }}">{{ csrf() }}<input type="hidden" name="next" value="site"><button class="bk-btn bk-quiet">Remove</button></form>{% elif key.origin != 'env' %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_key') }}">{{ csrf() }}<input type="hidden" name="action" value="remove"><input type="hidden" name="next" value="site"><button class="bk-btn bk-quiet">Remove</button></form>{% endif %}{% endif %}</div></section>
+{% if key_only %}
+<section class="sr-card" data-rb-budget><h2>Today’s budget</h2>
+<p class="sr-lede">Every call to Brick Owl counts against one daily budget. When it is used up, a read does not start, and sends not made yet wait.</p>
+{% if budget %}<div class="sr-budget"><b>All calls</b><span class="mono">{{ '{:,}'.format(budget.used) }} of {{ '{:,}'.format(budget.budget) }}</span></div>{% endif %}</section>
+</div>
+{% endif %}
+{% if not key_only or runs or waiting %}
 <section class="sr-card" data-rb-runs><h2>Last runs</h2>
 {% for r in runs %}<div class="sr-run"><div class="sr-runid"><b>{{ r.title }} · {{ stamp(r.at) }}</b><span>{{ r.what }}</span></div>
 {% if r.state == 'Done' %}{{ tag('Done') }}{% elif r.state == 'Interrupted' %}{{ tag('Interrupted', true, true) }}{% if r.run %}<a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_progress', run_id=r.run) }}">Open</a>{% endif %}{% elif r.state == 'Undone' %}{{ tag('Undone', true) }}{% else %}{{ tag(r.state, true) }}{% endif %}
@@ -64,8 +78,9 @@
 {% else %}<p class="bk-text">Nothing has run yet.</p>{% endfor %}
 {% if waiting %}<p class="bk-text">{{ waiting }} {{ 'row' if waiting == 1 else 'rows' }} to {{ label }} still waiting.</p>{% endif %}
 {% if source == 'brickset' %}<p class="sr-note">Purchase date and price never leave Brick Work: Brickset has no field for them. Each call to Brickset counts against its daily limit for your key: a read of your sets, a send, and a check of your user hash.</p>
-{% else %}<p class="sr-note">Rebrickable keeps its own link to your account. Each run counts against Brick Work’s daily budget for Rebrickable.</p>{% endif %}</section>
-</div>
+{% elif source == 'rebrickable' %}<p class="sr-note">Rebrickable keeps its own link to your account. Each run counts against Brick Work’s daily budget for Rebrickable.</p>{% endif %}</section>
+{% endif %}
+{% if not key_only %}</div>{% endif %}
 <section class="sr-card" data-rb-what><h2>What syncs</h2>
 {% if what %}<table class="sr-table"><thead><tr><th>What</th><th>Direction</th><th>Linked to</th></tr></thead><tbody>
 {% for w in what %}<tr><td><b>{{ w.what }}</b></td><td>{{ tag(w.direction) }}</td><td>{{ w.linked }}</td></tr>{% endfor %}</tbody></table>
@@ -76,9 +91,10 @@
 {{ head(subtitle) }}
 {{ stepbar() }}
 {{ flashes() }}
-<div class="sr-grid">
-<section class="sr-card" data-rb-key><h2>1 · API key {{ tag('Set') if not key_gap else tag('Not set', true) }}</h2>
-<p class="sr-lede">{% if source == 'brickset' %}The key lets Brick Work ask Brickset for set data. Your account lets Brick Work read and change your sets.{% else %}The key reads Rebrickable’s catalogue. Your account lets Brick Work read and change your lists.{% endif %}</p>
+{% set key_only = source == 'brickowl' %}
+<div class="{{ 'sr-col' if key_only else 'sr-grid' }}">
+<section class="sr-card" data-rb-key><h2>{{ 'Your Brick Owl API key' if key_only else '1 · API key' }} {{ tag('Set') if not key_gap else tag('Not set', true) }}</h2>
+<p class="sr-lede">{% if key_only %}The API key is the whole sign-in: with it Brick Work reads and changes your sets and your wishlist on Brick Owl. Give the key the permissions Collection, Wishlist and Orders (view).{% elif source == 'brickset' %}The key lets Brick Work ask Brickset for set data. Your account lets Brick Work read and change your sets.{% else %}The key reads Rebrickable’s catalogue. Your account lets Brick Work read and change your lists.{% endif %}</p>
 {% if key_gap %}
 {% if can_edit %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_key') }}" autocomplete="off">{{ csrf() }}<input type="hidden" name="action" value="save">
 <label class="bk-field">API key<input name="key:key" type="password" minlength="8" maxlength="256" autocomplete="off" required></label>
@@ -89,7 +105,7 @@
 {% if key.origin != 'env' %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_key') }}">{{ csrf() }}<input type="hidden" name="action" value="remove"><button class="bk-btn bk-quiet">Remove</button></form>{% endif %}</div>
 {% if key.origin == 'env' %}<p class="sr-note">This key comes from the environment. Change it there.</p>{% endif %}{% endif %}
 {% endif %}</section>
-<section class="sr-card" data-rb-account><h2>2 · Your {{ label }} account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
+{% if not key_only %}<section class="sr-card" data-rb-account><h2>2 · Your {{ label }} account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
 {% if connected %}{% if account %}<p class="sr-lede">Connected as {{ account }}.</p>{% endif %}
 <p class="sr-lede">A {{ 'user hash' if source == 'brickset' else 'user token' }} is stored encrypted. It is never shown again.</p>
 {% if can_edit %}<div class="sr-actions"><form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='test') }}">{{ csrf() }}<input type="hidden" name="next" value="connect"><button class="bk-btn bk-outline">Test</button></form>
@@ -101,10 +117,29 @@
 <div class="sr-actions"><button class="bk-btn bk-primary">Connect</button></div></form>
 <details class="sr-paste"><summary>Paste a {{ 'user hash' if source == 'brickset' else 'user token' }} instead</summary><form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='paste') }}" autocomplete="off">{{ csrf() }}<input type="hidden" name="next" value="connect"><label class="bk-field">{{ 'User hash' if source == 'brickset' else 'User token' }}<input name="value" type="password" minlength="8" maxlength="256" required></label><div class="sr-actions"><button class="bk-btn bk-outline">Save</button></div></form></details>
 <p class="sr-note">A {{ 'user hash' if source == 'brickset' else 'user token' }} is stored encrypted. It is never shown again.</p>{% endif %}
-{% endif %}</section>
+{% endif %}</section>{% endif %}
 </div>
 <div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_site', source=source) }}">Cancel</a>
 {% if connected and not key_gap %}<a class="bk-btn bk-outline" href="{{ url_for('web.bw_sync_' ~ pre ~ '_choose') }}">Next: choose what</a>{% else %}<span class="bk-btn" aria-disabled="true">Next: choose what</span>{% endif %}</div>
+
+{% elif screen == 'choose' and source == 'brickowl' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<form method="post" class="sr-choose" action="{{ url_for('web.bw_sync_bo_choose_save') }}" data-sy-busy>{{ csrf() }}
+<div class="sr-cols">
+<section class="sr-card" data-rb-owned><h2>Owned sets</h2>{{ segment('owned_dir', 'owned', directions.owned) }}
+<p class="sr-lede">Brick Owl keeps one lot per set and condition. The count of a set is the sum of its lots, and Brick Work keeps one copy for each. A send that deletes a lot there is never ticked by default.{% if budget %} Reads and sends count against one daily budget of {{ '{:,}'.format(budget.budget) }} calls.{% endif %}</p></section>
+<section class="sr-card" data-rb-wishlist><h2>Wanted sets</h2>{{ segment('wishlist_dir', 'wishlist', directions.wishlist) }}
+{% set linked = link.get('wishlist_id') %}
+{% if there_error %}<p class="bk-banner bk-warning" role="alert">{{ there_error }}</p>
+<p class="sr-lede">The wishlists could not be read. {{ 'The wishlist you linked before stays linked.' if linked else 'No Brick Owl wishlist is linked yet.' }}</p>
+{% else %}<p class="sr-lede">Wanted sets come from and go to one Brick Owl wishlist, with their quantity. With none linked, wishes are not read or sent.</p>
+<label class="bk-field">Brick Owl wishlist<select name="wishlist_id"><option value="">No wishlist</option>{% for l in there %}<option value="{{ l.id }}" {{ 'selected' if linked == l.id }}>{{ l.name or ('Wishlist ' ~ l.id) }} · {{ l.lots }} {{ 'lot' if l.lots == 1 else 'lots' }}</option>{% endfor %}{% if linked and linked not in there|map(attribute='id') %}<option value="{{ linked }}" selected>Wishlist {{ linked }} · linked, not in the list Brick Owl returned</option>{% endif %}</select></label>{% endif %}
+<label class="bk-field">Wishlist here<select name="wish_list">{% for w in wish_lists %}<option value="{{ w.id }}" {{ 'selected' if (link.get('wish_list') or 'default') == w.id }}>{{ w.name }}</option>{% endfor %}</select></label></section>
+</div>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_bo_connect') }}">‹ Back</a><span class="sr-foot-actions">{% if can_edit %}<button class="bk-btn bk-quiet" name="start" value="0">Save</button><button class="bk-btn bk-outline" data-busy-label="Checking {{ label }}">Next: pick sets</button>{% endif %}</span></div>
+</form>
 
 {% elif screen == 'choose' and source == 'brickset' %}
 {{ head(subtitle) }}
@@ -160,18 +195,37 @@
 <div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_' ~ pre ~ '_connect') }}">‹ Back</a><span class="sr-foot-actions">{% if can_edit %}<button class="bk-btn bk-quiet" name="start" value="0">Save</button><button class="bk-btn bk-outline" data-busy-label="Checking {{ label }}">Next: pick sets</button>{% endif %}</span></div>
 </form>
 
+{% elif screen == 'pick' and source == 'brickowl' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<form method="post" class="sr-pick" action="{{ url_for('web.bw_sync_bo_pick_save', run_id=run.id) }}" data-sr-pick data-sr-group="{{ group }}" data-sy-busy>{{ csrf() }}
+<div class="sr-cols">
+<section class="sr-card"><h2>Which sets</h2>
+<p class="sr-lede">Brick Owl keeps one lot per set and condition; the counts here add a set’s lots up. Only sets with a difference are listed.</p>
+{{ modebar() }}
+<div class="sr-rows">{% for c in candidates %}
+<label class="sr-pickrow sr-notile" data-sr-row data-name="{{ c.number }} {{ c.name or '' }}" data-keys="{{ rowkeys(c) }}">
+<input type="checkbox" name="item" value="{{ c.item_id }}" {{ 'checked' if (picked is none and mode != 'one') or (picked is not none and c.item_id in picked) }} data-sr-item>
+<span class="sr-pickid"><b>{{ c.number }} · {{ c.name or 'Name not recorded' }}</b>{% for line in counts.get(c.item_id, ()) %}<span>{{ line }}</span>{% endfor %}</span></label>
+{% else %}<p class="bk-text">Nothing differs. Here and {{ label }} agree.</p>{% endfor %}</div></section>
+<section class="sr-card" data-rb-wishlist><h2>Wishlist</h2>
+<p class="sr-lede">{% if run.directions.wishlist == 'off' %}Wanted sets: Off in this run.{% elif linked %}One Brick Owl wishlist, linked to {{ linked_here }} here. Change the link in step 2.{% else %}No Brick Owl wishlist is linked: wishes are not read, and a wish cannot be sent. Link one in step 2.{% endif %}</p></section>
+</div>
+{% if budget %}<div class="sr-info sr-before" data-rb-budget><p><b>Reading uses the daily budget.</b></p><dl class="sr-kv"><dt>Used today</dt><dd><span class="mono">{{ '{:,}'.format(budget.used) }}</span> of {{ '{:,}'.format(budget.budget) }} calls</dd></dl></div>{% endif %}
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_bo_choose') }}">‹ Back</a><p class="mono sy-total" data-sr-count role="status"><span data-sr-picked>{{ (picked if picked is not none else candidates if mode != 'one' else [])|length }}</span> of {{ candidates|length }} sets picked</p>{% if can_edit %}<button class="bk-btn bk-outline" data-busy-label="Comparing">Next: preview</button>{% endif %}</div>
+</form>
+
 {% elif screen == 'pick' %}
 {{ head(subtitle) }}
 {{ stepbar() }}
 {{ flashes() }}
 <form method="post" class="sr-pick" action="{{ url_for('web.bw_sync_' ~ pre ~ '_pick_save', run_id=run.id) }}" data-sr-pick data-sr-group="{{ group }}" data-sy-busy>{{ csrf() }}
 <section class="sr-card"><h2>Which sets</h2>
-<nav class="sr-seg" aria-label="Which sets">{% for v, label in modes %}<a href="{{ url_for('web.bw_sync_' ~ pre ~ '_pick', run_id=run.id, by=v) }}" {% if v == mode %}aria-current="true"{% endif %}><span>{{ label }}</span></a>{% endfor %}</nav>
-{% if chips %}<div class="sr-chips" role="group" aria-label="Choose by {{ mode }}">{% for name, n in chips %}<button type="button" class="sr-chip" data-sr-chip="{{ name }}" aria-pressed="false">{{ name }} <span class="mono">{{ n }}</span></button>{% endfor %}</div>{% endif %}
-<label class="sy-search sr-search"><span class="bc-visually-hidden">Search</span>{{ toni_icon('search') }}<input type="search" data-sr-search placeholder="Number or name" aria-label="Search sets"></label>
-<div class="sr-rows">{% for c in candidates %}{% set on = (picked is none and mode != 'one') or (picked is not none and c.item_id in picked) %}
-<label class="sr-pickrow" data-sr-row data-name="{{ c.number }} {{ c.name or '' }}" data-keys="{{ (c.lists if mode == 'list' else [c.theme] if mode == 'theme' and c.theme else [c.year|string] if mode == 'year' and c.year else [])|join('|') }}">
-<input type="checkbox" name="item" value="{{ c.item_id }}" {{ 'checked' if on }} data-sr-item>{{ tile(c.number) }}
+{{ modebar() }}
+<div class="sr-rows">{% for c in candidates %}
+<label class="sr-pickrow" data-sr-row data-name="{{ c.number }} {{ c.name or '' }}" data-keys="{{ rowkeys(c) }}">
+<input type="checkbox" name="item" value="{{ c.item_id }}" {{ 'checked' if (picked is none and mode != 'one') or (picked is not none and c.item_id in picked) }} data-sr-item>{{ tile(c.number) }}
 <span class="sr-pickid"><b>{{ c.name or 'Name not recorded' }}</b><span>{{ c.number }}{% if c.theme %} · {{ c.theme }}{% endif %}{% if c.year %} · {{ c.year }}{% endif %}</span>{% if mode == 'list' and c.lists %}<span class="mono">Rebrickable: {{ c.lists|join(', ') }}</span>{% endif %}</span></label>
 {% else %}<p class="bk-text">Nothing differs. Here and {{ label }} agree.</p>{% endfor %}</div></section>
 {% if mode == 'list' and run.pull %}<section class="sr-card"><h2>Keep the list names</h2><input type="hidden" name="keep_present" value="1"><input type="hidden" name="keep_list_names" value="0">

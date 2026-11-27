@@ -2806,7 +2806,7 @@ def bw_wishlists_export(identifier,format):
         return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
 
 from . import sync_views  # noqa: E402,F401 — 12n Collection sync pages
-from . import sync_site  # noqa: E402,F401 — the Rebrickable and Brickset sync pages and their steps (#519, #520)
+from . import sync_site  # noqa: E402,F401 — the Rebrickable, Brickset and Brick Owl sync pages and their steps (#519, #520, #522)
 from . import sync_bricklink_steps  # noqa: E402,F401 — the BrickLink sync page and its steps (#521); registers the routes of sync_bricklink too
 
 from . import import_views  # noqa: E402,F401 — Import from BrickTracker (#11)

@@ -9,7 +9,7 @@ Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wan
 
 ## Credentials
 
-Both sites need their API key (Catalogues & keys) and a per-user credential:
+Rebrickable and Brickset need their API key (Catalogues & keys) and a per-user credential (Brick Owl needs the key alone, below):
 
 - **Connect** (`POST /api/v2/sources/{source}/user/connect`, `brickwork sync <source> connect --username NAME`): the username and password go straight to the site, once. Rebrickable: `POST https://rebrickable.com/api/v3/users/_token/` (form `username`, `password`, header `Authorization: key <api key>`) returns `user_token`. Brickset: `POST https://brickset.com/api/v3.asmx/login` (`apiKey`, `username`, `password`) returns `hash`. Only the token or hash is stored, encrypted like the API keys (`source_key` rows `rebrickable_user`, `brickset_user`). The username you typed (without leading and trailing spaces) is kept too, in the setting `<source>_account_name`, for the page to show. A pasted token or hash, and a removal, clear it. The password is not recorded: the connect call bypasses the recorded transport, the API replay check stores a keyed fingerprint, and the command-line tool asks for it without echo. At most 10 logins per site per UTC day (counted from the day's `sync` events of that kind: an attempt writes one, with no credential in it).
 - **Paste** (`PUT /api/v2/sources/{source}/user`, `brickwork sync <source> paste`): a token or hash generated on the site.
@@ -22,9 +22,10 @@ Both sites need their API key (Catalogues & keys) and a per-user credential:
 
 ## Brick Owl
 
-Brick Owl is a source of the core, the API and the MCP tools (#522). It has no page yet. It syncs owned and wanted sets with their counts. Parts, minifigures, minibuilds, orders and store inventory are not read.
+Brick Owl is a source of the core, the API, the MCP tools and the web page (#522). It syncs owned and wanted sets with their counts. Parts, minifigures, minibuilds, orders and store inventory are not read.
 
-- **Credentials.** The API key is the whole credential: save it under Catalogues & keys (`BW_BRICKOWL_API_KEY`) and test it with `POST /sources/brickowl/key/test`. The key needs the permissions Collection, Wishlist and Orders (view). The `/sources/{source}/user` routes answer 404 for Brick Owl, and `GET /sync/brickowl` has `credentials.user: null`.
+- **Credentials.** The API key is the whole credential: save it under Catalogues & keys (`BW_BRICKOWL_API_KEY`) and test it with `POST /sources/brickowl/key/test`. The key needs the permissions Collection, Wishlist and Orders (view). The `/sources/{source}/user` routes answer 404 for Brick Owl, and `GET /sync/brickowl` has `credentials.user: null`. The web routes of a user credential (`/manage/sync/brickowl/connect`, `paste`, `remove` and `test`) answer 404 too. For a site with no user credential, the pages read *connected* from the API key (`sync_views._connected`).
+- **Page.** `/workbench/sync/brickowl`, with the step views of `web/sync_site.py` (endpoints `web.bw_sync_bo_<step>`). The page at rest makes no call. Step 2 makes one `wishlist/lists` call. When it fails, the form has no `wishlist_id` field, so a save keeps the stored link. A stored id that the list does not hold stays selected. Step 3 reads the run's plans and makes no call. The pages of frames 31, 32 and 71 are built up to the pick step. Steps 4 to 6 use the views that Rebrickable and Brickset share, with nothing specific to Brick Owl yet.
 - **Link.** `wishlist_id` (text) names the one Brick Owl wishlist that pulls and takes wishes; `wish_list` is the Brick Work wishlist, as for the other sites. `GET /sync/brickowl/lists` lists the wishlists, each with its number of lots. With no wishlist linked, wishes are not read, and a wish row cannot be ticked in a send.
 - **Counts.** Brick Owl keeps a separate lot for each condition of a set. The count of a set is the sum of its lots. A send adds to the first lot, and creates a lot (condition new) where there is none. It takes a lower count from the last lot first, whatever its condition. A send that deletes a lot is never ticked by default; its row has `deletes_lot: true`. This holds for conflicts and removals too.
 - **Retry.** When a call does not go through, or the process dies inside one, the next attempt reads the lots again before it writes. A lot that did arrive is not created twice.
@@ -86,7 +87,7 @@ Condition, completeness, box, instructions, and storage never leave Brick Work.
 
 ## A run as a job
 
-A run of the Rebrickable or Brickset page has five steps: choose, pick, preview, run, and result. A short run is applied in one request. A long run is a durable job (`core.sync.run_job`, #685, [ADR 0042](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0042-sync-run-as-a-job.md)).
+A run of a site's page has five steps: choose, pick, preview, run, and result. A short run is applied in one request. A long run is a durable job (`core.sync.run_job`, #685, [ADR 0042](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0042-sync-run-as-a-job.md)).
 
 `run_job.queue` freezes the validated choices into the run record. It adds one `job` row of kind `sync_run`, with one `job_step` for each stage that has work: `pull`, `parts`, `send` and `lost_out`. The embedded drainer, or `brickwork worker`, runs it. It survives a restart and shows in Jobs. In `GET /jobs`, a step's `count` and `total` are the changes done and chosen.
 

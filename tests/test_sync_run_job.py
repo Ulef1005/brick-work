@@ -421,5 +421,9 @@ def test_a_mark_only_pull_runs_no_lost_parts_step_and_renames_no_list(client, re
     monkeypatch.setattr(lost_parts, 'apply', lambda *a, **k: pytest.fail('the Lost Parts step ran'))
     monkeypatch.setattr(sync, '_apply_lists', lambda *a, **k: pytest.fail('list names were changed'))
     with db_of(pair) as db:
+        plan = sync.load_plan(db, sync_run.load(db, run_id)[0]['pull'])
+        plan['lists'] = dict(plan['lists'], preview=[dict(key='1', action='rename', sets=2, choices=['rename', 'keep'])])      # a list renamed there
+        sync._store_plan(db, plan)
         sync_run.apply(db, run_id, MultiDict())
-        assert sync_run.load(db, run_id)[0]['stages']['pull']['status'] == 'done'
+        stage = sync_run.load(db, run_id)[0]['stages']['pull']
+        assert stage['status'] == 'done' and stage['lists_changed'] == 0, stage

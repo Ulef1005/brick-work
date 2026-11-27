@@ -593,7 +593,7 @@ def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=
             result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_skipped=kept_skipped, mark_only=None if changes else _kinds_in(run), via=via, actor=actor)
             effective = {k: lists.get(k, line['action']) for k, line in lines.items()}
             stages['pull'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted),
-                                  lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']), marked=only_marked)
+                                  lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']) if changes else 0, marked=only_marked)
         except WaitingForBudget as exc:
             stages['pull'] = dict(status='waiting' if raise_budget else 'failed', message=_message(exc, source))
             if raise_budget:

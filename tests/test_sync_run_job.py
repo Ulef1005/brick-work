@@ -383,3 +383,43 @@ def test_a_run_with_nothing_to_add_still_marks_the_rows_that_match(client, remot
         assert marked > 0 and db.execute('SELECT count(*) FROM main.copy WHERE archived_at IS NULL').fetchone()[0] == copies
         sync_run.undo_run(db, stage['event'])
         assert db.execute('SELECT count(*) FROM main.synced_from').fetchone()[0] == 0
+
+
+def _matching(client, remote, pair, **directions):
+    """A run whose copies here already match the site and carry no Last synced from yet."""
+    csrf = connected(client, pair)
+    first = start(client, csrf, wishlist_dir='off', owned_dir='into')
+    with db_of(pair) as db:
+        sync_run.apply(db, first, form_for(db, first, send=False))
+        db.execute('DELETE FROM main.synced_from')
+        db.commit()
+    return start(client, csrf, **{'wishlist_dir': 'off', 'owned_dir': 'into', **directions})
+
+
+def test_stopping_a_queued_mark_only_run_leaves_no_step_waiting(client, remote, pair):  # noqa: F811
+    run_id = _matching(client, remote, pair)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, MultiDict())
+        assert run_job.request_stop(db, run_id)
+        run_job.drain(db)
+        assert not db.execute("SELECT 1 FROM job_step WHERE job_id=? AND state='queued'", (job_id,)).fetchall()
+        assert db.execute('SELECT count(*) FROM main.synced_from').fetchone()[0] == 0
+
+
+def test_a_kind_that_does_not_come_in_is_not_marked(client, remote, pair):  # noqa: F811
+    run_id = _matching(client, remote, pair, owned_dir='off', wishlist_dir='into')
+    with db_of(pair) as db:
+        run, plans = sync_run.load(db, run_id)
+        assert sync_run.marked_rows(db, run, plans) == 0
+        sync_run.apply(db, run_id, MultiDict())
+        assert db.execute('SELECT count(*) FROM main.synced_from WHERE copy_id IS NOT NULL').fetchone()[0] == 0
+
+
+def test_a_mark_only_pull_runs_no_lost_parts_step_and_renames_no_list(client, remote, pair, monkeypatch):  # noqa: F811
+    from brickwork.core.sync import lost_parts
+    run_id = _matching(client, remote, pair, lost_dir='into')
+    monkeypatch.setattr(lost_parts, 'apply', lambda *a, **k: pytest.fail('the Lost Parts step ran'))
+    monkeypatch.setattr(sync, '_apply_lists', lambda *a, **k: pytest.fail('list names were changed'))
+    with db_of(pair) as db:
+        sync_run.apply(db, run_id, MultiDict())
+        assert sync_run.load(db, run_id)[0]['stages']['pull']['status'] == 'done'

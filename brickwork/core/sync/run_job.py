@@ -114,7 +114,7 @@ def queue(db, run_id, form, *, via='app', actor=None):
             return run.get('job')
         chosen = sync_run.validate_choices(db, run, plans, form)
         form_data = sync_run._extract_form(run, plans, form, chosen)
-        form_data['marks'] = sync_run.marked_rows(db, run, plans, sync_run.pull_wanted(form_data)) > 0     # #531: a pull with no change to make can still have rows to mark
+        form_data['marks'] = sync_run.marked_rows(db, run, plans) > 0     # #531: a pull with no change to make can still have rows to mark
         steps = [(name, _stage_total(run, plans, form_data, name)) for name in STAGES]
         active_steps = [(name, total) for name, total in steps if _has_work(form_data, name, total)]
         t = now()
@@ -264,7 +264,7 @@ def _finish_stopped(db, job, run, plans, form_data, start_idx):
             continue
         if not _has_plan(run, plans, name):
             continue
-        if _stage_total(run, plans, form_data, name) == 0:
+        if not _has_work(form_data, name, _stage_total(run, plans, form_data, name)):
             run['stages'][name] = dict(status='none')
         else:
             run['stages'][name] = dict(existing or {}, status='stopped')       # a waiting stage keeps its rows for retry_send

@@ -46,7 +46,7 @@ The page shows your account (API key and speed, with **Test**, **Change** and **
 3. **Pick sets.** The sets with a difference, **All linked**, **By theme**, **By year** or **One by one**. Each row shows the count at Brick Owl and the count here. Brick Owl keeps one lot per set and condition, and the count adds the lots up. A set you do not pick stays as it is on both sides.
 4. **Preview, run and result.** These steps work as on the [Brickset page](#a-brickset-run). A send that deletes a lot at Brick Owl is never ticked by default, whatever the condition of that lot. A change sent to Brick Owl cannot be undone here.
 
-A row with a single choice does not yet say that its send deletes a lot. Before you tick a send that lowers a count, look at your lots at Brick Owl. The run page also names a speed of one request a second, which is not the Brick Owl speed.
+A send that deletes a lot at Brick Owl says *Deletes a lot there* and is not ticked. Brick Work deletes from the last lot first, whatever its condition. The run page also names a speed of one request a second, which is not the Brick Owl speed.
 
 ## A BrickLink run
 

@@ -391,7 +391,7 @@ def rows(db, run, plans):
                                            note='Takes the set off the list there' if r['state'] == 'remove' else _lot_note(r)))
         elif r['state'] == 'remove' and r['tickable']:        # only sending: a set taken off the list here is offered for the list there, unticked
             row['state'] = 'remove'
-            row['options'].append(dict(id='remove', label=f'Remove from {site}', note=None))
+            row['options'].append(dict(id='remove', label=f'Remove from {site}', note=_lot_note(r)))
         elif r['state'] in ('add', 'change') and r['tickable'] and r['action']:
             row['state'] = 'send_add' if r['state'] == 'add' else 'change'
             row['options'].append(dict(id='send', label=(f"Add {r['send']} there" if r['state'] == 'add' else f"Quantity {r['remote']} to {r['send']}"), note=None))

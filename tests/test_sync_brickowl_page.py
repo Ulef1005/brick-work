@@ -378,3 +378,23 @@ def test_a_read_only_instance_shows_no_buttons_and_refuses_every_write(app4, cli
     assert not soup(client.get(BASE + '/connect')).select('[data-rb-key] form')
     for path in ('/key', '/choose', '/start'):
         assert client.post(BASE + path, data={'csrf_token': csrf, 'action': 'test'}).status_code in (403, 405)
+
+
+@pytest.mark.parametrize('here', [1, 0])
+def test_a_send_that_deletes_a_lot_says_so_in_the_preview_and_on_the_send_review(client, remote, pair, here):
+    remote.lots = {'owned': [['1', '1000-1', 1], ['2', '1000-1', 1]], 'wanted': []}
+    with db_of(pair) as db:
+        coll = Coll(db)
+        for _ in range(here):
+            coll.add_copy('1000-1')
+        db.commit()
+    csrf = token(client)
+    run_id = start(client, csrf, owned_dir='to', wishlist_dir='off')
+    preview = soup(client.get(f'{BASE}/run/{run_id}/preview'))
+    row = next(r for r in preview.select('[data-sy-row]') if r['data-name'].startswith('1000-1'))
+    assert 'Deletes a lot there' in text(row) and not row.select_one('input[checked]')
+    with db_of(pair) as db:
+        plan = sync.plan_send(db, 'brickowl')
+    review = soup(client.get(f"/manage/sync/brickowl/plan/{plan['id']}"))
+    row = next(r for r in review.select('[data-sy-row]') if r['data-name'].startswith('1000-1'))
+    assert 'deletes a lot there' in text(row).lower() and not row.select_one('input[checked]')

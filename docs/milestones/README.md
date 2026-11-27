@@ -25,3 +25,4 @@ Dated records of a milestone built by several agents. A record is not kept up to
 
 - [N: Sync and files, as of 22 November 2026](n-handoff.md), gate #525
 - [O: Faster at the table, as of 22 November 2026](o-faster-at-the-table-handoff.md), umbrella #303
+- [P: Build state and custom sets, as of 22 November 2026](p-handoff.md), issues #14, #13 and #37

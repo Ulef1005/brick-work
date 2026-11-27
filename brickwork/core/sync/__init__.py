@@ -847,12 +847,20 @@ def _no_wishlist(rows, source):
 
 
 def _one_item_per_number(db, rows):
-    """Brick Owl counts per set number. A row for an item the number does not name here (a local twin of a catalogue set) is never sent:
-    its count would replace the other item's lots."""
+    """Brick Owl counts per set number, and its lots read back in the form `1234-1`. A row is never sent when its number has another form (the
+    lot would not be found again, and each send would add one) or when the number does not name the row's item here (a local twin of a
+    catalogue set: its count would replace the other item's lots)."""
     named = translate(db, {r['remote_no'] for r in rows if r['remote_no'] and r['state'] != 'unmatched'})
     for row in rows:
-        if row['state'] != 'unmatched' and named.get(row['remote_no']) != row['item_id']:
-            row.update(action=None, tickable=False, reason='Another item here has this number at Brick Owl')
+        if row['state'] == 'unmatched':
+            continue
+        if brickowl_run._normalize_set_number(row['remote_no']) != row['remote_no']:
+            reason = 'Brick Owl needs a set number like 1234-1'
+        elif named.get(row['remote_no']) != row['item_id']:
+            reason = 'Another item here has this number at Brick Owl'
+        else:
+            continue
+        row.update(state='unmatched', action=None, tickable=False, reason=reason)
 
 
 def plan_send(db, source, *, http=None, kinds=None, fetched=None):

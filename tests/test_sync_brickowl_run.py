@@ -330,3 +330,34 @@ def test_a_local_twin_is_never_sent_under_a_number_that_belongs_to_another_item(
     sync_run.save_choices(db, dict(owned_dir='to', wishlist_dir='off', wish_list='default'), 'brickowl')
     run, plans = sync_run.load(db, sync_run.start(db, source='brickowl')['id'])
     assert all(not shown['options'] for shown in sync_run.rows(db, run, plans) if shown['item_id'] == twin)
+
+
+def test_a_number_without_a_suffix_is_not_sent(db, remote):
+    remote.lots = {'owned': [], 'wanted': []}
+    coll = Coll(db)
+    gear = coll.local('gear', 'Syn local gear', born_key='7777')
+    coll.add_stock('gear', gear)
+    db.commit()
+    remote.boids['7777'] = remote.boids['7777-1'] = '97777'          # the lots then read back as 7777-1
+    for _ in range(2):
+        sync.apply_send(db, sync.plan_send(db, 'brickowl')['id'])
+    assert len(remote.lots['owned']) == 0, remote.lots['owned']
+
+
+def test_a_blocked_conflict_keeps_its_reason(db, remote):
+    remote.lots = {'owned': [], 'wanted': []}
+    coll = Coll(db)
+    first = coll.local('gear', 'Syn first', born_key='5555-1')
+    coll.add_stock('gear', first)
+    db.commit()
+    remote.boids['5555-1'] = '955551'
+    assert sync.apply_send(db, sync.plan_send(db, 'brickowl')['id'])['counts'] == {'sent': 1}
+    coll.sql('UPDATE main.stock SET quantity=2 WHERE item_id=?', (first,))
+    coll.local('book', 'Syn second', born_key='5555-1')
+    db.commit()
+    remote.lots['owned'] = []
+    sync_run.save_choices(db, dict(owned_dir='to', wishlist_dir='off', wish_list='default'), 'brickowl')
+    run, plans = sync_run.load(db, sync_run.start(db, source='brickowl')['id'])
+    assert next(r for r in plans['send']['rows'] if r['item_id'] == first)['state'] == 'unmatched'
+    row = next(r for r in sync_run.rows(db, run, plans) if r['item_id'] == first)
+    assert row['reason'] and not row['options'], row

@@ -348,6 +348,7 @@ def step_preview(source, run_id):
     from ..core import sync
     from ..core.sync import lost_parts, lost_parts_send
     from ..core.sync import run as sync_run
+    from ..core.collection import decorate
     with _db() as db:
         run, plans = _load(db, run_id, source)
         if run is None:
@@ -363,9 +364,9 @@ def step_preview(source, run_id):
         budget = sync_run.budget(db, source)
         lots = _lots(db)
         status = sync.status(db, source)
+        parts = decorate(db, sync_run.part_rows(plans))      # #471, frame 22: a loose row names its part and colour
     lost_in = sync_run.lost_in(run, plans)
     lost_out = sync_run.lost_out(run)
-    parts = sync_run.part_rows(plans)
     lines = ((plans['pull'] or {}).get('lists') or {}).get('preview', ())
     changed_lines = [line for line in lines]
     conflicts = [r for r in rows if r['state'] == 'conflict']

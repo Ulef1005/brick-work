@@ -1,4 +1,5 @@
-# The ci tier of the gate (Repo Gates, ADR 0043): scripts/check.sh with every test, on every push to main and every pull request.
+# The ci tier of the gate (Repo Gates, ADR 0043): scripts/check.sh with every test, on a pull request marked ready, on every push to
+# main and on manual start. A draft runs nothing.
 # The Mac runs the land tier (no test suite) plus the private patterns check, which never leaves the Mac.
 name: check
 
@@ -6,12 +7,14 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: check-${{ github.ref }}
+  group: check-${{ github.event_name }}-${{ github.ref }}   # a manual run never cancels main's push run
   cancel-in-progress: true
 
 jobs:
@@ -19,6 +22,7 @@ jobs:
   # gate. The job named `check` at the end is the one result: it fails unless all four shards passed, so a pull request's check keeps its name.
   shard:
     name: check shard ${{ matrix.shard }}
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -80,7 +84,7 @@ jobs:
           BW_CHECK_MODE: ${{ steps.scope.outputs.mode }}
           BW_SHARD: ${{ matrix.shard }}/4
           BW_CHROME_NO_SANDBOX: "1"  # the runner's user namespaces may be restricted; the pages are our own test fixtures
-          DOCS_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || format('{0}..{1}', github.event.pull_request.base.sha, github.sha) }}
+          DOCS_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.sha) || '' }}
       - name: Upload the screenshot diffs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
@@ -92,7 +96,8 @@ jobs:
   check:
     name: check
     needs: shard
-    if: ${{ !cancelled() }}   # a run cancelled by a newer push shows a cancelled check, not a failed one
+    # a run cancelled by a newer push shows a cancelled check, not a failed one; on a draft it is skipped like the shards
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

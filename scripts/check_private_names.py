@@ -22,7 +22,7 @@ def git(*args):
 
 def staged():
     """(path, blob id) of every staged file that is added or changed; submodules are left out."""
-    fields = git('diff', '--cached', '--raw', '-z', '--no-renames', '--no-abbrev', '--diff-filter=d').split(b'\0')
+    fields = git('diff', '--cached', '--raw', '-z', '--no-renames', '--no-relative', '--no-abbrev', '--diff-filter=d').split(b'\0')
     for meta, path in zip(fields[::2], fields[1::2]):
         _, mode, _, blob, _ = meta.split()
         if mode != b'160000':

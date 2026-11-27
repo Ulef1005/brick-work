@@ -513,3 +513,12 @@ Gap list: `~/Workspace/_exports/design-brief-n/frame-gaps-n.md`. Requested by br
 - **`96-sync-run-interrupted`, changed (brick-work-product, 2026-11-25):** the Not known row has its own choice, "Send it too" or "Leave it" (the person checks the row at the site first); Send again sends only the 159 not sent, and the Not known row stays out of it until the person chooses. The Pull applied card says "Undo for this pull is in Last runs, where this run is listed as Interrupted"; so the frame has no Undo of its own. Approved by Ulf 2026-11-25 ("approved"). The two buttons belong to the Not known row (one pair per row that is not known); the frame draws them directly under that row. This version replaces the round 6 one above.
 
 - **`96-sync-run-interrupted`, redrawn to the build (#685, #718; Ulf, 2026-11-25: "Redraw to the app (Recommended)"; new picture approved 2026-11-25, review version 8, Q-04):** "Send it too" is a checkbox on the Not known row, off by default, in place of the two buttons; "Open the result" is a third action; only the rows that did not go out are listed (the app: the first 20, then "and N more not sent"; the frame draws three and "and 157 more"); the row sub-line is the set number and the send in lower case; the Pull applied card keeps "Undo for this pull is in Last runs, where this run is listed as Interrupted"; the info text reads "Check the row marked Not known on Rebrickable. Tick Send it too only if it is not there, then send the rest again." (both wordings: brick-work-product, 2026-11-25; the build adds them).
+
+## Commission N picture check (approved 2026-11-27, "approve all, A and A")
+
+Review artifact https://claude.ai/artifact/2rT6QJkS3wDAJF2ErShyAB, version 1; the rows are in `design/APPROVALS.md`. Two changes are to be built:
+
+- **`96-sync-run-interrupted`, pull undone:** in both undone cases (all applied, and one part not applied) the first card's heading is "Pull undone" with a plain "Undone" tag (not the hatched failed one). The sentences below do not change.
+- **Record-only preview:** when the "sets compared" count is 0 and rows will be recorded, the page head is "checked <time>" plus "· last run <time>" where there is one. The empty-list line and the record-only line do not change.
+
+Frame `94-rebrickable-run-applying` still draws the greyed Stop solid; the approved look is the app's dashed disabled style, and the frame is redrawn later.

@@ -50,11 +50,15 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install -r requirements-dev.txt
-      - name: Secret scan   # once per run, in shard 1; check.sh skips its own scan in CI (Repo Gates)
+      - name: Secret scan   # once per run, in shard 1; check.sh skips its own scan in CI only with the marker below (Repo Gates)
+        id: secretscan
         if: matrix.shard == 1
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e  # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Mark the secret scan as run   # check.sh fails on GitHub without this marker
+        if: matrix.shard == 1 && steps.secretscan.outcome == 'success'
+        run: echo "GATE_SECRET_SCAN=done" >> "$GITHUB_ENV"
       # A pull request that changes only documentation runs the docs check and the site build, not the app (#254, ADR 0024). Pushes to main always run
       # everything. scripts/check_scope.py answers `docs` only when it can list the changed files (base...head, so a moved base does not count);
       # a new branch, a force push or any failure to diff answers `full`.

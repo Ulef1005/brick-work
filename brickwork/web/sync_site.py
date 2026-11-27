@@ -413,11 +413,18 @@ def step_apply(source, run_id):
         flash(_message(exc, source), 'warning')
         return redirect(_to(source, 'preview', run_id=run_id))
     if run.get('job'):                 # queued now, or by an earlier post: the page follows the job
+        _wake_worker()
         return redirect(_to(source, 'progress', run_id=run_id))
     if not run.get('applied'):         # claimed by another request that has not finished, or one that was interrupted
         flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
         return redirect(url_for('web.bw_sync_site', source=source))
     return redirect(_to(source, 'result', run_id=run_id))
+
+
+def _wake_worker():
+    """A sync run is a job (#685): start the embedded drainer, which sleeps whenever nothing is pending. Starting a running one does nothing."""
+    from .views import bw_start_worker
+    bw_start_worker()
 
 
 def _interrupted_stage(stages, name):
@@ -484,6 +491,8 @@ def step_progress(source, run_id):
         undo_listed = bool(interrupted) and _undo_listed(_runs(db, source), run_id)
         events = sync_run.pull_events(run)
         pull_undone = bool(interrupted and events and all(db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (e,)).fetchone() for e in events))      # one of two undone: not "the pull"
+    if not interrupted:
+        _wake_worker()                  # the page that watches a job also starts a worker for one left queued
     stages = {s['name']: s for s in info['stages']}
     send = run['stages'].get('send') or {}
     sent_rows = [r for r in send.get('results', ()) if r['result'] in ('sent', 'unchanged')]
@@ -597,6 +606,7 @@ def step_retry(source, run_id):
             stages = sync_run.load(db, run_id)[0].get('stages') or {}
     except (errors.BrickWorkError, *LOCAL):
         stages = {}
+    _wake_worker()                      # a retry may have queued the job again
     return redirect(_to(source, 'progress' if _is_interrupted(stages) else 'result', run_id=run_id))
 
 

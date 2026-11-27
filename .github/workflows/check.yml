@@ -14,7 +14,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: check-${{ github.event_name }}-${{ github.ref }}   # a manual run never cancels main's push run
+  # a manual run never cancels main's push run; the group is applied before a job's `if`, so a draft's event has its own group and
+  # cannot cancel the real run after "ready"
+  group: check-${{ github.event_name }}-${{ github.ref }}-${{ github.event.pull_request.draft && 'draft' || 'run' }}
   cancel-in-progress: true
 
 jobs:

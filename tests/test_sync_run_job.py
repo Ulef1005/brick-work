@@ -451,3 +451,58 @@ def test_a_released_run_runs_every_stage_chosen_on_the_next_try(three_sends, mon
         run_job.drain(db)
         assert sync_run.load(db, run_id)[0]['stages']['pull']['status'] == 'done'
         assert not db.execute("SELECT 1 FROM job_step WHERE job_id=? AND state='queued'", (job_id,)).fetchall()
+
+
+@pytest.mark.parametrize('owned,wished', [('into', 'off'), ('off', 'into'), ('to', 'into'), ('off', 'off')])
+def test_a_pull_marks_only_the_kinds_that_come_in(client, remote, pair, owned, wished):  # noqa: F811
+    from brickwork.core.sync import run as runs
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='into', wishlist_dir='into')
+    ways = dict(owned=owned, wishlist=wished)
+    with db_of(pair) as db:
+        plan_id = sync_run.load(db, run_id)[0]['pull']
+        sync.apply_pull(db, plan_id, None, incoming=runs.kinds_in(ways))      # a pull that takes rows in
+        copies = db.execute('SELECT count(*) FROM main.synced_from WHERE copy_id IS NOT NULL OR stock_id IS NOT NULL').fetchone()[0]
+        wishes = db.execute('SELECT count(*) FROM main.synced_from WHERE wish_id IS NOT NULL').fetchone()[0]
+    assert (copies > 0, wishes > 0) == (owned in ('into', 'both'), wished in ('into', 'both')), (copies, wishes)
+
+
+def _matching_set_and_wish(pair, remote):
+    """A copy and a wish here that already match the site, and one more wish there that a pull would add."""
+    remote.lists = {1: {'1000-2': 1}, 2: {}, 9: {'1000-3': 1, '1000-4': 1}}
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-2')
+        coll.add_wish(coll.item('sets', '1000-3'))
+
+
+def _marked(db, copy_number='1000-2', wish_number='1000-3'):
+    """Whether the matching copy and the matching wish carry Last synced from."""
+    coll = Coll(db)
+    copy = db.execute('SELECT 1 FROM main.synced_from s JOIN main.copy c ON c.id=s.copy_id WHERE c.item_id=?', (coll.item('sets', copy_number),)).fetchone()
+    wish = db.execute('SELECT 1 FROM main.synced_from s JOIN main.wish w ON w.id=s.wish_id WHERE w.item_id=?', (coll.item('sets', wish_number),)).fetchone()
+    return bool(copy), bool(wish)
+
+
+@pytest.mark.parametrize('takes_a_wish', [False, True])
+def test_a_pull_outside_a_run_follows_the_saved_directions_and_what_it_takes_in(client, remote, pair, takes_a_wish):  # noqa: F811
+    _matching_set_and_wish(pair, remote)
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='into', wishlist_dir='off')
+    with db_of(pair) as db:
+        plan = sync.load_plan(db, sync_run.load(db, run_id)[0]['pull'])
+        wish_rows = [r['key'] for r in plan['rows'] if r['kind'] == 'wanted' and r['tickable']]
+        assert wish_rows
+        sync.apply_pull(db, plan['id'], wish_rows if takes_a_wish else [])
+        assert _marked(db) == (True, takes_a_wish)
+
+
+def test_a_run_marks_by_its_own_directions_not_by_those_saved_later(client, remote, pair):  # noqa: F811
+    _matching_set_and_wish(pair, remote)
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='into', wishlist_dir='off')
+    start(client, csrf, owned_dir='into', wishlist_dir='into')      # the saved directions now take wishes in too
+    with db_of(pair) as db:
+        sync_run.apply(db, run_id, MultiDict())
+        assert sync_run.load(db, run_id)[0]['stages']['pull']['status'] == 'done'
+        assert _marked(db) == (True, False)

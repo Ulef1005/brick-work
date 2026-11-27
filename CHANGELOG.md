@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Last synced from only for what comes in** (#531). A pull recorded it on matching sets and wishes even when their direction was Off or only to the site, also when you only brought Lost Parts in. Now only the kinds set to Into Brick Work or Both ways get it. Records already written stay.
+
 - **A second try of a sync run does everything you chose** (#722). When a run failed before it began, running it again could skip the pull, even with sets chosen in it.
 
 - **A first sync records where matching sets came from** (#531). A run that had nothing to add or send into Brick Work did not mark the sets, loose sets and wishes that already matched the site, so they showed no list name and no Last synced from. Now it does, Run is available for that alone, the preview says how many rows already match, and Undo this run removes only what the run recorded.

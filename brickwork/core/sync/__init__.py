@@ -527,7 +527,7 @@ def _placed_wish(db, wish_list, item_id, kind, count, via, actor):
     return scratch['wish']
 
 
-def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, kept=None, kept_covered=KINDS, kept_skipped=(), mark_only=None, via=None, actor=None):
+def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, kept=None, kept_covered=KINDS, kept_skipped=(), incoming=None, mark_only=False, via=None, actor=None):
     """Place one copy per missing unit of a set (design 4.3's preselection; flagged, condition and completeness unset), loose stock of the
     other kinds, and the missing wishes, in one transaction with one receipt. Never deletes or lowers a set, stock or wish count here.
 
@@ -536,10 +536,12 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
     can lower or clear a mark, by the rule the plan froze. Each copy's marks are one `checker.mark` receipt; this pull's receipt keeps their
     event ids, so its one Undo takes the sets, stock, wishes and marks back together.
 
-    `mark_only` (#531): for a run with nothing to take in, the kinds ('owned', 'wanted') that come in. The pull then writes its receipt and
-    Last synced from on the matching rows of those kinds and nothing else: no row, no Lost Parts step, no list rename or drop. It leaves the
-    baseline as it is, and so does its Undo: a new baseline would make a set gone here read as already seen, and no longer offer to remove it at
-    the site."""
+    Last synced from (#531) is written only on rows of the kinds ('owned', 'wanted') that come in: `incoming`, which a run takes from its own
+    directions. Any other pull uses the saved directions of the site and the kinds of the rows it takes in.
+
+    `mark_only`: a run with nothing to take in. The pull then writes its receipt and Last synced from and nothing else: no row, no Lost Parts
+    step, no list rename or drop. It leaves the baseline as it is, and so does its Undo: a new baseline would make a set gone here read as
+    already seen, and no longer offer to remove it at the site."""
     from .. import add, pictures, plans
     from ..admin import origin
     from ..pipeline import queue_new_items
@@ -549,7 +551,7 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
         return dict(event_id=done['event_id'], already_applied=True, counts=done['counts'])
     rows = _ticked(plan, ticked)
     list_choices = _list_choices(plan, lists)
-    if mark_only is not None:
+    if mark_only:
         rows, list_choices = [], {key: 'keep' for key in list_choices}      # a name recorded here stays, also where the preview's default is Rename
     if via is None:
         via, actor = origin()
@@ -563,6 +565,9 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
         if done:
             return dict(event_id=done['event_id'], already_applied=True, counts=done['counts'])
         wishlists.require(db, wish_list)
+        if incoming is None:      # no run says: the saved directions, and whatever this pull takes in, which comes in by that
+            from . import run as sync_run
+            incoming = tuple({*sync_run.kinds_in(sync_run.directions(db, source)), *(r['kind'] for r in rows)})
         flag = receipt['flag'] = _flag(db, source, receipt) if any(r['kind'] == 'owned' for r in rows) else None
         touched = set()
         for row in rows:
@@ -587,13 +592,13 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
                     db.execute('INSERT INTO main.stock_flag(stock_id, flag_id) VALUES(?, ?)', (change['id'], flag))
                     receipt['stock_flags'].append([change['id'], flag])
         section = plan.get('lost')
-        if section and section.get('on') and mark_only is None:
+        if section and section.get('on') and not mark_only:
             receipt['lost'] = _lost_report(section, lost_parts.apply(db, section, lost, picks, new_copies=set(receipt['copies']),
                                                                     translate=translate, flag_name='imported from ' + LABELS[source]))
-        receipt['lists'] = _apply_lists(db, plan, list_choices) if mark_only is None and (plan.get('lists') or {}).get('keep') else dict(renamed=[], dropped=[])
-        receipt['synced'] = _mark_synced(db, plan, wish_list, stamp, list_choices, left=_unticked(plan, rows), kinds=KINDS if mark_only is None else mark_only)
+        receipt['lists'] = _apply_lists(db, plan, list_choices) if not mark_only and (plan.get('lists') or {}).get('keep') else dict(renamed=[], dropped=[])
+        receipt['synced'] = _mark_synced(db, plan, wish_list, stamp, list_choices, left=_unticked(plan, rows), kinds=incoming)
         receipt['jobs'] = queue_new_items(db, touched)
-        if mark_only is not None:
+        if mark_only:
             receipt['marks_only'] = True
         else:
             receipt['baseline_before'] = _setting(db, source, 'baseline')
@@ -646,8 +651,8 @@ def pull_marked_rows(db, plan, kinds):
 
 def _mark_synced(db, plan, wish_list, stamp, choices=None, left=frozenset(), kinds=KINDS):
     """Last synced from (#551): every live copy, set-like stock row and wish of the linked list whose item the site holds now reads as
-    matched to the site at this pull, whether this pull made it or not; a row the person left unticked (`left`: (kind, item id)) is not
-    touched. Returns `{table: [touch entries]}` for the receipt."""
+    matched to the site at this pull, whether this pull made it or not, for the `kinds` that come in (copies and stock are 'owned', wishes
+    'wanted'); a row the person left unticked (`left`: (kind, item id)) is not touched. Returns `{table: [touch entries]}` for the receipt."""
     source = plan['source']
     out = dict(copy=[], stock=[], wish=[])
     for table, row_id, list_key, list_name in _synced_targets(db, plan, wish_list, choices, left, kinds):

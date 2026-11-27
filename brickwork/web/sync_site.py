@@ -167,7 +167,7 @@ def step_key(source):
     except KeyRejected as exc:
         flash(LABEL[source] + ' rejected the key · ' + redact(exc), 'warning')
     except (errors.BrickWorkError, SourceError) as exc:
-        flash(redact(exc), 'warning')
+        flash(_message(exc, source) if source == 'brickowl' else redact(exc), 'warning')      # Brick Owl's client names itself by its id
     return redirect(url_for('web.bw_sync_site', source=source) if request.form.get('next') == 'site' else _to(source, 'connect'))
 
 

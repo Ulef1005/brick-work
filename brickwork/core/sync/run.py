@@ -341,6 +341,12 @@ def _lot_note(row):
     return 'Deletes a lot there' if row.get('deletes_lot') else None
 
 
+def _gone_note(row):
+    if row['state'] != 'remove':
+        return _lot_note(row)
+    return 'Takes the set off the list there' + (' · deletes a lot there' if row.get('deletes_lot') else '')
+
+
 def rows(db, run, plans):
     """The preview rows: one per set and kind, with the choices each has. An option is `dict(id, label, note)`: `pull` adds the difference here,
     `take` takes Rebrickable's count (a pull only raises a count here), `send` sends the count here, `remove` takes the set off the list
@@ -388,7 +394,7 @@ def rows(db, run, plans):
                 row['state'] = 'gone'
                 row['options'].append(dict(id='remove' if r['state'] == 'remove' else 'send',
                                            label=f'Remove from {site}' if r['state'] == 'remove' else f"Quantity {r['remote']} to {r['send']}",
-                                           note='Takes the set off the list there' if r['state'] == 'remove' else _lot_note(r)))
+                                           note=_gone_note(r)))
         elif r['state'] == 'remove' and r['tickable']:        # only sending: a set taken off the list here is offered for the list there, unticked
             row['state'] = 'remove'
             row['options'].append(dict(id='remove', label=f'Remove from {site}', note=_lot_note(r)))

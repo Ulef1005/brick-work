@@ -398,3 +398,45 @@ def test_a_send_that_deletes_a_lot_says_so_in_the_preview_and_on_the_send_review
     review = soup(client.get(f"/manage/sync/brickowl/plan/{plan['id']}"))
     row = next(r for r in review.select('[data-sy-row]') if r['data-name'].startswith('1000-1'))
     assert 'deletes a lot there' in text(row).lower() and not row.select_one('input[checked]')
+
+
+def test_a_conflict_on_the_send_review_says_that_its_send_deletes_a_lot(client, remote, pair):
+    remote.lots = {'owned': [['1', '1000-1', 1], ['2', '1000-1', 1]], 'wanted': []}
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1'), coll.add_copy('1000-1')
+        db.commit()
+        sync.apply_pull(db, sync.plan_pull(db, 'brickowl')['id'])                 # the baseline: 2 and 2
+        remote.lots['owned'].append(['3', '1000-1', 1])                           # 3 there, 1 here
+        db.execute('UPDATE copy SET archived_at=updated_at WHERE id=(SELECT id FROM copy WHERE archived_at IS NULL AND item_id=? LIMIT 1)',
+                   (coll.item('sets', '1000-1'),))
+        db.commit()
+        plan = sync.plan_send(db, 'brickowl')
+    assert next(r for r in plan['rows'] if r['number'] == '1000-1')['state'] == 'conflict'
+    review = soup(client.get(f"/manage/sync/brickowl/plan/{plan['id']}"))
+    row = next(r for r in review.select('.sy-conflict[data-sy-row]') if r['data-name'].startswith('1000-1'))
+    assert 'deletes a lot there' in text(row) and not row.select_one('input[checked]')
+
+
+def test_a_set_gone_here_whose_removal_deletes_a_lot_says_both(remote, pair):
+    remote.lots = {'owned': [['1', '1000-1', 1]], 'wanted': []}
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        db.commit()
+        sync.apply_pull(db, sync.plan_pull(db, 'brickowl')['id'])
+        db.execute('UPDATE copy SET archived_at=updated_at WHERE item_id=?', (coll.item('sets', '1000-1'),))
+        db.commit()
+        sync_run.save_choices(db, dict(owned_dir='both', wishlist_dir='off', wish_list='default'), 'brickowl')
+        run, plans = sync_run.load(db, sync_run.start(db, source='brickowl')['id'])
+        row = next(r for r in sync_run.rows(db, run, plans) if r['number'] == '1000-1')
+    note = next(o['note'] for o in row['options'] if o['id'] == 'remove')
+    assert note == 'Takes the set off the list there · deletes a lot there'
+
+
+def test_a_test_of_the_key_while_brick_owl_is_away_names_it_in_words(client, remote, pair):
+    csrf = token(client)
+    remote.fail['user/details'] = [OSError('down')]
+    client.post(BASE + '/key', data={'csrf_token': csrf, 'action': 'test', 'next': 'site'})
+    page = text(soup(client.get(BASE)))
+    assert 'Brick Owl could not be reached' in page and 'brickowl could' not in page
